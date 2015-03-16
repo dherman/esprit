@@ -27,7 +27,7 @@ impl ESCharClasses for char {
     }
 }
 
-pub struct Lexer<'a, I, C> {
+pub struct Lexer<'a, I, C: 'a> {
     chars: I,
     cx: &'a C
 }
