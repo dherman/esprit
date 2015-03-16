@@ -10,7 +10,7 @@ pub enum ParseError {
     UnexpectedToken(Token)
 }
 
-pub struct Parser<'a, I, C> {
+pub struct Parser<'a, I, C: 'a> {
     lexer: Lexer<'a, I, C>
 }
 
