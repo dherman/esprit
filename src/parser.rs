@@ -10,17 +10,17 @@ pub enum ParseError {
     UnexpectedToken(Token)
 }
 
-pub struct Parser<'a, I, C: 'a> {
-    lexer: Lexer<'a, I, C>
+pub struct Parser<I, C> {
+    lexer: Lexer<I, C>
 }
 
-impl<'a, I, C> Parser<'a, I, C> where I: Iterator<Item=char> {
-    pub fn new(lexer: Lexer<'a, I, C>) -> Parser<'a, I, C> {
+impl<I, C> Parser<I, C> where I: Iterator<Item=char> {
+    pub fn new(lexer: Lexer<I, C>) -> Parser<I, C> {
         Parser { lexer: lexer }
     }
 }
 
-impl<'a, I, C> Parser<'a, I, C> where I: Iterator<Item=char> {
+impl<I, C> Parser<I, C> where I: Iterator<Item=char> {
     pub fn expr(&mut self) -> Result<Expr, ParseError> {
         let left = match self.lexer.next() {
             Some(Token::DecimalInt(_)) => Expr::Number(1.0),

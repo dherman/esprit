@@ -27,18 +27,18 @@ impl ESCharClasses for char {
     }
 }
 
-pub struct Lexer<'a, I, C: 'a> {
+pub struct Lexer<I, C> {
     chars: I,
-    cx: &'a C
+    cx: C
 }
 
-impl<'a, I, C> Lexer<'a, I, C> where I: Iterator<Item=char>, C: ParseContext {
-    pub fn new(chars: I, cx: &'a C) -> Lexer<'a, I, C> {
+impl<I, C> Lexer<I, C> where I: Iterator<Item=char>, C: ParseContext {
+    pub fn new(chars: I, cx: C) -> Lexer<I, C> {
         Lexer { chars: chars, cx: cx }
     }
 }
 
-impl<'a, I, C> Iterator for Lexer<'a, I, C> where I: Iterator<Item=char> {
+impl<I, C> Iterator for Lexer<I, C> where I: Iterator<Item=char> {
     type Item = Token;
 
     fn next(&mut self) -> Option<Token> {
