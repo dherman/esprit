@@ -77,6 +77,30 @@ impl<I> LineOrientedReader<I> where I: Iterator<Item=char> {
     }
 }
 
+struct TokenBuffer {
+    tokens: [Token; 4],
+    cursor: usize,
+    lookahead: usize
+}
+
+impl TokenBuffer {
+    fn new() -> TokenBuffer {
+        TokenBuffer {
+            tokens: [Token::Error('\0'), Token::Error('\0'), Token::Error('\0'), Token::Error('\0')],
+            cursor: 0,
+            lookahead: 0
+        }
+    }
+
+    fn read_token(&mut self) -> Token {
+        assert!(self.lookahead > 0);
+        let token = self.tokens[self.cursor];
+        self.cursor = (self.cursor + 1) % 4;
+        self.lookahead -= 1;
+        token
+    }
+}
+
 pub struct Lexer<I> {
     reader: LineOrientedReader<I>,
     //chars: I,
