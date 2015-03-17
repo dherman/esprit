@@ -90,7 +90,7 @@ impl TokenBuffer {
         }
     }
 
-    fn ensure_nonempty(&mut self, get: || -> Token) {
+    fn ensure_nonempty(&mut self, get: fn() -> Token) {
         if self.tokens.len() == 0 {
             self.tokens.push_back(get());
         }
