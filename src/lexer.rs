@@ -103,6 +103,17 @@ impl TokenBuffer {
         assert!(self.tokens.len() > 0);
         self.tokens.pop_front().unwrap()
     }
+
+    fn peek_token(&mut self) -> &Token {
+        assert!(self.tokens.len() > 0);
+        self.tokens.front().unwrap()
+    }
+
+    fn unread_token(&mut self, token: Token) {
+        assert!(self.tokens.len() >= 0);
+        assert!(self.tokens.len() < 3);
+        self.tokens.push_front(token);
+    }
 }
 
 pub struct Lexer<I> {
@@ -124,12 +135,31 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     // public methods
 
-    pub fn read_token(&mut self) -> Token {
+    pub fn is_eof(&mut self) -> bool {
+        match *self.peek_token() {
+            Token::EOF => true,
+            _ => false
+        }
+    }
+
+    pub fn peek_token(&mut self) -> &Token {
         if self.lookahead.is_empty() {
             let token = self.read_next_token();
             self.lookahead.push_token(token);
         }
-        unimplemented!()
+        self.lookahead.peek_token()
+    }
+
+    pub fn read_token(&mut self) -> Token {
+        if self.lookahead.is_empty() {
+            self.read_next_token()
+        } else {
+            self.lookahead.read_token()
+        }
+    }
+
+    pub fn unread_token(&mut self, token: Token) {
+        self.lookahead.unread_token(token);
     }
 
     // private methods
