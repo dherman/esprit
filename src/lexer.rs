@@ -4,6 +4,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 use regex::Regex;
 use context::Context;
+use token::Posn;
 
 pub trait ESCharExt {
     fn is_es_newline(self) -> bool;
@@ -29,14 +30,88 @@ impl ESCharExt for char {
     }
 }
 
-pub struct Lexer<I> {
+struct LineOrientedReader<I> {
     chars: I,
+    curr_char: Option<char>,
+    next_char: Option<char>,
+    curr_posn: Posn
+}
+
+impl<I> LineOrientedReader<I> where I: Iterator<Item=char> {
+    pub fn new(mut chars: I) -> LineOrientedReader<I> {
+        let curr_char = chars.next();
+        let next_char = if curr_char.is_some() { chars.next() } else { None };
+        LineOrientedReader {
+            chars: chars,
+            curr_char: curr_char,
+            next_char: next_char,
+            curr_posn: Posn {
+                offset: 0,
+                line: 0,
+                column: 0
+            }
+        }
+    }
+
+    pub fn curr_char(&mut self) -> Option<char> { self.curr_char }
+    pub fn curr_posn(&mut self) -> Posn { self.curr_posn }
+
+    pub fn bump(&mut self) {
+        let curr_char = self.next_char;
+        let next_char = if curr_char.is_some() { self.chars.next() } else { None };
+
+        self.curr_char = curr_char;
+        self.next_char = next_char;
+
+        if (curr_char == Some('\r') && next_char != Some('\n')) ||
+           curr_char == Some('\n') ||
+           curr_char == Some('\u{2028}') ||
+           curr_char == Some('\u{2029}') {
+            self.curr_posn.line += 1;
+            self.curr_posn.column = 0;
+        } else {
+            self.curr_posn.column += 1;
+        }
+
+        self.curr_posn.offset += 1;
+    }
+}
+
+pub struct Lexer<I> {
+    reader: LineOrientedReader<I>,
+    //chars: I,
     cx: Rc<Cell<Context>>
 }
 
 impl<I> Lexer<I> where I: Iterator<Item=char> {
+    // constructor
+
     pub fn new(chars: I, cx: Rc<Cell<Context>>) -> Lexer<I> {
-        Lexer { chars: chars, cx: cx }
+        Lexer {
+            reader: LineOrientedReader::new(chars),
+            cx: cx
+        }
+    }
+
+    // private methods
+
+    fn is_whitespace(&mut self) -> bool {
+        match self.reader.curr_char() {
+            Some(ch) => ch.is_es_whitespace(),
+            None => false
+        }
+    }
+
+    fn eat(&mut self) -> Option<char> {
+        let ch = self.reader.curr_char();
+        self.reader.bump();
+        ch
+    }
+
+    fn skip_whitespace(&mut self) {
+        while self.is_whitespace() {
+            self.reader.bump();
+        }
     }
 }
 
@@ -44,14 +119,14 @@ impl<I> Iterator for Lexer<I> where I: Iterator<Item=char> {
     type Item = Token;
 
     fn next(&mut self) -> Option<Token> {
-        let char = self.chars.by_ref().find(|c| !c.is_es_whitespace() );
-
-        char.map(|chr| {
-            match chr {
-                '1' => Token::DecimalInt(String::from_str("1")),
-                '+' => Token::Plus,
-                _ => Token::Error(chr)
-            }
-        })
+        self.skip_whitespace();
+        self.eat()
+            .map(|ch| {
+                match ch {
+                    '1' => Token::DecimalInt(String::from_str("1")),
+                    '+' => Token::Plus,
+                    _ => Token::Error(ch)
+                }
+            })
     }
 }
