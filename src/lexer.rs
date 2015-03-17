@@ -126,7 +126,8 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     pub fn read_token(&mut self) -> Token {
         if self.lookahead.is_empty() {
-            self.lookahead.push_token(self.read_next_token());
+            let token = self.read_next_token();
+            self.lookahead.push_token(token);
         }
         unimplemented!()
     }
