@@ -90,7 +90,7 @@ impl TokenBuffer {
         }
     }
 
-    fn ensure_nonempty(&mut self, get: &mut fn() -> Token) {
+    fn ensure_nonempty(&mut self, get: fn() -> Token) {
         if self.tokens.len() == 0 {
             self.tokens.push_back(get());
         }
@@ -122,7 +122,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     // public methods
 
     pub fn read_token(&mut self) -> Token {
-        self.lookahead.ensure_nonempty(|| {
+        self.lookahead.ensure_nonempty(ref || {
             self.read_next_token()
         });
         unimplemented!()
