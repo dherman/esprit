@@ -1,8 +1,8 @@
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Copy, Eq, PartialEq)]
 pub struct Posn {
-    offset: u32,
-    line: u32,
-    column: u32
+    pub offset: u32,
+    pub line: u32,
+    pub column: u32
 }
 
 #[derive(Debug, Eq, PartialEq)]
