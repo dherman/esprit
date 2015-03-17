@@ -1,7 +1,9 @@
 use token::Token;
 
+use std::cell::Cell;
+use std::rc::Rc;
 use regex::Regex;
-use context::ParseContext;
+use context::Context;
 
 pub trait ESCharExt {
     fn is_es_newline(self) -> bool;
@@ -27,18 +29,18 @@ impl ESCharExt for char {
     }
 }
 
-pub struct Lexer<I, C> {
+pub struct Lexer<I> {
     chars: I,
-    cx: C
+    cx: Rc<Cell<Context>>
 }
 
-impl<I, C> Lexer<I, C> where I: Iterator<Item=char>, C: ParseContext {
-    pub fn new(chars: I, cx: C) -> Lexer<I, C> {
+impl<I> Lexer<I> where I: Iterator<Item=char> {
+    pub fn new(chars: I, cx: Rc<Cell<Context>>) -> Lexer<I> {
         Lexer { chars: chars, cx: cx }
     }
 }
 
-impl<I, C> Iterator for Lexer<I, C> where I: Iterator<Item=char> {
+impl<I> Iterator for Lexer<I> where I: Iterator<Item=char> {
     type Item = Token;
 
     fn next(&mut self) -> Option<Token> {

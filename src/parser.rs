@@ -1,8 +1,11 @@
 use token::Token;
 use lexer::Lexer;
 
+use std::cell::Cell;
+use std::rc::Rc;
 use ast::Binop;
 use ast::Expr;
+use context::Context;
 
 #[derive(Debug, PartialEq)]
 pub enum ParseError {
@@ -10,17 +13,18 @@ pub enum ParseError {
     UnexpectedToken(Token)
 }
 
-pub struct Parser<I, C> {
-    lexer: Lexer<I, C>
+pub struct Parser<I> {
+    lexer: Lexer<I>,
+    cx: Rc<Cell<Context>>
 }
 
-impl<I, C> Parser<I, C> where I: Iterator<Item=char> {
-    pub fn new(lexer: Lexer<I, C>) -> Parser<I, C> {
-        Parser { lexer: lexer }
+impl<I> Parser<I> where I: Iterator<Item=char> {
+    pub fn new(lexer: Lexer<I>, cx: Rc<Cell<Context>>) -> Parser<I> {
+        Parser { lexer: lexer, cx: cx }
     }
 }
 
-impl<I, C> Parser<I, C> where I: Iterator<Item=char> {
+impl<I> Parser<I> where I: Iterator<Item=char> {
     pub fn expr(&mut self) -> Result<Expr, ParseError> {
         let left = match self.lexer.next() {
             Some(Token::DecimalInt(_)) => Expr::Number(1.0),

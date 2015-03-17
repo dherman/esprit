@@ -10,18 +10,20 @@ mod parser;
 mod ast;
 mod context;
 
+use std::cell::Cell;
+use std::rc::Rc;
 use token::Token;
 use lexer::Lexer;
 use ast::Expr;
 use ast::Binop;
 use parser::Parser;
-use context::SimpleContext;
+use context::Context;
 
 #[test]
 fn it_lexes() {
     let chars = "  1 + 1  ".chars();
-    let cx = SimpleContext::new();
-    let lexer = Lexer::new(chars, &cx);
+    let cx = Rc::new(Cell::new(Context::new()));
+    let lexer = Lexer::new(chars, cx.clone());
 
     assert_eq!(lexer.collect(), vec![Token::DecimalInt("1".to_string()), Token::Plus, Token::DecimalInt("1".to_string())]);
 }
@@ -29,9 +31,9 @@ fn it_lexes() {
 #[test]
 fn it_parses() {
     let chars = "  1 + 1  ".chars();
-    let cx = SimpleContext::new();
-    let lexer = Lexer::new(chars, &cx);
-    let mut parser = Parser::new(lexer);
+    let cx = Rc::new(Cell::new(Context::new()));
+    let lexer = Lexer::new(chars, cx.clone());
+    let mut parser = Parser::new(lexer, cx.clone());
 
     assert_eq!(parser.expr().unwrap(), Expr::Binop(Binop::Plus, Box::new(Expr::Number(1.0)), Box::new(Expr::Number(1.0))));
 }

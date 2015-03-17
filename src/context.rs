@@ -16,6 +16,7 @@ impl Context {
 }
 
 /*
+/*
 pub struct ParseContext {
     is_asi_possible: bool,
     is_operator: bool
@@ -39,3 +40,4 @@ impl SimpleContext {
         SimpleContext
     }
 }
+*/
