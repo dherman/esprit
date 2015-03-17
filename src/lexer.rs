@@ -1,3 +1,5 @@
+use std::collections::LinkedList;
+
 use token::Token;
 
 use std::cell::Cell;
@@ -78,33 +80,32 @@ impl<I> LineOrientedReader<I> where I: Iterator<Item=char> {
 }
 
 struct TokenBuffer {
-    tokens: [Token; 4],
-    cursor: usize,
-    lookahead: usize
+    tokens: LinkedList<Token>
 }
 
 impl TokenBuffer {
     fn new() -> TokenBuffer {
         TokenBuffer {
-            tokens: [Token::Error('\0'), Token::Error('\0'), Token::Error('\0'), Token::Error('\0')],
-            cursor: 0,
-            lookahead: 0
+            tokens: LinkedList::new()
+        }
+    }
+
+    fn ensure_nonempty(&mut self, get: || -> Token) {
+        if self.tokens.len() == 0 {
+            self.tokens.push_back(get());
         }
     }
 
     fn read_token(&mut self) -> Token {
-        assert!(self.lookahead > 0);
-        let token = self.tokens[self.cursor];
-        self.cursor = (self.cursor + 1) % 4;
-        self.lookahead -= 1;
-        token
+        assert!(self.tokens.len() > 0);
+        self.tokens.pop_front().unwrap()
     }
 }
 
 pub struct Lexer<I> {
     reader: LineOrientedReader<I>,
-    //chars: I,
-    cx: Rc<Cell<Context>>
+    cx: Rc<Cell<Context>>,
+    lookahead: TokenBuffer
 }
 
 impl<I> Lexer<I> where I: Iterator<Item=char> {
@@ -113,11 +114,25 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     pub fn new(chars: I, cx: Rc<Cell<Context>>) -> Lexer<I> {
         Lexer {
             reader: LineOrientedReader::new(chars),
-            cx: cx
+            cx: cx,
+            lookahead: TokenBuffer::new()
         }
     }
 
+    // public methods
+
+    pub fn read_token(&mut self) -> Token {
+        self.lookahead.ensure_nonempty(|| {
+            self.read_next_token()
+        });
+        unimplemented!()
+    }
+
     // private methods
+
+    fn read_next_token(&mut self) -> Token {
+        unimplemented!()
+    }
 
     fn is_whitespace(&mut self) -> bool {
         match self.reader.curr_char() {

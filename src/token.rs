@@ -11,7 +11,7 @@ pub struct Span {
     end: Posn
 }
 
-#[derive(Debug, Copy, PartialEq)]
+#[derive(Debug, PartialEq)]
 #[allow(dead_code)]
 pub enum Token {
     Null,
