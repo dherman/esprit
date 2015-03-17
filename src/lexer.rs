@@ -3,12 +3,12 @@ use token::Token;
 use regex::Regex;
 use context::ParseContext;
 
-pub trait ESCharClasses {
+pub trait ESCharExt {
     fn is_es_newline(self) -> bool;
     fn is_es_whitespace(self) -> bool;
 }
 
-impl ESCharClasses for char {
+impl ESCharExt for char {
     fn is_es_newline(self) -> bool {
         match self {
             '\u{000a}' | '\u{000d}' | '\u{2028}' | '\u{2029}' => true,
