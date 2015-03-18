@@ -12,7 +12,65 @@ use token::Posn;
 pub trait ESCharExt {
     fn is_es_newline(self) -> bool;
     fn is_es_whitespace(self) -> bool;
+    fn is_es_identifier(self) -> bool;
+    fn is_es_identifier_start(self) -> bool;
+    fn is_es_identifier_continue(self) -> bool;
 }
+
+/*
+// https://github.com/ariya/esprima/blob/master/tools/generate-identifier-regex.js
+// https://gist.github.com/mathiasbynens/6334847
+// http://unicode.org/reports/tr31/
+
+pub trait UnicodeCharExt {
+    fn is_L(self) -> bool;
+    fn is_Lu(self) -> bool;
+    fn is_Ll(self) -> bool;
+    fn is_Lt(self) -> bool;
+    fn is_Lm(self) -> bool;
+    fn is_Lo(self) -> bool;
+    fn is_Nl(self) -> bool;
+    fn is_OtherID_Start(self) -> bool;
+}
+
+impl UnicodeCharExt for char {
+    fn is_L(self) -> bool {
+        self.is_Lu() ||
+        self.is_Ll() ||
+        self.is_Lt() ||
+        self.is_Lm() ||
+        self.is_Lo()
+    }
+
+    fn is_Lu(self) -> bool {
+        false
+    }
+
+    fn is_Ll(self) -> bool {
+        false
+    }
+
+    fn is_Lt(self) -> bool {
+        false
+    }
+
+    fn is_Lm(self) -> bool {
+        false
+    }
+
+    fn is_Lo(self) -> bool {
+        false
+    }
+
+    fn is_Nl(self) -> bool {
+        false
+    }
+
+    fn is_OtherID_Start(self) -> bool {
+        false
+    }
+}
+*/
 
 impl ESCharExt for char {
     fn is_es_newline(self) -> bool {
@@ -30,6 +88,21 @@ impl ESCharExt for char {
             | '\u{3000}' | '\u{feff}' => true,
             _ => false
         }
+    }
+
+    fn is_es_identifier(self) -> bool {
+        self.is_es_identifier_continue()
+    }
+
+    fn is_es_identifier_start(self) -> bool {
+        self == '$' ||
+        self == '_' ||
+        self.is_alphabetic()
+    }
+
+    fn is_es_identifier_continue(self) -> bool {
+        self.is_es_identifier_start() ||
+        self.is_numeric()
     }
 }
 
@@ -80,6 +153,9 @@ impl<I> LineOrientedReader<I> where I: Iterator<Item=char> {
         self.curr_posn.offset += 1;
     }
 }
+
+// test case: x=0;y=g=1;alert(eval("while(x)break\n/y/g.exec('y')"))
+//       see: https://groups.google.com/d/msg/mozilla.dev.tech.js-engine.internals/2JLH5jRcr7E/Mxc7ZKc5r6sJ
 
 struct TokenBuffer {
     tokens: LinkedList<Token>
@@ -137,13 +213,6 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     // public methods
 
-    pub fn is_eof(&mut self) -> bool {
-        match *self.peek_token() {
-            Token::EOF => true,
-            _ => false
-        }
-    }
-
     pub fn peek_token(&mut self) -> &Token {
         if self.lookahead.is_empty() {
             let token = self.read_next_token();
@@ -174,27 +243,118 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     fn div_or_regexp(&mut self) -> Token {
         if self.cx.get().is_operator() {
-            unimplemented!()
+            self.reader.bump();
+            Token::Slash
         } else {
             unimplemented!()
         }
     }
 
+    fn if_assign(&mut self, cons: Token, alt: Token) -> Token {
+        self.reader.bump();
+        if self.reader.curr_char() == Some('=') { self.reader.bump(); cons } else { alt }
+    }
+
+    fn lt(&mut self) -> Token { unimplemented!() }
+    fn gt(&mut self) -> Token { unimplemented!() }
+    fn eq(&mut self) -> Token { unimplemented!() }
+
+    fn plus(&mut self) -> Token {
+        self.bump();
+        match self.reader.curr_char() {
+            Some('+') => { self.bump(); Token::Inc },
+            Some('=') => { self.bump(); Token::PlusAssign },
+            _ => Token::Plus
+        }
+    }
+
+    fn minus(&mut self) -> Token { unimplemented!() }
+    fn bang(&mut self) -> Token { unimplemented!() }
+
+    fn number(&mut self) -> Token {
+        if self.reader.curr_char() == Some('1') {
+            self.bump();
+            return Token::DecimalInt(String::from_str("1"));
+        }
+        unimplemented!()
+    }
+
+    fn string(&mut self) -> Token { unimplemented!() }
+    fn word(&mut self) -> Token { unimplemented!() }
+
     fn read_next_token(&mut self) -> Token {
         self.skip_whitespace();
+        println!("inspecting {:?}", self.reader.curr_char());
         loop {
             match self.reader.curr_char() {
-                None => return Token::EOF,
-                Some(ch) => {
-                    if ch == '/' {
-                        match self.reader.next_char() {
-                            Some('/') => self.skip_line_comment(),
-                            Some('*') => self.skip_block_comment(),
-                            _ => return self.div_or_regexp()
-                        }
+                Some('/') => {
+                    match self.reader.next_char() {
+                        Some('/') => self.skip_line_comment(),
+                        Some('*') => self.skip_block_comment(),
+                        _ => return self.div_or_regexp()
                     }
-                    unimplemented!()
+                },
+                Some('.') => {
+                    match self.reader.next_char() {
+                        Some(ch) if ch.is_digit(10) => { return self.number() },
+                        _ => { self.reader.bump(); return Token::Dot }
+                    }
                 }
+                Some('{') => { self.bump(); return Token::LBrace },
+                Some('}') => { self.bump(); return Token::RBrace },
+                Some('[') => { self.bump(); return Token::LBrack },
+                Some(']') => { self.bump(); return Token::RBrack },
+                Some('(') => { self.bump(); return Token::LParen },
+                Some(')') => { self.bump(); return Token::RParen },
+                Some(';') => { self.bump(); return Token::Semi },
+                Some(':') => { self.bump(); return Token::Colon },
+                Some(',') => { self.bump(); return Token::Comma },
+                Some('<') => return self.lt(),
+                Some('>') => return self.gt(),
+                Some('=') => return self.eq(),
+                Some('+') => return self.plus(),
+                Some('-') => return self.minus(),
+                Some('*') => return self.if_assign(Token::StarAssign, Token::Star),
+                Some('%') => return self.if_assign(Token::ModAssign, Token::Mod),
+                Some('^') => return self.if_assign(Token::BitXorAssign, Token::BitXor),
+                Some('&') => {
+                    self.bump();
+                    match self.reader.curr_char() {
+                        Some('&') => { self.bump(); return Token::LogicalAnd },
+                        _ => return Token::BitAnd
+                    }
+                },
+                Some('|') => {
+                    self.bump();
+                    match self.reader.curr_char() {
+                        Some('|') => { self.bump(); return Token::LogicalOr },
+                        _ => return Token::BitOr
+                    }
+                },
+                Some('~') => { self.bump(); return Token::Tilde },
+                Some('!') => return self.bang(),
+                Some('?') => { self.bump(); return Token::Question },
+                Some('"') => return self.string(),
+                Some('\'') => return self.string(),
+                Some('\r') => {
+                    self.bump();
+                    if self.reader.curr_char() == Some('\n') {
+                        self.bump();
+                    }
+                    if self.cx.get().is_asi_possible() {
+                        return Token::Newline;
+                    }
+                },
+                Some(ch) if ch.is_es_newline() => {
+                    self.bump();
+                    if self.cx.get().is_asi_possible() {
+                        return Token::Newline;
+                    }
+                }
+                Some(ch) if ch.is_digit(10) => return self.number(),
+                Some(ch) if ch.is_es_identifier() => return self.word(),
+                Some(ch) => return Token::Error(ch),
+                None => return Token::EOF
             }
         }
     }
@@ -206,9 +366,13 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }
     }
 
+    fn bump(&mut self) {
+        self.reader.bump();
+    }
+
     fn eat(&mut self) -> Option<char> {
         let ch = self.reader.curr_char();
-        self.reader.bump();
+        self.bump();
         ch
     }
 
@@ -223,14 +387,9 @@ impl<I> Iterator for Lexer<I> where I: Iterator<Item=char> {
     type Item = Token;
 
     fn next(&mut self) -> Option<Token> {
-        self.skip_whitespace();
-        self.eat()
-            .map(|ch| {
-                match ch {
-                    '1' => Token::DecimalInt(String::from_str("1")),
-                    '+' => Token::Plus,
-                    _ => Token::Error(ch)
-                }
-            })
+        match self.read_token() {
+            Token::EOF => None,
+            t => Some(t)
+        }
     }
 }

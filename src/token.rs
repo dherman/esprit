@@ -57,7 +57,7 @@ pub enum Token {
 
     // 11.6.2.2 Future Reserved Words
     Enum,
-    Await,
+    //Await,
     Implements,
     Interface,
     Package,
@@ -73,7 +73,7 @@ pub enum Token {
     LBrack,
     RBrack,
     Dot,
-    Ellipsis,
+    //Ellipsis,
     Semi,
     Comma,
     LAngle,
