@@ -173,7 +173,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn div_or_regexp(&mut self) -> Token {
-        if self.cx.get().operator {
+        if self.cx.get().is_operator() {
             unimplemented!()
         } else {
             unimplemented!()
