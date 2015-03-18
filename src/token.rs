@@ -130,5 +130,5 @@ pub enum Token {
 
     Newline,
     EOF,
-    Error(char)
+    Error(Option<char>)
 }

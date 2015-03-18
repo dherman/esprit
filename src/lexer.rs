@@ -235,6 +235,12 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     // private methods
 
+    fn bump_until(&mut self, ch: char) {
+        while self.reader.curr_char() != Some(ch) {
+            self.bump();
+        }
+    }
+
     fn skip_line_comment(&mut self) {
         self.bump();
         self.bump();
@@ -248,7 +254,16 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }
     }
 
-    fn skip_block_comment(&mut self) {
+    fn skip_block_comment(&mut self) -> bool {
+        self.bump();
+        self.bump();
+        self.bump_until('*');
+        if self.reader.curr_char() == None {
+            return false;
+        }
+        self.bump();
+        self.bump();
+        true
     }
 
     fn div_or_regexp(&mut self) -> Token {
@@ -358,7 +373,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 Some('/') => {
                     match self.reader.next_char() {
                         Some('/') => self.skip_line_comment(),
-                        Some('*') => self.skip_block_comment(),
+                        Some('*') => if !self.skip_block_comment() { return Token::Error(None) },
                         _ => return self.div_or_regexp()
                     }
                 },
@@ -421,7 +436,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 }
                 Some(ch) if ch.is_digit(10) => return self.number(),
                 Some(ch) if ch.is_es_identifier() => return self.word(),
-                Some(ch) => return Token::Error(ch),
+                Some(ch) => return Token::Error(Some(ch)),
                 None => return Token::EOF
             }
         }
