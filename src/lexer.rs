@@ -240,7 +240,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         self.bump();
         loop {
             match self.reader.curr_char() {
-                Some(ch) if ch.is_es_newline() | None => return,
+                None | Some(ch) if ch.is_es_newline() => return,
                 _ => ()
             }
             self.bump();
