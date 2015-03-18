@@ -179,13 +179,13 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         self.skip_whitespace();
         loop {
             match self.reader.curr_char() {
-                None => Token::EOF,
+                None => return Token::EOF,
                 Some(ch) => {
                     if ch == '/' {
                         match self.reader.next_char() {
                             Some('/') => self.skip_line_comment(),
                             Some('*') => self.skip_block_comment(),
-                            _ => { return self.div_or_regexp() }
+                            _ => return self.div_or_regexp()
                         }
                     }
                     unimplemented!()
