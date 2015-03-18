@@ -57,6 +57,7 @@ impl<I> LineOrientedReader<I> where I: Iterator<Item=char> {
 
     pub fn curr_char(&mut self) -> Option<char> { self.curr_char }
     pub fn curr_posn(&mut self) -> Posn { self.curr_posn }
+    pub fn next_char(&mut self) -> Option<char> { self.next_char }
 
     pub fn bump(&mut self) {
         let curr_char = self.next_char;
@@ -164,8 +165,33 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     // private methods
 
-    fn read_next_token(&mut self) -> Token {
+    fn skip_line_comment(&mut self) {
+    }
+
+    fn skip_block_comment(&mut self) {
+    }
+
+    fn div_or_regexp(&mut self) -> Token {
         unimplemented!()
+    }
+
+    fn read_next_token(&mut self) -> Token {
+        self.skip_whitespace();
+        loop {
+            match self.reader.curr_char() {
+                None => Token::EOF,
+                Some(ch) => {
+                    if ch == '/' {
+                        match self.reader.next_char() {
+                            Some('/') => self.skip_line_comment(),
+                            Some('*') => self.skip_block_comment(),
+                            _ => { return self.div_or_regexp() }
+                        }
+                    }
+                    unimplemented!()
+                }
+            }
+        }
     }
 
     fn is_whitespace(&mut self) -> bool {
