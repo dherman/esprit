@@ -238,7 +238,11 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     fn skip_line_comment(&mut self) {
         self.bump();
         self.bump();
-        while self.reader.curr_char().is_es_newline() {
+        loop {
+            match self.reader.curr_char() {
+                Some(ch) if ch.is_es_newline() | None => return,
+                _ => ()
+            }
             self.bump();
         }
     }
