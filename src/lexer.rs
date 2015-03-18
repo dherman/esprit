@@ -235,18 +235,10 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     // private methods
 
-    fn bump_until(&mut self, ch: char) {
-        while self.reader.curr_char() != Some(ch) {
-            self.bump();
-        }
-    }
-
-    fn skip_line_comment(&mut self) {
-        self.bump();
-        self.bump();
+    fn bump_until<F: Fn(char) -> bool>(&mut self, pred: F) {
         loop {
             match self.reader.curr_char() {
-                Some(ch) if ch.is_es_newline() => return,
+                Some(ch) if pred(ch) => return,
                 None => return,
                 _ => ()
             }
@@ -254,10 +246,16 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }
     }
 
+    fn skip_line_comment(&mut self) {
+        self.bump();
+        self.bump();
+        self.bump_until(|ch| ch.is_es_newline());
+    }
+
     fn skip_block_comment(&mut self) -> bool {
         self.bump();
         self.bump();
-        self.bump_until('*');
+        self.bump_until(|ch| ch == '*');
         if self.reader.curr_char() == None {
             return false;
         }
