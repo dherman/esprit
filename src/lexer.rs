@@ -236,6 +236,11 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     // private methods
 
     fn skip_line_comment(&mut self) {
+        self.bump();
+        self.bump();
+        while self.reader.curr_char().is_es_newline() {
+            self.bump();
+        }
     }
 
     fn skip_block_comment(&mut self) {
@@ -255,9 +260,61 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         if self.reader.curr_char() == Some('=') { self.reader.bump(); cons } else { alt }
     }
 
-    fn lt(&mut self) -> Token { unimplemented!() }
-    fn gt(&mut self) -> Token { unimplemented!() }
-    fn eq(&mut self) -> Token { unimplemented!() }
+    fn if_equality(&mut self, zero: Token, one: Token, two: Token) -> Token {
+        self.bump();
+        if self.reader.curr_char() == Some('=') {
+            self.bump();
+            if self.reader.curr_char() == Some('=') {
+                self.bump();
+                two
+            } else {
+                one
+            }
+        } else {
+            zero
+        }
+    }
+
+    fn lt(&mut self) -> Token {
+        self.bump();
+        match self.reader.curr_char() {
+            Some('<') => {
+                self.bump();
+                if self.reader.curr_char() == Some('=') {
+                    self.bump();
+                    Token::LShiftAssign
+                } else {
+                    Token::LShift
+                }
+            },
+            Some('=') => { self.bump(); Token::LEq }
+            _ => Token::LAngle
+        }
+    }
+
+    fn gt(&mut self) -> Token {
+        self.bump();
+        match self.reader.curr_char() {
+            Some('>') => {
+                self.bump();
+                match self.reader.curr_char() {
+                    Some('>') => {
+                        self.bump();
+                        if self.reader.curr_char() == Some('=') {
+                            self.bump();
+                            Token::URShiftAssign
+                        } else {
+                            Token::URShift
+                        }
+                    },
+                    Some('=') => { self.bump(); Token::RShiftAssign },
+                    _ => Token::RShift
+                }
+            },
+            Some('=') => { self.bump(); Token::GEq },
+            _ => Token::RAngle
+        }
+    }
 
     fn plus(&mut self) -> Token {
         self.bump();
@@ -268,8 +325,14 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }
     }
 
-    fn minus(&mut self) -> Token { unimplemented!() }
-    fn bang(&mut self) -> Token { unimplemented!() }
+    fn minus(&mut self) -> Token {
+        self.bump();
+        match self.reader.curr_char() {
+            Some('-') => { self.bump(); Token::Dec },
+            Some('=') => { self.bump(); Token::MinusAssign },
+            _ => Token::Minus
+        }
+    }
 
     fn number(&mut self) -> Token {
         if self.reader.curr_char() == Some('1') {
@@ -311,7 +374,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 Some(',') => { self.bump(); return Token::Comma },
                 Some('<') => return self.lt(),
                 Some('>') => return self.gt(),
-                Some('=') => return self.eq(),
+                Some('=') => return self.if_equality(Token::Assign, Token::Eq, Token::StrictEq),
                 Some('+') => return self.plus(),
                 Some('-') => return self.minus(),
                 Some('*') => return self.if_assign(Token::StarAssign, Token::Star),
@@ -332,7 +395,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                     }
                 },
                 Some('~') => { self.bump(); return Token::Tilde },
-                Some('!') => return self.bang(),
+                Some('!') => return self.if_equality(Token::Bang, Token::NEq, Token::StrictNEq),
                 Some('?') => { self.bump(); return Token::Question },
                 Some('"') => return self.string(),
                 Some('\'') => return self.string(),
