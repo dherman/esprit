@@ -1,5 +1,5 @@
 use std::collections::LinkedList;
-use collections::borrow::Borrow;
+use std::collections::Borrow;
 
 use token::Token;
 
