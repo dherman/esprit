@@ -390,7 +390,14 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         unimplemented!()
     }
 
-    fn word(&mut self) -> Token { unimplemented!() }
+    fn word(&mut self) -> Token {
+        let mut s = String::new();
+        assert!(self.reader.curr_char().is_some());
+        s.push(self.eat().unwrap());
+        self.take_until(&mut s, |ch| !ch.is_es_identifier_continue());
+        // FIXME: test for keyword
+        Token::Identifier(s)
+    }
 
     fn read_next_token(&mut self) -> Token {
         self.skip_whitespace();
@@ -462,7 +469,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                     }
                 }
                 Some(ch) if ch.is_digit(10) => return self.number(),
-                Some(ch) if ch.is_es_identifier() => return self.word(),
+                Some(ch) if ch.is_es_identifier_start() => return self.word(),
                 Some(ch) => return Token::Error(Some(ch)),
                 None => return Token::EOF
             }
