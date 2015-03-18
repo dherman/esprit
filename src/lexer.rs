@@ -246,6 +246,16 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }
     }
 
+    fn take_until<F: Fn(char) -> bool>(&mut self, s: &mut String, pred: F) {
+        loop {
+            match self.reader.curr_char() {
+                Some(ch) if pred(ch) => return,
+                Some(ch) => { s.push(ch); }
+                None => return,
+            }
+        }
+    }
+
     fn skip_line_comment(&mut self) {
         self.bump();
         self.bump();
@@ -360,7 +370,26 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         unimplemented!()
     }
 
-    fn string(&mut self) -> Token { unimplemented!() }
+    fn string(&mut self) -> Token {
+        let mut s = String::new();
+        loop {
+            assert!(self.reader.curr_char().is_some());
+            let quote = self.eat().unwrap();
+            self.take_until(&mut s, |ch| ch == quote || ch == '\\');
+            match self.reader.curr_char() {
+                Some('\\') => self.string_escape(&mut s),
+                Some(_) => { self.bump(); }
+                None => return Token::Error(None)
+            }
+        }
+        Token::String(s)
+    }
+
+    fn string_escape(&mut self, s: &mut String) {
+        self.bump();
+        unimplemented!()
+    }
+
     fn word(&mut self) -> Token { unimplemented!() }
 
     fn read_next_token(&mut self) -> Token {
