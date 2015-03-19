@@ -203,11 +203,13 @@ impl TokenBuffer {
 
 macro_rules! map {
     ( $( ( $key:expr, $val:expr ) ),* ) => {
-        let mut temp_map = HashMap::new();
-        $(
-            temp_map.insert($key, $val);
-        )*
-        temp_map
+        {
+            let mut temp_map = HashMap::new();
+            $(
+                temp_map.insert($key, $val);
+            )*
+            temp_map
+        }
     };
 }
 
