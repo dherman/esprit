@@ -17,6 +17,12 @@ pub trait ESCharExt {
     fn is_es_identifier_continue(self) -> bool;
 }
 
+#[derive(Debug, PartialEq)]
+pub enum LexError {
+    UnexpectedEOF,
+    UnexpectedChar(char)
+}
+
 /*
 // https://github.com/ariya/esprima/blob/master/tools/generate-identifier-regex.js
 // https://gist.github.com/mathiasbynens/6334847
@@ -188,7 +194,6 @@ impl TokenBuffer {
     }
 
     fn unread_token(&mut self, token: Token) {
-        assert!(self.tokens.len() >= 0);
         assert!(self.tokens.len() < 3);
         self.tokens.push_front(token);
     }
@@ -213,19 +218,19 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     // public methods
 
-    pub fn peek_token(&mut self) -> &Token {
+    pub fn peek_token(&mut self) -> Result<&Token, LexError> {
         if self.lookahead.is_empty() {
-            let token = self.read_next_token();
+            let token = try!(self.read_next_token());
             self.lookahead.push_token(token);
         }
-        self.lookahead.peek_token()
+        Ok(self.lookahead.peek_token())
     }
 
-    pub fn read_token(&mut self) -> Token {
+    pub fn read_token(&mut self) -> Result<Token, LexError> {
         if self.lookahead.is_empty() {
             self.read_next_token()
         } else {
-            self.lookahead.read_token()
+            Ok(self.lookahead.read_token())
         }
     }
 
@@ -262,16 +267,16 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         self.bump_until(|ch| ch.is_es_newline());
     }
 
-    fn skip_block_comment(&mut self) -> bool {
+    fn skip_block_comment(&mut self) -> Result<(), LexError> {
         self.bump();
         self.bump();
         self.bump_until(|ch| ch == '*');
         if self.reader.curr_char() == None {
-            return false;
+            return Err(LexError::UnexpectedEOF);
         }
         self.bump();
         self.bump();
-        true
+        Ok(())
     }
 
     fn div_or_regexp(&mut self) -> Token {
@@ -362,27 +367,27 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }
     }
 
-    fn number(&mut self) -> Token {
+    fn number(&mut self) -> Result<Token, LexError> {
         if self.reader.curr_char() == Some('1') {
             self.bump();
-            return Token::DecimalInt(String::from_str("1"));
+            return Ok(Token::DecimalInt(String::from_str("1")));
         }
         unimplemented!()
     }
 
-    fn string(&mut self) -> Token {
+    fn string(&mut self) -> Result<Token, LexError> {
         let mut s = String::new();
         loop {
             assert!(self.reader.curr_char().is_some());
             let quote = self.eat().unwrap();
             self.take_until(&mut s, |ch| ch == quote || ch == '\\');
             match self.reader.curr_char() {
-                Some('\\') => self.string_escape(&mut s),
-                Some(_) => { self.bump(); }
-                None => return Token::Error(None)
+                Some('\\') => { self.string_escape(&mut s); },
+                Some(_) => { self.bump(); },
+                None => return Err(LexError::UnexpectedEOF)
             }
         }
-        Token::String(s)
+        Ok(Token::String(s))
     }
 
     fn string_escape(&mut self, s: &mut String) {
@@ -399,7 +404,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         Token::Identifier(s)
     }
 
-    fn read_next_token(&mut self) -> Token {
+    fn read_next_token(&mut self) -> Result<Token, LexError> {
         self.skip_whitespace();
         println!("inspecting {:?}", self.reader.curr_char());
         loop {
@@ -407,50 +412,50 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 Some('/') => {
                     match self.reader.next_char() {
                         Some('/') => self.skip_line_comment(),
-                        Some('*') => if !self.skip_block_comment() { return Token::Error(None) },
-                        _ => return self.div_or_regexp()
+                        Some('*') => { try!(self.skip_block_comment()); },
+                        _ => return Ok(self.div_or_regexp())
                     }
                 },
                 Some('.') => {
                     match self.reader.next_char() {
                         Some(ch) if ch.is_digit(10) => { return self.number() },
-                        _ => { self.reader.bump(); return Token::Dot }
+                        _ => { self.reader.bump(); return Ok(Token::Dot) }
                     }
                 }
-                Some('{') => { self.bump(); return Token::LBrace },
-                Some('}') => { self.bump(); return Token::RBrace },
-                Some('[') => { self.bump(); return Token::LBrack },
-                Some(']') => { self.bump(); return Token::RBrack },
-                Some('(') => { self.bump(); return Token::LParen },
-                Some(')') => { self.bump(); return Token::RParen },
-                Some(';') => { self.bump(); return Token::Semi },
-                Some(':') => { self.bump(); return Token::Colon },
-                Some(',') => { self.bump(); return Token::Comma },
-                Some('<') => return self.lt(),
-                Some('>') => return self.gt(),
-                Some('=') => return self.if_equality(Token::Assign, Token::Eq, Token::StrictEq),
-                Some('+') => return self.plus(),
-                Some('-') => return self.minus(),
-                Some('*') => return self.if_assign(Token::StarAssign, Token::Star),
-                Some('%') => return self.if_assign(Token::ModAssign, Token::Mod),
-                Some('^') => return self.if_assign(Token::BitXorAssign, Token::BitXor),
+                Some('{') => { self.bump(); return Ok(Token::LBrace) },
+                Some('}') => { self.bump(); return Ok(Token::RBrace) },
+                Some('[') => { self.bump(); return Ok(Token::LBrack) },
+                Some(']') => { self.bump(); return Ok(Token::RBrack) },
+                Some('(') => { self.bump(); return Ok(Token::LParen) },
+                Some(')') => { self.bump(); return Ok(Token::RParen) },
+                Some(';') => { self.bump(); return Ok(Token::Semi) },
+                Some(':') => { self.bump(); return Ok(Token::Colon) },
+                Some(',') => { self.bump(); return Ok(Token::Comma) },
+                Some('<') => return Ok(self.lt()),
+                Some('>') => return Ok(self.gt()),
+                Some('=') => return Ok(self.if_equality(Token::Assign, Token::Eq, Token::StrictEq)),
+                Some('+') => return Ok(self.plus()),
+                Some('-') => return Ok(self.minus()),
+                Some('*') => return Ok(self.if_assign(Token::StarAssign, Token::Star)),
+                Some('%') => return Ok(self.if_assign(Token::ModAssign, Token::Mod)),
+                Some('^') => return Ok(self.if_assign(Token::BitXorAssign, Token::BitXor)),
                 Some('&') => {
                     self.bump();
                     match self.reader.curr_char() {
-                        Some('&') => { self.bump(); return Token::LogicalAnd },
-                        _ => return Token::BitAnd
+                        Some('&') => { self.bump(); return Ok(Token::LogicalAnd) },
+                        _ => return Ok(Token::BitAnd)
                     }
                 },
                 Some('|') => {
                     self.bump();
                     match self.reader.curr_char() {
-                        Some('|') => { self.bump(); return Token::LogicalOr },
-                        _ => return Token::BitOr
+                        Some('|') => { self.bump(); return Ok(Token::LogicalOr) },
+                        _ => return Ok(Token::BitOr)
                     }
                 },
-                Some('~') => { self.bump(); return Token::Tilde },
-                Some('!') => return self.if_equality(Token::Bang, Token::NEq, Token::StrictNEq),
-                Some('?') => { self.bump(); return Token::Question },
+                Some('~') => { self.bump(); return Ok(Token::Tilde) },
+                Some('!') => return Ok(self.if_equality(Token::Bang, Token::NEq, Token::StrictNEq)),
+                Some('?') => { self.bump(); return Ok(Token::Question) },
                 Some('"') => return self.string(),
                 Some('\'') => return self.string(),
                 Some('\r') => {
@@ -459,19 +464,19 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                         self.bump();
                     }
                     if self.cx.get().is_asi_possible() {
-                        return Token::Newline;
+                        return Ok(Token::Newline);
                     }
                 },
                 Some(ch) if ch.is_es_newline() => {
                     self.bump();
                     if self.cx.get().is_asi_possible() {
-                        return Token::Newline;
+                        return Ok(Token::Newline);
                     }
                 }
                 Some(ch) if ch.is_digit(10) => return self.number(),
-                Some(ch) if ch.is_es_identifier_start() => return self.word(),
-                Some(ch) => return Token::Error(Some(ch)),
-                None => return Token::EOF
+                Some(ch) if ch.is_es_identifier_start() => return Ok(self.word()),
+                Some(ch) => return Err(LexError::UnexpectedChar(ch)),
+                None => return Ok(Token::EOF)
             }
         }
     }
@@ -505,8 +510,9 @@ impl<I> Iterator for Lexer<I> where I: Iterator<Item=char> {
 
     fn next(&mut self) -> Option<Token> {
         match self.read_token() {
-            Token::EOF => None,
-            t => Some(t)
+            Ok(Token::EOF) => None,
+            Ok(t) => Some(t),
+            Err(_) => None
         }
     }
 }

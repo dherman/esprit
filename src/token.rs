@@ -129,6 +129,5 @@ pub enum Token {
     Identifier(String),
 
     Newline,
-    EOF,
-    Error(Option<char>)
+    EOF
 }

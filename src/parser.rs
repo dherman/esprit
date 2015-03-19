@@ -5,11 +5,13 @@ use std::cell::Cell;
 use std::rc::Rc;
 use ast::Binop;
 use ast::Expr;
+use lexer::LexError;
 use context::Context;
 
 #[derive(Debug, PartialEq)]
 pub enum ParseError {
-    UnexpectedToken(Token)
+    UnexpectedToken(Token),
+    LexError(LexError)
 }
 
 pub struct Parser<I> {
@@ -27,18 +29,21 @@ impl<I> Parser<I> where I: Iterator<Item=char> {
 impl<I> Parser<I> where I: Iterator<Item=char> {
     pub fn expr(&mut self) -> Result<Expr, ParseError> {
         let left = match self.lexer.read_token() {
-            Token::DecimalInt(_) => Expr::Number(1.0),
-            t => return Err(ParseError::UnexpectedToken(t))
+            Ok(Token::DecimalInt(_)) => Expr::Number(1.0),
+            Ok(t) => return Err(ParseError::UnexpectedToken(t)),
+            Err(e) => return Err(ParseError::LexError(e))
         };
 
         let op = match self.lexer.read_token() {
-            Token::Plus => Binop::Plus,
-            t => return Err(ParseError::UnexpectedToken(t))
+            Ok(Token::Plus) => Binop::Plus,
+            Ok(t) => return Err(ParseError::UnexpectedToken(t)),
+            Err(e) => return Err(ParseError::LexError(e))
         };
 
         let right = match self.lexer.read_token() {
-            Token::DecimalInt(_) => Expr::Number(1.0),
-            t => return Err(ParseError::UnexpectedToken(t)),
+            Ok(Token::DecimalInt(_)) => Expr::Number(1.0),
+            Ok(t) => return Err(ParseError::UnexpectedToken(t)),
+            Err(e) => return Err(ParseError::LexError(e))
         };
 
         Ok(Expr::Binop(op, Box::new(left), Box::new(right)))
