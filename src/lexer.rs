@@ -472,7 +472,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         Ok(s)
     }
 
-    fn int<F: Fn(char) -> bool, G: Fn(char, String) -> Token>(&mut self, pred: F, cons: G) -> Result<Token, LexError> {
+    fn int<F: Copy + Fn(char) -> bool, G: Fn(char, String) -> Token>(&mut self, pred: F, cons: G) -> Result<Token, LexError> {
         assert!(self.reader.curr_char().is_some());
         assert!(self.reader.next_char().is_some());
         let mut s = String::new();
