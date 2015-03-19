@@ -201,6 +201,16 @@ impl TokenBuffer {
     }
 }
 
+macro_rules! map {
+    ( $( $( $key:expr, $val:expr ),* ) ) => {
+        let mut temp_map = HashMap::new();
+        $(
+            temp_map.insert($key, $val);
+        )*
+        temp_map
+    };
+}
+
 pub struct Lexer<I> {
     reader: LineOrientedReader<I>,
     cx: Rc<Cell<Context>>,
