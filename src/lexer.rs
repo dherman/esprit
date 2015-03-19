@@ -486,16 +486,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn hex_int(&mut self) -> Result<Token, LexError> {
-        assert!(self.reader.curr_char().is_some());
-        assert!(self.reader.next_char().is_some());
-        let mut s = String::new();
-        self.bump();
-        let xX = self.eat().unwrap();
-        try!(self.hex_digit_into(&mut s));
-        while self.reader.curr_char().map_or(false, |ch| ch.is_es_hex_digit()) {
-            s.push(self.eat().unwrap());
-        }
-        Ok(Token::HexInt(xX, s))
+        self.int(|ch| ch.is_es_hex_digit(), |ch, s| Token::HexInt(ch, s))
     }
 
     fn oct_int(&mut self) -> Result<Token, LexError> {
