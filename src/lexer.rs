@@ -472,6 +472,19 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         Ok(s)
     }
 
+    fn int<F: Fn(char) -> bool, G: Fn(char, String) -> Token>(&mut self, pred: F, cons: G) -> Result<Token, LexError> {
+        assert!(self.reader.curr_char().is_some());
+        assert!(self.reader.next_char().is_some());
+        let mut s = String::new();
+        self.bump();
+        let flag = self.eat().unwrap();
+        try!(self.digit_into(&mut s, pred));
+        while self.reader.curr_char().map_or(false, |ch| pred(ch)) {
+            s.push(self.eat().unwrap());
+        }
+        Ok(cons(flag, s))
+    }
+
     fn hex_int(&mut self) -> Result<Token, LexError> {
         assert!(self.reader.curr_char().is_some());
         assert!(self.reader.next_char().is_some());
