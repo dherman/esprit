@@ -477,7 +477,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         s.push(self.eat().unwrap());
         self.take_until(&mut s, |ch| !ch.is_es_identifier_continue());
         match self.reserved.get(&s[..]) {
-            Some(_) => unimplemented!(),
+            Some(word) => Token::Reserved(*word),
             None => Token::Identifier(s)
         }
     }
