@@ -225,9 +225,19 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     pub fn new(chars: I, cx: Rc<Cell<Context>>) -> Lexer<I> {
         let mut reserved = reserved_words![
-            ("null", Null),
-            ("true", True),
-            ("false", False)
+            ("null",     Null),     ("true",       True),       ("false",    False),
+            ("break",    Break),    ("case",       Case),       ("catch",    Catch),
+            ("class",    Class),    ("const",      Const),      ("continue", Continue),
+            ("debugger", Debugger), ("default",    Default),    ("delete",   Delete),
+            ("do",       Do),       ("else",       Else),       ("export",   Export),
+            ("extends",  Extends),  ("finally",    Finally),    ("for",      For),
+            ("function", Function), ("if",         If),         ("import",   Import),
+            ("in",       In),       ("instanceof", Instanceof), ("new",      New),
+            ("return",   Return),   ("super",      Super),      ("switch",   Switch),
+            ("this",     This),     ("throw",      Throw),      ("try",      Try),
+            ("typeof",   Typeof),   ("var",        Var),        ("void",     Void),
+            ("while",    While),    ("with",       With),       ("yield",    Yield),
+            ("enum",     Enum) //,  ("await",      Await)
         ];
         Lexer {
             reader: LineOrientedReader::new(chars),
@@ -466,8 +476,10 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         assert!(self.reader.curr_char().is_some());
         s.push(self.eat().unwrap());
         self.take_until(&mut s, |ch| !ch.is_es_identifier_continue());
-        // FIXME: test for keyword
-        Token::Identifier(s)
+        match self.reserved.get(s.borrow()) {
+            Some(_) => unimplemented!(),
+            None => Token::Identifier(s)
+        }
     }
 
     fn read_next_token(&mut self) -> Result<Token, LexError> {
