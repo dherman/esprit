@@ -398,7 +398,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }
     }
 
-    fn decimal_digits(&mut self) -> Result<String, LexError> {
+    fn decimal_digits_into(&mut self, s: &mut String) -> Result<(), LexError> {
         match self.reader.curr_char() {
             Some(ch) if !ch.is_digit(10) => return Err(LexError::UnexpectedChar(ch)),
             None => return Err(LexError::UnexpectedEOF),
@@ -406,11 +406,30 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }
         let mut s = String::new();
         self.take_until(&mut s, |ch| !ch.is_digit(10));
+        Ok(())
+    }
+
+    fn decimal_digits(&mut self) -> Result<String, LexError> {
+        let mut s = String::new();
+        try!(self.decimal_digits_into(&mut s));
         Ok(s)
     }
 
-    fn exp_part(&mut self) -> Result<String, LexError> {
-        unimplemented!()
+    fn exp_part(&mut self) -> Result<Option<String>, LexError> {
+        match self.reader.curr_char() {
+            Some(ch@'e') | Some(ch@'E') => {
+                let mut s = String::new();
+                s.push(ch);
+                self.bump();
+                match self.reader.curr_char() {
+                    Some('+') | Some('-') => { s.push(self.eat().unwrap()); }
+                    _ => ()
+                }
+                try!(self.decimal_digits_into(&mut s));
+                Ok(Some(s))
+            }
+            _ => Ok(None)
+        }
     }
 
     fn decimal_int(&mut self) -> Result<String, LexError> {
@@ -429,7 +448,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         if self.reader.curr_char() == Some('.') {
             let frac = try!(self.decimal_digits());
             let exp = try!(self.exp_part());
-            return Ok(Token::Float(None, Some(frac), Some(exp)));
+            return Ok(Token::Float(None, Some(frac), exp));
         }
         let pos = try!(self.decimal_int());
         let dot;
@@ -444,10 +463,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             dot = false;
             None
         };
-        let exp = match self.reader.curr_char() {
-            Some('e') | Some('E') => Some(try!(self.exp_part())),
-            _ => None
-        };
+        let exp = try!(self.exp_part());
         if dot { Ok(Token::Float(Some(pos), frac, exp)) } else { Ok(Token::DecimalInt(pos)) }
     }
 
