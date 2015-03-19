@@ -222,10 +222,11 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     // constructor
 
     pub fn new(chars: I, cx: Rc<Cell<Context>>) -> Lexer<I> {
-        let mut reserved = HashMap::with_capacity(38);
-        reserved.insert("null", ReservedWord::Null);
-        reserved.insert("true", ReservedWord::True);
-        reserved.insert("false", ReservedWord::False);
+        let mut reserved = map!(
+            ("null", ReservedWord::Null),
+            ("true", ReservedWord::True),
+            ("false", ReservedWord::False)
+        );
         Lexer {
             reader: LineOrientedReader::new(chars),
             cx: cx,
