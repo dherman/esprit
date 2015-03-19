@@ -121,7 +121,7 @@ pub enum Token {
     BinaryInt(String),
     OctalInt(String),
     HexInt(String),
-    Float(String),
+    Float(Option<String>, Option<String>, Option<String>),
 
     String(String),
     RegExp(String),
