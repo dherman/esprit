@@ -17,12 +17,17 @@ pub trait ESCharExt {
     fn is_es_identifier(self) -> bool;
     fn is_es_identifier_start(self) -> bool;
     fn is_es_identifier_continue(self) -> bool;
+    fn is_es_single_escape_char(self) -> bool;
+    fn is_es_hex_digit(self) -> bool;
+    fn is_es_oct_digit(self) -> bool;
 }
 
 #[derive(Debug, PartialEq)]
 pub enum LexError {
     UnexpectedEOF,
-    UnexpectedChar(char)
+    // FIXME: split this up into specific situational errors
+    UnexpectedChar(char),
+    InvalidDigit(char)
 }
 
 /*
@@ -111,6 +116,29 @@ impl ESCharExt for char {
     fn is_es_identifier_continue(self) -> bool {
         self.is_es_identifier_start() ||
         self.is_numeric()
+    }
+
+    fn is_es_single_escape_char(self) -> bool {
+        match self {
+            '\'' | '"' | '\\' | 'b' | 'f' | 'n' | 'r' | 't' | 'v' => true,
+            _ => false
+        }
+    }
+
+    fn is_es_hex_digit(self) -> bool {
+        match self {
+              '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9'
+            | 'a' | 'b' | 'c' | 'd' | 'e' | 'f'
+            | 'A' | 'B' | 'C' | 'D' | 'E' | 'F' => true,
+            _ => false
+        }
+    }
+
+    fn is_es_oct_digit(self) -> bool {
+        match self {
+            '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' => true,
+            _ => false
+        }
     }
 }
 
@@ -444,11 +472,56 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         Ok(s)
     }
 
+    fn hex_int(&mut self) -> Result<Token, LexError> {
+        assert!(self.reader.curr_char().is_some());
+        assert!(self.reader.next_char().is_some());
+        let mut s = String::new();
+        self.bump();
+        let xX = self.eat().unwrap();
+        try!(self.hex_digit_into(&mut s));
+        while self.reader.curr_char().map_or(false, |ch| ch.is_es_hex_digit()) {
+            s.push(self.eat().unwrap());
+        }
+        Ok(Token::HexInt(xX, s))
+    }
+
+    fn oct_int(&mut self) -> Result<Token, LexError> {
+        assert!(self.reader.curr_char().is_some());
+        assert!(self.reader.next_char().is_some());
+        let mut s = String::new();
+        self.bump();
+        let oO = self.eat().unwrap();
+        try!(self.oct_digit_into(&mut s));
+        while self.reader.curr_char().map_or(false, |ch| ch.is_es_oct_digit()) {
+            s.push(self.eat().unwrap());
+        }
+        Ok(Token::OctalInt(Some(oO), s))
+    }
+
+    fn deprecated_oct_int(&mut self) -> Token {
+        let mut s = String::new();
+        while self.reader.curr_char().map_or(false, |ch| ch.is_es_oct_digit()) {
+            s.push(self.eat().unwrap());
+        }
+        Token::OctalInt(None, s)
+    }
+
     fn number(&mut self) -> Result<Token, LexError> {
         if self.reader.curr_char() == Some('.') {
             let frac = try!(self.decimal_digits());
             let exp = try!(self.exp_part());
             return Ok(Token::Float(None, Some(frac), exp));
+        }
+        if self.reader.curr_char() == Some('0') {
+            match self.reader.next_char() {
+                Some('x') | Some('X') => return self.hex_int(),
+                Some('o') | Some('O') => return self.oct_int(),
+                Some(ch) if ch.is_digit(10) => return Ok(self.deprecated_oct_int()),
+                _ => {
+                    self.bump();
+                    return Ok(Token::DecimalInt(String::from_str("0")));
+                }
+            }
         }
         let pos = try!(self.decimal_int());
         let dot;
@@ -472,19 +545,91 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         loop {
             assert!(self.reader.curr_char().is_some());
             let quote = self.eat().unwrap();
-            self.take_until(&mut s, |ch| ch == quote || ch == '\\');
+            self.take_until(&mut s, |ch| {
+                ch == quote ||
+                ch == '\\' ||
+                ch.is_es_newline()
+            });
             match self.reader.curr_char() {
-                Some('\\') => { self.string_escape(&mut s); },
-                Some(_) => { self.bump(); },
+                Some('\\') => { try!(self.string_escape(&mut s)); },
+                Some(ch) => {
+                    if ch.is_es_newline() {
+                        return Err(LexError::UnexpectedChar(ch));
+                    }
+                    self.bump();
+                },
                 None => return Err(LexError::UnexpectedEOF)
             }
         }
         Ok(Token::String(s))
     }
 
-    fn string_escape(&mut self, s: &mut String) {
-        self.bump();
-        unimplemented!()
+    fn string_escape(&mut self, s: &mut String) -> Result<(), LexError> {
+        s.push(self.eat().unwrap());
+        match self.reader.curr_char() {
+            Some('0') => {
+                self.bump();
+                let mut i = 0_u32;
+                while self.reader.curr_char().map_or(false, |ch| ch.is_digit(10)) && i < 3 {
+                    s.push(self.eat().unwrap());
+                }
+            },
+            Some(ch) if ch.is_es_single_escape_char() => {
+                s.push(self.eat().unwrap());
+            },
+            Some('x') => {
+                self.bump();
+                s.push('x');
+                try!(self.hex_digit_into(s));
+                try!(self.hex_digit_into(s));
+            },
+            Some('u') => {
+                self.bump();
+                if self.reader.curr_char() == Some('{') {
+                    s.push('{');
+                    self.bump();
+                    try!(self.hex_digit_into(s));
+                    while self.reader.curr_char() != Some('}') {
+                        try!(self.hex_digit_into(s));
+                    }
+                    s.push('}');
+                    self.bump();
+                } else {
+                    for i in 0..4 {
+                        try!(self.hex_digit_into(s));
+                    }
+                }
+            },
+            Some(ch) if ch.is_es_newline() => {
+                self.newline_into(s);
+            },
+            Some(ch) => {
+                self.bump();
+                s.push(ch);
+            },
+            None => () // error will be reported from caller
+        }
+        Ok(())
+    }
+
+    fn digit_into<F: Fn(char) -> bool>(&mut self, s: &mut String, pred: F) -> Result<(), LexError> {
+        match self.reader.curr_char() {
+            Some(ch) if pred(ch) => {
+                self.bump();
+                s.push(ch);
+                Ok(())
+            },
+            Some(ch) => Err(LexError::InvalidDigit(ch)),
+            None => Err(LexError::UnexpectedEOF)
+        }
+    }
+
+    fn oct_digit_into(&mut self, s: &mut String) -> Result<(), LexError> {
+        self.digit_into(s, |ch| ch.is_es_oct_digit())
+    }
+
+    fn hex_digit_into(&mut self, s: &mut String) -> Result<(), LexError> {
+        self.digit_into(s, |ch| ch.is_es_hex_digit())
     }
 
     fn word(&mut self) -> Token {
@@ -552,17 +697,8 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 Some('?') => { self.bump(); return Ok(Token::Question) },
                 Some('"') => return self.string(),
                 Some('\'') => return self.string(),
-                Some('\r') => {
-                    self.bump();
-                    if self.reader.curr_char() == Some('\n') {
-                        self.bump();
-                    }
-                    if self.cx.get().is_asi_possible() {
-                        return Ok(Token::Newline);
-                    }
-                },
                 Some(ch) if ch.is_es_newline() => {
-                    self.bump();
+                    self.newline();
                     if self.cx.get().is_asi_possible() {
                         return Ok(Token::Newline);
                     }
@@ -573,6 +709,26 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 None => return Ok(Token::EOF)
             }
         }
+    }
+
+    fn newline(&mut self) {
+        assert!(self.reader.curr_char().map_or(false, |ch| ch.is_es_newline()));
+        if self.reader.curr_char() == Some('\r') && self.reader.next_char() == Some('\n') {
+            self.bump();
+        }
+        self.bump();
+    }
+
+    fn newline_into(&mut self, s: &mut String) {
+        assert!(self.reader.curr_char().map_or(false, |ch| ch.is_es_newline()));
+        if self.reader.curr_char() == Some('\r') && self.reader.next_char() == Some('\n') {
+            s.push('\r');
+            s.push('\n');
+            self.bump();
+            self.bump();
+            return;
+        }
+        s.push(self.eat().unwrap());
     }
 
     fn is_whitespace(&mut self) -> bool {

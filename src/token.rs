@@ -124,8 +124,8 @@ pub enum Token {
 
     DecimalInt(String),
     BinaryInt(String),
-    OctalInt(String),
-    HexInt(String),
+    OctalInt(Option<char>, String),
+    HexInt(char, String),
     Float(Option<String>, Option<String>, Option<String>),
 
     String(String),
