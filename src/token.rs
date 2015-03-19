@@ -11,9 +11,8 @@ pub struct Span {
     end: Posn
 }
 
-#[derive(Debug, PartialEq)]
-#[allow(dead_code)]
-pub enum Token {
+#[derive(Debug, Copy, Eq, PartialEq)]
+pub enum ReservedWord {
     Null,
     True,
     False,
@@ -63,7 +62,13 @@ pub enum Token {
     Package,
     Private,
     Protected,
-    Public,
+    Public
+}
+
+#[derive(Debug, PartialEq)]
+#[allow(dead_code)]
+pub enum Token {
+    Reserved(ReservedWord),
 
     // 11.7 Punctuators
     LBrace,

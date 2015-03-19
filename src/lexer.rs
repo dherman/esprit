@@ -1,4 +1,5 @@
 use std::collections::LinkedList;
+use std::collections::HashMap;
 use std::borrow::Borrow;
 
 use token::Token;
@@ -8,6 +9,7 @@ use std::rc::Rc;
 use regex::Regex;
 use context::Context;
 use token::Posn;
+use token::ReservedWord;
 
 pub trait ESCharExt {
     fn is_es_newline(self) -> bool;
@@ -202,17 +204,23 @@ impl TokenBuffer {
 pub struct Lexer<I> {
     reader: LineOrientedReader<I>,
     cx: Rc<Cell<Context>>,
-    lookahead: TokenBuffer
+    lookahead: TokenBuffer,
+    reserved: HashMap<&'static str, ReservedWord>
 }
 
 impl<I> Lexer<I> where I: Iterator<Item=char> {
     // constructor
 
     pub fn new(chars: I, cx: Rc<Cell<Context>>) -> Lexer<I> {
+        let mut reserved = HashMap::with_capacity(38);
+        reserved.insert("null", ReservedWord::Null);
+        reserved.insert("true", ReservedWord::True);
+        reserved.insert("false", ReservedWord::False);
         Lexer {
             reader: LineOrientedReader::new(chars),
             cx: cx,
-            lookahead: TokenBuffer::new()
+            lookahead: TokenBuffer::new(),
+            reserved: reserved
         }
     }
 
