@@ -202,7 +202,7 @@ impl TokenBuffer {
 }
 
 macro_rules! map {
-    ( $( ( $key:expr, $val:expr ) ),* ) => {
+    [ $( ( $key:expr, $val:expr ) ),* ] => {
         {
             let mut temp_map = HashMap::new();
             $(
@@ -224,11 +224,11 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     // constructor
 
     pub fn new(chars: I, cx: Rc<Cell<Context>>) -> Lexer<I> {
-        let mut reserved = map!(
+        let mut reserved = map![
             ("null", ReservedWord::Null),
             ("true", ReservedWord::True),
             ("false", ReservedWord::False)
-        );
+        ];
         Lexer {
             reader: LineOrientedReader::new(chars),
             cx: cx,
