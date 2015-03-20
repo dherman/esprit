@@ -342,12 +342,61 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         Ok(())
     }
 
-    fn div_or_regexp(&mut self) -> Token {
+    fn div_or_regexp(&mut self) -> Result<Token, LexError> {
         if self.cx.get().is_operator() {
-            self.reader.bump();
-            Token::Slash
+            self.bump();
+            Ok(Token::Slash)
         } else {
-            unimplemented!()
+            self.regexp()
+        }
+    }
+
+    fn regexp(&mut self) -> Result<Token, LexError> {
+        self.bump();
+        let mut s = String::new();
+        while self.reader.curr_char() != Some('/') {
+            try!(self.regexp_char(&mut s));
+        }
+        self.bump();
+        Ok(Token::RegExp(s))
+    }
+
+    fn regexp_char(&mut self, s: &mut String) -> Result<(), LexError> {
+        match self.reader.curr_char() {
+            Some('\\') => self.regexp_backslash(s),
+            Some('[') => self.regexp_class(s),
+            Some(ch) if ch.is_es_newline() => Err(LexError::UnexpectedChar(ch)),
+            Some(ch) => { self.bump(); s.push(ch); Ok(()) },
+            None => Err(LexError::UnexpectedEOF)
+        }
+    }
+
+    fn regexp_backslash(&mut self, s: &mut String) -> Result<(), LexError> {
+        s.push('\\');
+        self.bump();
+        match self.reader.curr_char() {
+            Some(ch) if ch.is_es_newline() => Err(LexError::UnexpectedChar(ch)),
+            Some(ch) => { self.bump(); s.push(ch); Ok(()) },
+            None => Err(LexError::UnexpectedEOF)
+        }
+    }
+
+    fn regexp_class(&mut self, s: &mut String) -> Result<(), LexError> {
+        self.bump();
+        s.push('[');
+        while self.reader.curr_char().map_or(false, |ch| ch != ']') {
+            try!(self.regexp_class_char(s));
+        }
+        self.bump();
+        s.push(']');
+        Ok(())
+    }
+
+    fn regexp_class_char(&mut self, s: &mut String) -> Result<(), LexError> {
+        match self.reader.curr_char() {
+            Some('\\') => self.regexp_backslash(s),
+            Some(ch) => { self.bump(); s.push(ch); Ok(()) },
+            None => Err(LexError::UnexpectedEOF)
         }
     }
 
@@ -656,7 +705,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                     match self.reader.next_char() {
                         Some('/') => self.skip_line_comment(),
                         Some('*') => { try!(self.skip_block_comment()); },
-                        _ => return Ok(self.div_or_regexp())
+                        _ => return self.div_or_regexp()
                     }
                 },
                 Some('.') => {
