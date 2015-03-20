@@ -1,6 +1,7 @@
 use std::collections::LinkedList;
 use std::collections::HashMap;
 use std::borrow::Borrow;
+use std::char;
 
 use token::Token;
 
@@ -17,7 +18,8 @@ pub enum LexError {
     UnexpectedEOF,
     // FIXME: split this up into specific situational errors
     UnexpectedChar(char),
-    InvalidDigit(char)
+    InvalidDigit(char),
+    IllegalUnicode(u32)
 }
 
 struct LineOrientedReader<I> {
@@ -119,6 +121,16 @@ macro_rules! reserved_words {
     };
 }
 
+fn add_digits(digits: Vec<u32>, radix: u32) -> u32 {
+    let mut place = 1;
+    let mut sum = 0;
+    for digit in digits.iter().rev() {
+        sum += digit * place;
+        place *= radix;
+    }
+    sum
+}
+
 pub struct Lexer<I> {
     reader: LineOrientedReader<I>,
     cx: Rc<Cell<Context>>,
@@ -131,19 +143,21 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     pub fn new(chars: I, cx: Rc<Cell<Context>>) -> Lexer<I> {
         let mut reserved = reserved_words![
-            ("null",     Null),     ("true",       True),       ("false",    False),
-            ("break",    Break),    ("case",       Case),       ("catch",    Catch),
-            ("class",    Class),    ("const",      Const),      ("continue", Continue),
-            ("debugger", Debugger), ("default",    Default),    ("delete",   Delete),
-            ("do",       Do),       ("else",       Else),       ("export",   Export),
-            ("extends",  Extends),  ("finally",    Finally),    ("for",      For),
-            ("function", Function), ("if",         If),         ("import",   Import),
-            ("in",       In),       ("instanceof", Instanceof), ("new",      New),
-            ("return",   Return),   ("super",      Super),      ("switch",   Switch),
-            ("this",     This),     ("throw",      Throw),      ("try",      Try),
-            ("typeof",   Typeof),   ("var",        Var),        ("void",     Void),
-            ("while",    While),    ("with",       With),       ("yield",    Yield),
-            ("enum",     Enum) //,  ("await",      Await)
+            ("null",       Null),       ("true",       True),       ("false",    False),
+            ("break",      Break),      ("case",       Case),       ("catch",    Catch),
+            ("class",      Class),      ("const",      Const),      ("continue", Continue),
+            ("debugger",   Debugger),   ("default",    Default),    ("delete",   Delete),
+            ("do",         Do),         ("else",       Else),       ("export",   Export),
+            ("extends",    Extends),    ("finally",    Finally),    ("for",      For),
+            ("function",   Function),   ("if",         If),         ("import",   Import),
+            ("in",         In),         ("instanceof", Instanceof), ("new",      New),
+            ("return",     Return),     ("super",      Super),      ("switch",   Switch),
+            ("this",       This),       ("throw",      Throw),      ("try",      Try),
+            ("typeof",     Typeof),     ("var",        Var),        ("void",     Void),
+            ("while",      While),      ("with",       With),       ("yield",    Yield),
+            ("enum",       Enum),    // ("await",      Await)
+            ("implements", Implements), ("interface",  Interface),  ("package",  Package),
+            ("private",    Private),    ("protected",  Protected),  ("public",   Public)
         ];
         Lexer {
             reader: LineOrientedReader::new(chars),
@@ -408,7 +422,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         Ok(s)
     }
 
-    fn int<F, G>(&mut self, pred: &F, cons: &G) -> Result<Token, LexError>
+    fn int<F, G>(&mut self, radix: u32, pred: &F, cons: &G) -> Result<Token, LexError>
       where F: Fn(char) -> bool,
             G: Fn(char, String) -> Token
     {
@@ -417,7 +431,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         let mut s = String::new();
         self.bump();
         let flag = self.eat().unwrap();
-        try!(self.digit_into(&mut s, pred));
+        try!(self.digit_into(&mut s, radix, pred));
         while self.reader.curr_char().map_or(false, |ch| pred(ch)) {
             s.push(self.eat().unwrap());
         }
@@ -425,11 +439,11 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn hex_int(&mut self) -> Result<Token, LexError> {
-        self.int(&|ch| ch.is_es_hex_digit(), &Token::HexInt)
+        self.int(16, &|ch| ch.is_es_hex_digit(), &Token::HexInt)
     }
 
     fn oct_int(&mut self) -> Result<Token, LexError> {
-        self.int(&|ch| ch.is_es_oct_digit(), &|ch, s| Token::OctalInt(Some(ch), s))
+        self.int(8, &|ch| ch.is_es_oct_digit(), &|ch, s| Token::OctalInt(Some(ch), s))
     }
 
     fn deprecated_oct_int(&mut self) -> Token {
@@ -498,6 +512,30 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         Ok(Token::String(s))
     }
 
+    fn unicode_escape_seq(&mut self, s: &mut String) -> Result<u32, LexError> {
+        self.bump();
+        if self.reader.curr_char() == Some('{') {
+            s.push('{');
+            self.bump();
+            let mut digits = Vec::with_capacity(8);
+            digits.push(try!(self.hex_digit_into(s)));
+            while self.reader.curr_char() != Some('}') {
+                digits.push(try!(self.hex_digit_into(s)));
+            }
+            s.push('}');
+            self.bump();
+            Ok(add_digits(digits, 16))
+        } else {
+            let mut place = 0x1000;
+            let mut code_point = 0;
+            for i in 0..4 {
+                code_point += try!(self.hex_digit_into(s)) * place;
+                place >>= 4;
+            }
+            Ok(code_point)
+        }
+    }
+
     fn string_escape(&mut self, s: &mut String) -> Result<(), LexError> {
         s.push(self.eat().unwrap());
         match self.reader.curr_char() {
@@ -518,21 +556,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 try!(self.hex_digit_into(s));
             },
             Some('u') => {
-                self.bump();
-                if self.reader.curr_char() == Some('{') {
-                    s.push('{');
-                    self.bump();
-                    try!(self.hex_digit_into(s));
-                    while self.reader.curr_char() != Some('}') {
-                        try!(self.hex_digit_into(s));
-                    }
-                    s.push('}');
-                    self.bump();
-                } else {
-                    for i in 0..4 {
-                        try!(self.hex_digit_into(s));
-                    }
-                }
+                try!(self.unicode_escape_seq(s));
             },
             Some(ch) if ch.is_es_newline() => {
                 self.newline_into(s);
@@ -546,36 +570,61 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         Ok(())
     }
 
-    fn digit_into<F>(&mut self, s: &mut String, pred: &F) -> Result<(), LexError>
+    fn digit_into<F>(&mut self, s: &mut String, radix: u32, pred: &F) -> Result<u32, LexError>
       where F: Fn(char) -> bool
     {
         match self.reader.curr_char() {
             Some(ch) if pred(ch) => {
                 self.bump();
                 s.push(ch);
-                Ok(())
+                assert!(ch.is_digit(radix));
+                Ok(ch.to_digit(radix).unwrap())
             },
             Some(ch) => Err(LexError::InvalidDigit(ch)),
             None => Err(LexError::UnexpectedEOF)
         }
     }
 
-    fn oct_digit_into(&mut self, s: &mut String) -> Result<(), LexError> {
-        self.digit_into(s, &|ch| ch.is_es_oct_digit())
+    fn oct_digit_into(&mut self, s: &mut String) -> Result<u32, LexError> {
+        self.digit_into(s, 8, &|ch| ch.is_es_oct_digit())
     }
 
-    fn hex_digit_into(&mut self, s: &mut String) -> Result<(), LexError> {
-        self.digit_into(s, &|ch| ch.is_es_hex_digit())
+    fn hex_digit_into(&mut self, s: &mut String) -> Result<u32, LexError> {
+        self.digit_into(s, 16, &|ch| ch.is_es_hex_digit())
     }
 
-    fn word(&mut self) -> Token {
+    fn word(&mut self) -> Result<Token, LexError> {
         let mut s = String::new();
         assert!(self.reader.curr_char().is_some());
         s.push(self.eat().unwrap());
+        while self.reader.curr_char().map_or(false, |ch| ch == '\\' || ch.is_es_identifier_continue()) {
+            let ch = self.reader.curr_char().unwrap();
+            if (ch == '\\') {
+                try!(self.word_escape(&mut s));
+                continue;
+            }
+            self.bump();
+            s.push(ch);
+        }
         self.take_until(&mut s, &|ch| !ch.is_es_identifier_continue());
         match self.reserved.get(&s[..]) {
-            Some(word) => Token::Reserved(*word),
-            None => Token::Identifier(s)
+            Some(word) => Ok(Token::Reserved(*word)),
+            None => Ok(Token::Identifier(s))
+        }
+    }
+
+    fn word_escape(&mut self, s: &mut String) -> Result<(), LexError> {
+        match self.reader.curr_char() {
+            Some('u') => (),
+            Some(ch) => return Err(LexError::UnexpectedChar(ch)),
+            None => return Err(LexError::UnexpectedEOF)
+        }
+        let mut dummy = String::new();
+        self.bump();
+        let code_point = try!(self.unicode_escape_seq(&mut dummy));
+        match char::from_u32(code_point) {
+            Some(ch) => { s.push(ch); Ok(()) },
+            None => Err(LexError::IllegalUnicode(code_point))
         }
     }
 
@@ -640,7 +689,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                     }
                 }
                 Some(ch) if ch.is_digit(10) => return self.number(),
-                Some(ch) if ch.is_es_identifier_start() => return Ok(self.word()),
+                Some(ch) if ch.is_es_identifier_start() => return self.word(),
                 Some(ch) => return Err(LexError::UnexpectedChar(ch)),
                 None => return Ok(Token::EOF)
             }
