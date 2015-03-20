@@ -223,7 +223,12 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     fn div_or_regexp(&mut self) -> Result<Token, LexError> {
         if self.cx.get().is_operator() {
             self.bump();
-            Ok(Token::Slash)
+            if self.reader.curr_char() == Some('=') {
+                self.bump();
+                Ok(Token::SlashAssign)
+            } else {
+                Ok(Token::Slash)
+            }
         } else {
             self.regexp()
         }
