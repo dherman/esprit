@@ -472,7 +472,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         Ok(s)
     }
 
-    fn int<F: Copy + Fn(char) -> bool, G: Fn(char, String) -> Token>(&mut self, pred: F, cons: G) -> Result<Token, LexError> {
+    fn int<F: Fn(char) -> bool, G: Fn(char, String) -> Token>(&mut self, pred: &F, cons: &G) -> Result<Token, LexError> {
         assert!(self.reader.curr_char().is_some());
         assert!(self.reader.next_char().is_some());
         let mut s = String::new();
@@ -486,20 +486,11 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn hex_int(&mut self) -> Result<Token, LexError> {
-        self.int(|ch| ch.is_es_hex_digit(), |ch, s| Token::HexInt(ch, s))
+        self.int(&|ch| ch.is_es_hex_digit(), &|ch, s| Token::HexInt(ch, s))
     }
 
     fn oct_int(&mut self) -> Result<Token, LexError> {
-        assert!(self.reader.curr_char().is_some());
-        assert!(self.reader.next_char().is_some());
-        let mut s = String::new();
-        self.bump();
-        let oO = self.eat().unwrap();
-        try!(self.oct_digit_into(&mut s));
-        while self.reader.curr_char().map_or(false, |ch| ch.is_es_oct_digit()) {
-            s.push(self.eat().unwrap());
-        }
-        Ok(Token::OctalInt(Some(oO), s))
+        self.int(&|ch| ch.is_es_oct_digit(), &|ch, s| Token::OctalInt(Some(ch), s))
     }
 
     fn deprecated_oct_int(&mut self) -> Token {
@@ -616,7 +607,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         Ok(())
     }
 
-    fn digit_into<F: Fn(char) -> bool>(&mut self, s: &mut String, pred: F) -> Result<(), LexError> {
+    fn digit_into<F: Fn(char) -> bool>(&mut self, s: &mut String, pred: &F) -> Result<(), LexError> {
         match self.reader.curr_char() {
             Some(ch) if pred(ch) => {
                 self.bump();
@@ -629,11 +620,11 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn oct_digit_into(&mut self, s: &mut String) -> Result<(), LexError> {
-        self.digit_into(s, |ch| ch.is_es_oct_digit())
+        self.digit_into(s, &|ch| ch.is_es_oct_digit())
     }
 
     fn hex_digit_into(&mut self, s: &mut String) -> Result<(), LexError> {
-        self.digit_into(s, |ch| ch.is_es_hex_digit())
+        self.digit_into(s, &|ch| ch.is_es_hex_digit())
     }
 
     fn word(&mut self) -> Token {
