@@ -299,7 +299,9 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     // private methods
 
-    fn bump_until<F: Fn(char) -> bool>(&mut self, pred: F) {
+    fn bump_until<F>(&mut self, pred: &F)
+      where F: Fn(char) -> bool
+    {
         loop {
             match self.reader.curr_char() {
                 Some(ch) if pred(ch) => return,
@@ -310,7 +312,9 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }
     }
 
-    fn take_until<F: Fn(char) -> bool>(&mut self, s: &mut String, pred: F) {
+    fn take_until<F>(&mut self, s: &mut String, pred: &F)
+      where F: Fn(char) -> bool
+    {
         loop {
             match self.reader.curr_char() {
                 Some(ch) if pred(ch) => return,
@@ -323,13 +327,13 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     fn skip_line_comment(&mut self) {
         self.bump();
         self.bump();
-        self.bump_until(|ch| ch.is_es_newline());
+        self.bump_until(&|ch| ch.is_es_newline());
     }
 
     fn skip_block_comment(&mut self) -> Result<(), LexError> {
         self.bump();
         self.bump();
-        self.bump_until(|ch| ch == '*');
+        self.bump_until(&|ch| ch == '*');
         if self.reader.curr_char() == None {
             return Err(LexError::UnexpectedEOF);
         }
@@ -433,7 +437,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             _ => ()
         }
         let mut s = String::new();
-        self.take_until(&mut s, |ch| !ch.is_digit(10));
+        self.take_until(&mut s, &|ch| !ch.is_digit(10));
         Ok(())
     }
 
@@ -468,11 +472,14 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             Some(ch) => return Err(LexError::UnexpectedChar(ch)),
             None => return Err(LexError::UnexpectedEOF)
         }
-        self.take_until(&mut s, |ch| !ch.is_digit(10));
+        self.take_until(&mut s, &|ch| !ch.is_digit(10));
         Ok(s)
     }
 
-    fn int<F: Fn(char) -> bool, G: Fn(char, String) -> Token>(&mut self, pred: &F, cons: &G) -> Result<Token, LexError> {
+    fn int<F, G>(&mut self, pred: &F, cons: &G) -> Result<Token, LexError>
+      where F: Fn(char) -> bool,
+            G: Fn(char, String) -> Token
+    {
         assert!(self.reader.curr_char().is_some());
         assert!(self.reader.next_char().is_some());
         let mut s = String::new();
@@ -486,7 +493,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn hex_int(&mut self) -> Result<Token, LexError> {
-        self.int(&|ch| ch.is_es_hex_digit(), &|ch, s| Token::HexInt(ch, s))
+        self.int(&|ch| ch.is_es_hex_digit(), &Token::HexInt)
     }
 
     fn oct_int(&mut self) -> Result<Token, LexError> {
@@ -540,7 +547,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         loop {
             assert!(self.reader.curr_char().is_some());
             let quote = self.eat().unwrap();
-            self.take_until(&mut s, |ch| {
+            self.take_until(&mut s, &|ch| {
                 ch == quote ||
                 ch == '\\' ||
                 ch.is_es_newline()
@@ -607,7 +614,9 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         Ok(())
     }
 
-    fn digit_into<F: Fn(char) -> bool>(&mut self, s: &mut String, pred: &F) -> Result<(), LexError> {
+    fn digit_into<F>(&mut self, s: &mut String, pred: &F) -> Result<(), LexError>
+      where F: Fn(char) -> bool
+    {
         match self.reader.curr_char() {
             Some(ch) if pred(ch) => {
                 self.bump();
@@ -631,7 +640,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         let mut s = String::new();
         assert!(self.reader.curr_char().is_some());
         s.push(self.eat().unwrap());
-        self.take_until(&mut s, |ch| !ch.is_es_identifier_continue());
+        self.take_until(&mut s, &|ch| !ch.is_es_identifier_continue());
         match self.reserved.get(&s[..]) {
             Some(word) => Token::Reserved(*word),
             None => Token::Identifier(s)
