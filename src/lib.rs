@@ -9,6 +9,7 @@ mod lexer;
 mod parser;
 mod ast;
 mod context;
+mod eschar;
 
 use std::cell::Cell;
 use std::rc::Rc;
