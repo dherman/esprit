@@ -220,7 +220,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     fn regexp(&mut self) -> Result<Token, LexError> {
         try!(self.expect("/"));
         let mut s = String::new();
-        try!(self.lex_until(&|ch| ch == '/', &|| { self.regexp_char(&mut s) }));
+        try!(self.lex_until(&|ch| ch == '/', &mut || { self.regexp_char(&mut s) }));
         try!(self.expect("/"));
         Ok(Token::RegExp(s))
     }
