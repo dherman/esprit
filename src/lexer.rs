@@ -56,28 +56,27 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     // constructor
 
     pub fn new(chars: I, cx: Rc<Cell<Context>>) -> Lexer<I> {
-        let mut reserved = reserved_words![
-            ("null",       Null),       ("true",       True),       ("false",    False),
-            ("break",      Break),      ("case",       Case),       ("catch",    Catch),
-            ("class",      Class),      ("const",      Const),      ("continue", Continue),
-            ("debugger",   Debugger),   ("default",    Default),    ("delete",   Delete),
-            ("do",         Do),         ("else",       Else),       ("export",   Export),
-            ("extends",    Extends),    ("finally",    Finally),    ("for",      For),
-            ("function",   Function),   ("if",         If),         ("import",   Import),
-            ("in",         In),         ("instanceof", Instanceof), ("new",      New),
-            ("return",     Return),     ("super",      Super),      ("switch",   Switch),
-            ("this",       This),       ("throw",      Throw),      ("try",      Try),
-            ("typeof",     Typeof),     ("var",        Var),        ("void",     Void),
-            ("while",      While),      ("with",       With),       ("yield",    Yield),
-            ("enum",       Enum),    // ("await",      Await)
-            ("implements", Implements), ("interface",  Interface),  ("package",  Package),
-            ("private",    Private),    ("protected",  Protected),  ("public",   Public)
-        ];
         Lexer {
             reader: Reader::new(chars),
             cx: cx,
             lookahead: TokenBuffer::new(),
-            reserved: reserved
+            reserved: reserved_words![
+                ("null",       Null),       ("true",       True),       ("false",    False),
+                ("break",      Break),      ("case",       Case),       ("catch",    Catch),
+                ("class",      Class),      ("const",      Const),      ("continue", Continue),
+                ("debugger",   Debugger),   ("default",    Default),    ("delete",   Delete),
+                ("do",         Do),         ("else",       Else),       ("export",   Export),
+                ("extends",    Extends),    ("finally",    Finally),    ("for",      For),
+                ("function",   Function),   ("if",         If),         ("import",   Import),
+                ("in",         In),         ("instanceof", Instanceof), ("new",      New),
+                ("return",     Return),     ("super",      Super),      ("switch",   Switch),
+                ("this",       This),       ("throw",      Throw),      ("try",      Try),
+                ("typeof",     Typeof),     ("var",        Var),        ("void",     Void),
+                ("while",      While),      ("with",       With),       ("yield",    Yield),
+                ("enum",       Enum),    // ("await",      Await),
+                ("implements", Implements), ("interface",  Interface),  ("package",  Package),
+                ("private",    Private),    ("protected",  Protected),  ("public",   Public)
+            ]
         }
     }
 
