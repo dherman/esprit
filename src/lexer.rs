@@ -248,9 +248,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     fn regexp_class(&mut self, s: &mut String) -> Result<(), LexError> {
         self.skip();
         s.push('[');
-        while self.reader.curr_char().map_or(false, |ch| ch != ']') {
-            try!(self.regexp_class_char(s));
-        }
+        try!(self.lex_until(&|ch| ch == ']', &mut |this| { this.regexp_class_char(s) }));
         self.skip();
         s.push(']');
         Ok(())
@@ -482,9 +480,10 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             self.skip();
             let mut digits = Vec::with_capacity(8);
             digits.push(try!(self.hex_digit_into(s)));
-            while self.reader.curr_char() != Some('}') {
-                digits.push(try!(self.hex_digit_into(s)));
-            }
+            try!(self.lex_until(&|ch| ch == '}', &mut |this| {
+                digits.push(try!(this.hex_digit_into(s)));
+                Ok(())
+            }));
             s.push('}');
             self.skip();
             Ok(add_digits(digits, 16))
@@ -559,19 +558,16 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn word(&mut self) -> Result<Token, LexError> {
-        let mut s = String::new();
         assert!(self.reader.curr_char().is_some());
+        assert!(self.reader.curr_char().unwrap().is_es_identifier_start());
+        let mut s = String::new();
         s.push(self.eat().unwrap());
-        while self.reader.curr_char().map_or(false, |ch| ch == '\\' || ch.is_es_identifier_continue()) {
-            let ch = self.reader.curr_char().unwrap();
-            if (ch == '\\') {
-                try!(self.word_escape(&mut s));
-                continue;
+        try!(self.lex_until(&|ch| ch == '\\' || ch.is_es_identifier_continue(), &mut |this| {
+            match this.reader.curr_char().unwrap() {
+                '\\' => this.word_escape(&mut s),
+                ch => { this.skip(); s.push(ch); Ok(()) }
             }
-            self.skip();
-            s.push(ch);
-        }
-        self.take_until(&mut s, &|ch| !ch.is_es_identifier_continue());
+        }));
         match self.reserved.get(&s[..]) {
             Some(word) => Ok(Token::Reserved(*word)),
             None => Ok(Token::Identifier(s))
