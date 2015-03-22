@@ -102,7 +102,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         self.lookahead.unread_token(token);
     }
 
-    // private methods
+    // generic lexing utilities
 
     fn skip_until<F>(&mut self, pred: &F)
       where F: Fn(char) -> bool
@@ -128,6 +128,20 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             }
         }
     }
+
+    fn expect(&mut self, expected: &str) -> Result<(), LexError> {
+        for expected_ch in expected.chars() {
+            match self.reader.curr_char() {
+                Some(ch) if ch == expected_ch => (),
+                Some(ch) => return Err(LexError::UnexpectedChar(ch)),
+                None => return Err(LexError::UnexpectedEOF)
+            }
+            self.skip();
+        }
+        Ok(())
+    }
+
+    // lexical grammar
 
     fn skip_line_comment(&mut self) {
         self.skip();
@@ -525,11 +539,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn word_escape(&mut self, s: &mut String) -> Result<(), LexError> {
-        match self.reader.curr_char() {
-            Some('u') => (),
-            Some(ch) => return Err(LexError::UnexpectedChar(ch)),
-            None => return Err(LexError::UnexpectedEOF)
-        }
+        try!(self.expect("u"));
         let mut dummy = String::new();
         self.skip();
         let code_point = try!(self.unicode_escape_seq(&mut dummy));
