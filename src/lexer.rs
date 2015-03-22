@@ -104,7 +104,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     // private methods
 
-    fn bump_until<F>(&mut self, pred: &F)
+    fn skip_until<F>(&mut self, pred: &F)
       where F: Fn(char) -> bool
     {
         loop {
@@ -113,7 +113,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 None => return,
                 _ => ()
             }
-            self.bump();
+            self.skip();
         }
     }
 
@@ -130,28 +130,28 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn skip_line_comment(&mut self) {
-        self.bump();
-        self.bump();
-        self.bump_until(&|ch| ch.is_es_newline());
+        self.skip();
+        self.skip();
+        self.skip_until(&|ch| ch.is_es_newline());
     }
 
     fn skip_block_comment(&mut self) -> Result<(), LexError> {
-        self.bump();
-        self.bump();
-        self.bump_until(&|ch| ch == '*');
+        self.skip();
+        self.skip();
+        self.skip_until(&|ch| ch == '*');
         if self.reader.curr_char() == None {
             return Err(LexError::UnexpectedEOF);
         }
-        self.bump();
-        self.bump();
+        self.skip();
+        self.skip();
         Ok(())
     }
 
     fn div_or_regexp(&mut self) -> Result<Token, LexError> {
         if self.cx.get().is_operator() {
-            self.bump();
+            self.skip();
             if self.reader.curr_char() == Some('=') {
-                self.bump();
+                self.skip();
                 Ok(Token::SlashAssign)
             } else {
                 Ok(Token::Slash)
@@ -162,12 +162,12 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn regexp(&mut self) -> Result<Token, LexError> {
-        self.bump();
+        self.skip();
         let mut s = String::new();
         while self.reader.curr_char() != Some('/') {
             try!(self.regexp_char(&mut s));
         }
-        self.bump();
+        self.skip();
         Ok(Token::RegExp(s))
     }
 
@@ -176,28 +176,28 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             Some('\\') => self.regexp_backslash(s),
             Some('[') => self.regexp_class(s),
             Some(ch) if ch.is_es_newline() => Err(LexError::UnexpectedChar(ch)),
-            Some(ch) => { self.bump(); s.push(ch); Ok(()) },
+            Some(ch) => { self.skip(); s.push(ch); Ok(()) },
             None => Err(LexError::UnexpectedEOF)
         }
     }
 
     fn regexp_backslash(&mut self, s: &mut String) -> Result<(), LexError> {
         s.push('\\');
-        self.bump();
+        self.skip();
         match self.reader.curr_char() {
             Some(ch) if ch.is_es_newline() => Err(LexError::UnexpectedChar(ch)),
-            Some(ch) => { self.bump(); s.push(ch); Ok(()) },
+            Some(ch) => { self.skip(); s.push(ch); Ok(()) },
             None => Err(LexError::UnexpectedEOF)
         }
     }
 
     fn regexp_class(&mut self, s: &mut String) -> Result<(), LexError> {
-        self.bump();
+        self.skip();
         s.push('[');
         while self.reader.curr_char().map_or(false, |ch| ch != ']') {
             try!(self.regexp_class_char(s));
         }
-        self.bump();
+        self.skip();
         s.push(']');
         Ok(())
     }
@@ -205,22 +205,22 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     fn regexp_class_char(&mut self, s: &mut String) -> Result<(), LexError> {
         match self.reader.curr_char() {
             Some('\\') => self.regexp_backslash(s),
-            Some(ch) => { self.bump(); s.push(ch); Ok(()) },
+            Some(ch) => { self.skip(); s.push(ch); Ok(()) },
             None => Err(LexError::UnexpectedEOF)
         }
     }
 
     fn if_assign(&mut self, cons: Token, alt: Token) -> Token {
-        self.reader.bump();
-        if self.reader.curr_char() == Some('=') { self.reader.bump(); cons } else { alt }
+        self.reader.skip();
+        if self.reader.curr_char() == Some('=') { self.reader.skip(); cons } else { alt }
     }
 
     fn if_equality(&mut self, zero: Token, one: Token, two: Token) -> Token {
-        self.bump();
+        self.skip();
         if self.reader.curr_char() == Some('=') {
-            self.bump();
+            self.skip();
             if self.reader.curr_char() == Some('=') {
-                self.bump();
+                self.skip();
                 two
             } else {
                 one
@@ -231,60 +231,60 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn lt(&mut self) -> Token {
-        self.bump();
+        self.skip();
         match self.reader.curr_char() {
             Some('<') => {
-                self.bump();
+                self.skip();
                 if self.reader.curr_char() == Some('=') {
-                    self.bump();
+                    self.skip();
                     Token::LShiftAssign
                 } else {
                     Token::LShift
                 }
             },
-            Some('=') => { self.bump(); Token::LEq }
+            Some('=') => { self.skip(); Token::LEq }
             _ => Token::LAngle
         }
     }
 
     fn gt(&mut self) -> Token {
-        self.bump();
+        self.skip();
         match self.reader.curr_char() {
             Some('>') => {
-                self.bump();
+                self.skip();
                 match self.reader.curr_char() {
                     Some('>') => {
-                        self.bump();
+                        self.skip();
                         if self.reader.curr_char() == Some('=') {
-                            self.bump();
+                            self.skip();
                             Token::URShiftAssign
                         } else {
                             Token::URShift
                         }
                     },
-                    Some('=') => { self.bump(); Token::RShiftAssign },
+                    Some('=') => { self.skip(); Token::RShiftAssign },
                     _ => Token::RShift
                 }
             },
-            Some('=') => { self.bump(); Token::GEq },
+            Some('=') => { self.skip(); Token::GEq },
             _ => Token::RAngle
         }
     }
 
     fn plus(&mut self) -> Token {
-        self.bump();
+        self.skip();
         match self.reader.curr_char() {
-            Some('+') => { self.bump(); Token::Inc },
-            Some('=') => { self.bump(); Token::PlusAssign },
+            Some('+') => { self.skip(); Token::Inc },
+            Some('=') => { self.skip(); Token::PlusAssign },
             _ => Token::Plus
         }
     }
 
     fn minus(&mut self) -> Token {
-        self.bump();
+        self.skip();
         match self.reader.curr_char() {
-            Some('-') => { self.bump(); Token::Dec },
-            Some('=') => { self.bump(); Token::MinusAssign },
+            Some('-') => { self.skip(); Token::Dec },
+            Some('=') => { self.skip(); Token::MinusAssign },
             _ => Token::Minus
         }
     }
@@ -311,7 +311,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             Some(ch@'e') | Some(ch@'E') => {
                 let mut s = String::new();
                 s.push(ch);
-                self.bump();
+                self.skip();
                 match self.reader.curr_char() {
                     Some('+') | Some('-') => { s.push(self.eat().unwrap()); }
                     _ => ()
@@ -327,7 +327,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         let mut s = String::new();
         match self.reader.curr_char() {
             Some('0') => { s.push('0'); return Ok(s); }
-            Some(ch) if ch.is_digit(10) => { self.bump(); s.push(ch); }
+            Some(ch) if ch.is_digit(10) => { self.skip(); s.push(ch); }
             Some(ch) => return Err(LexError::UnexpectedChar(ch)),
             None => return Err(LexError::UnexpectedEOF)
         }
@@ -342,7 +342,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         assert!(self.reader.curr_char().is_some());
         assert!(self.reader.next_char().is_some());
         let mut s = String::new();
-        self.bump();
+        self.skip();
         let flag = self.eat().unwrap();
         try!(self.digit_into(&mut s, radix, pred));
         while self.reader.curr_char().map_or(false, |ch| pred(ch)) {
@@ -379,7 +379,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 Some('o') | Some('O') => return self.oct_int(),
                 Some(ch) if ch.is_digit(10) => return Ok(self.deprecated_oct_int()),
                 _ => {
-                    self.bump();
+                    self.skip();
                     return Ok(Token::DecimalInt(String::from_str("0")));
                 }
             }
@@ -388,7 +388,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         let dot;
         let frac = if self.reader.curr_char() == Some('.') {
             dot = true;
-            self.bump();
+            self.skip();
             match self.reader.curr_char() {
                 Some(ch) if ch.is_digit(10) => Some(try!(self.decimal_digits())),
                 _ => None
@@ -417,7 +417,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                     if ch.is_es_newline() {
                         return Err(LexError::UnexpectedChar(ch));
                     }
-                    self.bump();
+                    self.skip();
                 },
                 None => return Err(LexError::UnexpectedEOF)
             }
@@ -426,17 +426,17 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn unicode_escape_seq(&mut self, s: &mut String) -> Result<u32, LexError> {
-        self.bump();
+        self.skip();
         if self.reader.curr_char() == Some('{') {
             s.push('{');
-            self.bump();
+            self.skip();
             let mut digits = Vec::with_capacity(8);
             digits.push(try!(self.hex_digit_into(s)));
             while self.reader.curr_char() != Some('}') {
                 digits.push(try!(self.hex_digit_into(s)));
             }
             s.push('}');
-            self.bump();
+            self.skip();
             Ok(add_digits(digits, 16))
         } else {
             let mut place = 0x1000;
@@ -453,7 +453,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         s.push(self.eat().unwrap());
         match self.reader.curr_char() {
             Some('0') => {
-                self.bump();
+                self.skip();
                 let mut i = 0_u32;
                 while self.reader.curr_char().map_or(false, |ch| ch.is_digit(10)) && i < 3 {
                     s.push(self.eat().unwrap());
@@ -463,7 +463,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 s.push(self.eat().unwrap());
             },
             Some('x') => {
-                self.bump();
+                self.skip();
                 s.push('x');
                 try!(self.hex_digit_into(s));
                 try!(self.hex_digit_into(s));
@@ -475,7 +475,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 self.newline_into(s);
             },
             Some(ch) => {
-                self.bump();
+                self.skip();
                 s.push(ch);
             },
             None => () // error will be reported from caller
@@ -488,7 +488,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     {
         match self.reader.curr_char() {
             Some(ch) if pred(ch) => {
-                self.bump();
+                self.skip();
                 s.push(ch);
                 assert!(ch.is_digit(radix));
                 Ok(ch.to_digit(radix).unwrap())
@@ -516,7 +516,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 try!(self.word_escape(&mut s));
                 continue;
             }
-            self.bump();
+            self.skip();
             s.push(ch);
         }
         self.take_until(&mut s, &|ch| !ch.is_es_identifier_continue());
@@ -533,7 +533,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             None => return Err(LexError::UnexpectedEOF)
         }
         let mut dummy = String::new();
-        self.bump();
+        self.skip();
         let code_point = try!(self.unicode_escape_seq(&mut dummy));
         match char::from_u32(code_point) {
             Some(ch) => { s.push(ch); Ok(()) },
@@ -556,18 +556,18 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 Some('.') => {
                     match self.reader.next_char() {
                         Some(ch) if ch.is_digit(10) => { return self.number() },
-                        _ => { self.reader.bump(); return Ok(Token::Dot) }
+                        _ => { self.reader.skip(); return Ok(Token::Dot) }
                     }
                 }
-                Some('{') => { self.bump(); return Ok(Token::LBrace) },
-                Some('}') => { self.bump(); return Ok(Token::RBrace) },
-                Some('[') => { self.bump(); return Ok(Token::LBrack) },
-                Some(']') => { self.bump(); return Ok(Token::RBrack) },
-                Some('(') => { self.bump(); return Ok(Token::LParen) },
-                Some(')') => { self.bump(); return Ok(Token::RParen) },
-                Some(';') => { self.bump(); return Ok(Token::Semi) },
-                Some(':') => { self.bump(); return Ok(Token::Colon) },
-                Some(',') => { self.bump(); return Ok(Token::Comma) },
+                Some('{') => { self.skip(); return Ok(Token::LBrace) },
+                Some('}') => { self.skip(); return Ok(Token::RBrace) },
+                Some('[') => { self.skip(); return Ok(Token::LBrack) },
+                Some(']') => { self.skip(); return Ok(Token::RBrack) },
+                Some('(') => { self.skip(); return Ok(Token::LParen) },
+                Some(')') => { self.skip(); return Ok(Token::RParen) },
+                Some(';') => { self.skip(); return Ok(Token::Semi) },
+                Some(':') => { self.skip(); return Ok(Token::Colon) },
+                Some(',') => { self.skip(); return Ok(Token::Comma) },
                 Some('<') => return Ok(self.lt()),
                 Some('>') => return Ok(self.gt()),
                 Some('=') => return Ok(self.if_equality(Token::Assign, Token::Eq, Token::StrictEq)),
@@ -577,22 +577,22 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 Some('%') => return Ok(self.if_assign(Token::ModAssign, Token::Mod)),
                 Some('^') => return Ok(self.if_assign(Token::BitXorAssign, Token::BitXor)),
                 Some('&') => {
-                    self.bump();
+                    self.skip();
                     match self.reader.curr_char() {
-                        Some('&') => { self.bump(); return Ok(Token::LogicalAnd) },
+                        Some('&') => { self.skip(); return Ok(Token::LogicalAnd) },
                         _ => return Ok(Token::BitAnd)
                     }
                 },
                 Some('|') => {
-                    self.bump();
+                    self.skip();
                     match self.reader.curr_char() {
-                        Some('|') => { self.bump(); return Ok(Token::LogicalOr) },
+                        Some('|') => { self.skip(); return Ok(Token::LogicalOr) },
                         _ => return Ok(Token::BitOr)
                     }
                 },
-                Some('~') => { self.bump(); return Ok(Token::Tilde) },
+                Some('~') => { self.skip(); return Ok(Token::Tilde) },
                 Some('!') => return Ok(self.if_equality(Token::Bang, Token::NEq, Token::StrictNEq)),
-                Some('?') => { self.bump(); return Ok(Token::Question) },
+                Some('?') => { self.skip(); return Ok(Token::Question) },
                 Some('"') => return self.string(),
                 Some('\'') => return self.string(),
                 Some(ch) if ch.is_es_newline() => {
@@ -612,9 +612,9 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     fn newline(&mut self) {
         assert!(self.reader.curr_char().map_or(false, |ch| ch.is_es_newline()));
         if self.reader.curr_char() == Some('\r') && self.reader.next_char() == Some('\n') {
-            self.bump();
+            self.skip();
         }
-        self.bump();
+        self.skip();
     }
 
     fn newline_into(&mut self, s: &mut String) {
@@ -622,8 +622,8 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         if self.reader.curr_char() == Some('\r') && self.reader.next_char() == Some('\n') {
             s.push('\r');
             s.push('\n');
-            self.bump();
-            self.bump();
+            self.skip();
+            self.skip();
             return;
         }
         s.push(self.eat().unwrap());
@@ -636,19 +636,19 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }
     }
 
-    fn bump(&mut self) {
-        self.reader.bump();
+    fn skip(&mut self) {
+        self.reader.skip();
     }
 
     fn eat(&mut self) -> Option<char> {
         let ch = self.reader.curr_char();
-        self.bump();
+        self.skip();
         ch
     }
 
     fn skip_whitespace(&mut self) {
         while self.is_whitespace() {
-            self.reader.bump();
+            self.reader.skip();
         }
     }
 }

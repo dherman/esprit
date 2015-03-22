@@ -27,7 +27,7 @@ impl<I> Reader<I> where I: Iterator<Item=char> {
     pub fn curr_posn(&mut self) -> Posn { self.curr_posn }
     pub fn next_char(&mut self) -> Option<char> { self.next_char }
 
-    pub fn bump(&mut self) {
+    pub fn skip(&mut self) {
         let curr_char = self.next_char;
         let next_char = if curr_char.is_some() { self.chars.next() } else { None };
 
