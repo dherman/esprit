@@ -10,6 +10,8 @@ mod parser;
 mod ast;
 mod context;
 mod eschar;
+mod reader;
+mod tokbuf;
 
 use std::cell::Cell;
 use std::rc::Rc;

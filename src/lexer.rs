@@ -1,4 +1,3 @@
-use std::collections::LinkedList;
 use std::collections::HashMap;
 use std::borrow::Borrow;
 use std::char;
@@ -12,6 +11,8 @@ use context::Context;
 use token::Posn;
 use token::ReservedWord;
 use eschar::ESCharExt;
+use reader::Reader;
+use tokbuf::TokenBuffer;
 
 #[derive(Debug, PartialEq)]
 pub enum LexError {
@@ -20,93 +21,6 @@ pub enum LexError {
     UnexpectedChar(char),
     InvalidDigit(char),
     IllegalUnicode(u32)
-}
-
-struct LineOrientedReader<I> {
-    chars: I,
-    curr_char: Option<char>,
-    next_char: Option<char>,
-    curr_posn: Posn
-}
-
-impl<I> LineOrientedReader<I> where I: Iterator<Item=char> {
-    pub fn new(mut chars: I) -> LineOrientedReader<I> {
-        let curr_char = chars.next();
-        let next_char = if curr_char.is_some() { chars.next() } else { None };
-        LineOrientedReader {
-            chars: chars,
-            curr_char: curr_char,
-            next_char: next_char,
-            curr_posn: Posn {
-                offset: 0,
-                line: 0,
-                column: 0
-            }
-        }
-    }
-
-    pub fn curr_char(&mut self) -> Option<char> { self.curr_char }
-    pub fn curr_posn(&mut self) -> Posn { self.curr_posn }
-    pub fn next_char(&mut self) -> Option<char> { self.next_char }
-
-    pub fn bump(&mut self) {
-        let curr_char = self.next_char;
-        let next_char = if curr_char.is_some() { self.chars.next() } else { None };
-
-        self.curr_char = curr_char;
-        self.next_char = next_char;
-
-        if (curr_char == Some('\r') && next_char != Some('\n')) ||
-           curr_char == Some('\n') ||
-           curr_char == Some('\u{2028}') ||
-           curr_char == Some('\u{2029}') {
-            self.curr_posn.line += 1;
-            self.curr_posn.column = 0;
-        } else {
-            self.curr_posn.column += 1;
-        }
-
-        self.curr_posn.offset += 1;
-    }
-}
-
-// test case: x=0;y=g=1;alert(eval("while(x)break\n/y/g.exec('y')"))
-//       see: https://groups.google.com/d/msg/mozilla.dev.tech.js-engine.internals/2JLH5jRcr7E/Mxc7ZKc5r6sJ
-
-struct TokenBuffer {
-    tokens: LinkedList<Token>
-}
-
-impl TokenBuffer {
-    fn new() -> TokenBuffer {
-        TokenBuffer {
-            tokens: LinkedList::new()
-        }
-    }
-
-    fn is_empty(&mut self) -> bool {
-        self.tokens.len() == 0
-    }
-
-    fn push_token(&mut self, token: Token) {
-        assert!(self.tokens.len() == 0);
-        self.tokens.push_back(token);
-    }
-
-    fn read_token(&mut self) -> Token {
-        assert!(self.tokens.len() > 0);
-        self.tokens.pop_front().unwrap()
-    }
-
-    fn peek_token(&mut self) -> &Token {
-        assert!(self.tokens.len() > 0);
-        self.tokens.front().unwrap()
-    }
-
-    fn unread_token(&mut self, token: Token) {
-        assert!(self.tokens.len() < 3);
-        self.tokens.push_front(token);
-    }
 }
 
 macro_rules! reserved_words {
@@ -132,7 +46,7 @@ fn add_digits(digits: Vec<u32>, radix: u32) -> u32 {
 }
 
 pub struct Lexer<I> {
-    reader: LineOrientedReader<I>,
+    reader: Reader<I>,
     cx: Rc<Cell<Context>>,
     lookahead: TokenBuffer,
     reserved: HashMap<&'static str, ReservedWord>
@@ -160,7 +74,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             ("private",    Private),    ("protected",  Protected),  ("public",   Public)
         ];
         Lexer {
-            reader: LineOrientedReader::new(chars),
+            reader: Reader::new(chars),
             cx: cx,
             lookahead: TokenBuffer::new(),
             reserved: reserved
