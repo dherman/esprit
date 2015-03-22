@@ -345,9 +345,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         self.skip();
         let flag = self.eat().unwrap();
         try!(self.digit_into(&mut s, radix, pred));
-        while self.reader.curr_char().map_or(false, |ch| pred(ch)) {
-            s.push(self.eat().unwrap());
-        }
+        self.take_until(&mut s, pred);
         Ok(cons(flag, s))
     }
 
@@ -361,9 +359,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     fn deprecated_oct_int(&mut self) -> Token {
         let mut s = String::new();
-        while self.reader.curr_char().map_or(false, |ch| ch.is_es_oct_digit()) {
-            s.push(self.eat().unwrap());
-        }
+        self.take_until(&mut s, &|ch| ch.is_es_oct_digit());
         Token::OctalInt(None, s)
     }
 
@@ -454,9 +450,11 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         match self.reader.curr_char() {
             Some('0') => {
                 self.skip();
-                let mut i = 0_u32;
-                while self.reader.curr_char().map_or(false, |ch| ch.is_digit(10)) && i < 3 {
-                    s.push(self.eat().unwrap());
+                for i in 0..3 {
+                    match self.reader.curr_char() {
+                        Some(ch) if ch.is_digit(8) => { s.push(ch); },
+                        _ => { break; }
+                    }
                 }
             },
             Some(ch) if ch.is_es_single_escape_char() => {
