@@ -164,12 +164,12 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     fn lex_until<F, G>(&mut self, pred: &F, lex: &mut G) -> Result<(), LexError>
       where F: Fn(char) -> bool,
-            G: FnMut() -> Result<(), LexError>
+            G: FnMut(&mut Self) -> Result<(), LexError>
     {
         loop {
             match self.reader.curr_char() {
                 Some(ch) if pred(ch) => return Ok(()),
-                Some(ch) => { try!(lex()); },
+                Some(ch) => { try!(lex(self)); },
                 None => return Ok(())
             }
         }
@@ -220,7 +220,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     fn regexp(&mut self) -> Result<Token, LexError> {
         try!(self.expect("/"));
         let mut s = String::new();
-        try!(self.lex_until(&|ch| ch == '/', &mut || { self.regexp_char(&mut s) }));
+        try!(self.lex_until(&|ch| ch == '/', &mut |this| { this.regexp_char(&mut s) }));
         try!(self.expect("/"));
         Ok(Token::RegExp(s))
     }
