@@ -104,6 +104,27 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     // generic lexing utilities
 
+    fn eat(&mut self) -> Option<char> {
+        let ch = self.reader.curr_char();
+        self.skip();
+        ch
+    }
+
+    fn skip(&mut self) {
+        self.reader.skip();
+    }
+
+    fn skip2(&mut self) {
+        self.skip();
+        self.skip();
+    }
+
+    fn skip_while<F>(&mut self, pred: &F)
+      where F: Fn(char) -> bool
+    {
+        self.skip_until(&|ch| !pred(ch))
+    }
+
     fn skip_until<F>(&mut self, pred: &F)
       where F: Fn(char) -> bool
     {
@@ -114,6 +135,18 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 _ => ()
             }
             self.skip();
+        }
+    }
+
+    fn skip_until2<F>(&mut self, pred: &F)
+      where F: Fn(char, char) -> bool
+    {
+        loop {
+            match (self.reader.curr_char(), self.reader.next_char()) {
+                (None, _) | (_, None) => return,
+                (Some(curr), Some(next)) if pred(curr, next) => return,
+                _ => { self.skip(); }
+            }
         }
     }
 
@@ -143,22 +176,18 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     // lexical grammar
 
+    fn skip_whitespace(&mut self) {
+        self.skip_while(&|ch| ch.is_es_whitespace());
+    }
+
     fn skip_line_comment(&mut self) {
-        self.skip();
-        self.skip();
+        self.skip2();
         self.skip_until(&|ch| ch.is_es_newline());
     }
 
     fn skip_block_comment(&mut self) -> Result<(), LexError> {
-        self.skip();
-        self.skip();
-        self.skip_until(&|ch| ch == '*');
-        if self.reader.curr_char() == None {
-            return Err(LexError::UnexpectedEOF);
-        }
-        self.skip();
-        self.skip();
-        Ok(())
+        self.skip_until2(&|curr, next| curr == '*' && next == '/');
+        self.expect("*/")
     }
 
     fn div_or_regexp(&mut self) -> Result<Token, LexError> {
@@ -630,34 +659,10 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         if self.reader.curr_char() == Some('\r') && self.reader.next_char() == Some('\n') {
             s.push('\r');
             s.push('\n');
-            self.skip();
-            self.skip();
+            self.skip2();
             return;
         }
         s.push(self.eat().unwrap());
-    }
-
-    fn is_whitespace(&mut self) -> bool {
-        match self.reader.curr_char() {
-            Some(ch) => ch.is_es_whitespace(),
-            None => false
-        }
-    }
-
-    fn skip(&mut self) {
-        self.reader.skip();
-    }
-
-    fn eat(&mut self) -> Option<char> {
-        let ch = self.reader.curr_char();
-        self.skip();
-        ch
-    }
-
-    fn skip_whitespace(&mut self) {
-        while self.is_whitespace() {
-            self.reader.skip();
-        }
     }
 }
 
