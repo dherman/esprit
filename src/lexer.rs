@@ -162,7 +162,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }
     }
 
-    fn lex_until<F, G>(&mut self, pred: &F, lex: &G) -> Result<(), LexError>
+    fn lex_until<F, G>(&mut self, pred: &F, lex: &mut G) -> Result<(), LexError>
       where F: Fn(char) -> bool,
             G: FnMut() -> Result<(), LexError>
     {
