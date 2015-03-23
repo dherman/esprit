@@ -123,7 +123,7 @@ pub enum Token {
     Arrow,
 
     DecimalInt(String),
-    BinaryInt(String),
+    BinaryInt(char, String),
     OctalInt(Option<char>, String),
     HexInt(char, String),
     Float(Option<String>, Option<String>, Option<String>),

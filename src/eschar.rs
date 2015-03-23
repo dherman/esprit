@@ -27,6 +27,7 @@ pub trait ESCharExt {
     fn is_es_single_escape_char(self) -> bool;
     fn is_es_hex_digit(self) -> bool;
     fn is_es_oct_digit(self) -> bool;
+    fn is_es_bin_digit(self) -> bool;
     fn is_es_nonascii_identifier_start(self) -> bool;
     fn is_es_nonascii_identifier_continue(self) -> bool;
 }
@@ -95,6 +96,10 @@ impl ESCharExt for char {
             '0'...'7' => true,
             _ => false
         }
+    }
+
+    fn is_es_bin_digit(self) -> bool {
+        self == '0' || self == '1'
     }
 
     // https://github.com/ariya/esprima/blob/master/tools/generate-identifier-regex.js

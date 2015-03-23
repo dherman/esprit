@@ -104,10 +104,18 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     // generic lexing utilities
 
-    fn eat(&mut self) -> Option<char> {
-        let ch = self.reader.curr_char();
+    fn read_some(&mut self) -> char {
+        let ch = self.reader.curr_char().unwrap();
         self.skip();
         ch
+    }
+
+    fn peek(&mut self) -> Option<char> {
+        self.reader.curr_char()
+    }
+
+    fn peek2(&mut self) -> (Option<char>, Option<char>) {
+        (self.reader.curr_char(), self.reader.next_char())
     }
 
     fn skip(&mut self) {
@@ -117,6 +125,10 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     fn skip2(&mut self) {
         self.skip();
         self.skip();
+    }
+
+    fn matches(&mut self, ch: char) -> bool {
+        (self.peek() == Some(ch)) && { self.skip(); true }
     }
 
     fn skip_while<F>(&mut self, pred: &F)
@@ -129,7 +141,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
       where F: Fn(char) -> bool
     {
         loop {
-            match self.reader.curr_char() {
+            match self.peek() {
                 Some(ch) if pred(ch) => return,
                 None => return,
                 _ => ()
@@ -142,7 +154,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
       where F: Fn(char, char) -> bool
     {
         loop {
-            match (self.reader.curr_char(), self.reader.next_char()) {
+            match self.peek2() {
                 (None, _) | (_, None) => return,
                 (Some(curr), Some(next)) if pred(curr, next) => return,
                 _ => { self.skip(); }
@@ -150,11 +162,11 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }
     }
 
-    fn take_until<F>(&mut self, s: &mut String, pred: &F)
+    fn read_into_until<F>(&mut self, s: &mut String, pred: &F)
       where F: Fn(char) -> bool
     {
         loop {
-            match self.reader.curr_char() {
+            match self.peek() {
                 Some(ch) if pred(ch) => return,
                 Some(ch) => { s.push(ch); }
                 None => return,
@@ -162,14 +174,14 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }
     }
 
-    fn lex_until<F, G>(&mut self, pred: &F, lex: &mut G) -> Result<(), LexError>
+    fn read_until_with<F, G>(&mut self, pred: &F, read: &mut G) -> Result<(), LexError>
       where F: Fn(char) -> bool,
             G: FnMut(&mut Self) -> Result<(), LexError>
     {
         loop {
-            match self.reader.curr_char() {
+            match self.peek() {
                 Some(ch) if pred(ch) => return Ok(()),
-                Some(ch) => { try!(lex(self)); },
+                Some(ch) => { try!(read(self)); },
                 None => return Ok(())
             }
         }
@@ -177,7 +189,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     fn expect(&mut self, expected: &str) -> Result<(), LexError> {
         for expected_ch in expected.chars() {
-            match self.reader.curr_char() {
+            match self.peek() {
                 Some(ch) if ch == expected_ch => (),
                 Some(ch) => return Err(LexError::UnexpectedChar(ch)),
                 None => return Err(LexError::UnexpectedEOF)
@@ -188,6 +200,25 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     // lexical grammar
+
+    fn skip_newline(&mut self) {
+        assert!(self.peek().map_or(false, |ch| ch.is_es_newline()));
+        if self.peek2() == (Some('\r'), Some('\n')) {
+            self.skip2();
+            return;
+        }
+        self.skip();
+    }
+
+    fn read_newline_into(&mut self, s: &mut String) {
+        assert!(self.peek().map_or(false, |ch| ch.is_es_newline()));
+        if self.peek2() == (Some('\r'), Some('\n')) {
+            s.push_str("\r\n");
+            self.skip2();
+            return;
+        }
+        s.push(self.read_some());
+    }
 
     fn skip_whitespace(&mut self) {
         self.skip_while(&|ch| ch.is_es_whitespace());
@@ -203,191 +234,97 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         self.expect("*/")
     }
 
-    fn div_or_regexp(&mut self) -> Result<Token, LexError> {
-        if self.cx.get().is_operator() {
-            self.skip();
-            if self.reader.curr_char() == Some('=') {
-                self.skip();
-                Ok(Token::SlashAssign)
-            } else {
-                Ok(Token::Slash)
-            }
-        } else {
-            self.regexp()
-        }
-    }
-
-    fn regexp(&mut self) -> Result<Token, LexError> {
+    fn read_regexp(&mut self) -> Result<Token, LexError> {
         try!(self.expect("/"));
         let mut s = String::new();
-        try!(self.lex_until(&|ch| ch == '/', &mut |this| { this.regexp_char(&mut s) }));
+        try!(self.read_until_with(&|ch| ch == '/', &mut |this| { this.read_regexp_char(&mut s) }));
         try!(self.expect("/"));
         Ok(Token::RegExp(s))
     }
 
-    fn regexp_char(&mut self, s: &mut String) -> Result<(), LexError> {
-        match self.reader.curr_char() {
-            Some('\\') => self.regexp_backslash(s),
-            Some('[') => self.regexp_class(s),
+    fn read_regexp_char(&mut self, s: &mut String) -> Result<(), LexError> {
+        match self.peek() {
+            Some('\\') => self.read_regexp_backslash(s),
+            Some('[') => self.read_regexp_class(s),
             Some(ch) if ch.is_es_newline() => Err(LexError::UnexpectedChar(ch)),
             Some(ch) => { self.skip(); s.push(ch); Ok(()) },
             None => Err(LexError::UnexpectedEOF)
         }
     }
 
-    fn regexp_backslash(&mut self, s: &mut String) -> Result<(), LexError> {
+    fn read_regexp_backslash(&mut self, s: &mut String) -> Result<(), LexError> {
         s.push('\\');
         self.skip();
-        match self.reader.curr_char() {
+        match self.peek() {
             Some(ch) if ch.is_es_newline() => Err(LexError::UnexpectedChar(ch)),
             Some(ch) => { self.skip(); s.push(ch); Ok(()) },
             None => Err(LexError::UnexpectedEOF)
         }
     }
 
-    fn regexp_class(&mut self, s: &mut String) -> Result<(), LexError> {
+    fn read_regexp_class(&mut self, s: &mut String) -> Result<(), LexError> {
         self.skip();
         s.push('[');
-        try!(self.lex_until(&|ch| ch == ']', &mut |this| { this.regexp_class_char(s) }));
+        try!(self.read_until_with(&|ch| ch == ']', &mut |this| { this.read_regexp_class_char(s) }));
         self.skip();
         s.push(']');
         Ok(())
     }
 
-    fn regexp_class_char(&mut self, s: &mut String) -> Result<(), LexError> {
-        match self.reader.curr_char() {
-            Some('\\') => self.regexp_backslash(s),
+    fn read_regexp_class_char(&mut self, s: &mut String) -> Result<(), LexError> {
+        match self.peek() {
+            Some('\\') => self.read_regexp_backslash(s),
             Some(ch) => { self.skip(); s.push(ch); Ok(()) },
             None => Err(LexError::UnexpectedEOF)
         }
     }
 
-    fn if_assign(&mut self, cons: Token, alt: Token) -> Token {
-        self.reader.skip();
-        if self.reader.curr_char() == Some('=') { self.reader.skip(); cons } else { alt }
-    }
-
-    fn if_equality(&mut self, zero: Token, one: Token, two: Token) -> Token {
-        self.skip();
-        if self.reader.curr_char() == Some('=') {
-            self.skip();
-            if self.reader.curr_char() == Some('=') {
-                self.skip();
-                two
-            } else {
-                one
-            }
-        } else {
-            zero
-        }
-    }
-
-    fn lt(&mut self) -> Token {
-        self.skip();
-        match self.reader.curr_char() {
-            Some('<') => {
-                self.skip();
-                if self.reader.curr_char() == Some('=') {
-                    self.skip();
-                    Token::LShiftAssign
-                } else {
-                    Token::LShift
-                }
-            },
-            Some('=') => { self.skip(); Token::LEq }
-            _ => Token::LAngle
-        }
-    }
-
-    fn gt(&mut self) -> Token {
-        self.skip();
-        match self.reader.curr_char() {
-            Some('>') => {
-                self.skip();
-                match self.reader.curr_char() {
-                    Some('>') => {
-                        self.skip();
-                        if self.reader.curr_char() == Some('=') {
-                            self.skip();
-                            Token::URShiftAssign
-                        } else {
-                            Token::URShift
-                        }
-                    },
-                    Some('=') => { self.skip(); Token::RShiftAssign },
-                    _ => Token::RShift
-                }
-            },
-            Some('=') => { self.skip(); Token::GEq },
-            _ => Token::RAngle
-        }
-    }
-
-    fn plus(&mut self) -> Token {
-        self.skip();
-        match self.reader.curr_char() {
-            Some('+') => { self.skip(); Token::Inc },
-            Some('=') => { self.skip(); Token::PlusAssign },
-            _ => Token::Plus
-        }
-    }
-
-    fn minus(&mut self) -> Token {
-        self.skip();
-        match self.reader.curr_char() {
-            Some('-') => { self.skip(); Token::Dec },
-            Some('=') => { self.skip(); Token::MinusAssign },
-            _ => Token::Minus
-        }
-    }
-
-    fn decimal_digits_into(&mut self, s: &mut String) -> Result<(), LexError> {
-        match self.reader.curr_char() {
+    fn read_decimal_digits_into(&mut self, s: &mut String) -> Result<(), LexError> {
+        match self.peek() {
             Some(ch) if !ch.is_digit(10) => return Err(LexError::UnexpectedChar(ch)),
             None => return Err(LexError::UnexpectedEOF),
             _ => ()
         }
         let mut s = String::new();
-        self.take_until(&mut s, &|ch| !ch.is_digit(10));
+        self.read_into_until(&mut s, &|ch| !ch.is_digit(10));
         Ok(())
     }
 
-    fn decimal_digits(&mut self) -> Result<String, LexError> {
+    fn read_decimal_digits(&mut self) -> Result<String, LexError> {
         let mut s = String::new();
-        try!(self.decimal_digits_into(&mut s));
+        try!(self.read_decimal_digits_into(&mut s));
         Ok(s)
     }
 
-    fn exp_part(&mut self) -> Result<Option<String>, LexError> {
-        match self.reader.curr_char() {
-            Some(ch@'e') | Some(ch@'E') => {
+    fn read_exp_part(&mut self) -> Result<Option<String>, LexError> {
+        match self.peek() {
+            Some('e') | Some('E') => {
                 let mut s = String::new();
-                s.push(ch);
-                self.skip();
-                match self.reader.curr_char() {
-                    Some('+') | Some('-') => { s.push(self.eat().unwrap()); }
+                s.push(self.read_some());
+                match self.peek() {
+                    Some('+') | Some('-') => { s.push(self.read_some()); }
                     _ => ()
                 }
-                try!(self.decimal_digits_into(&mut s));
+                try!(self.read_decimal_digits_into(&mut s));
                 Ok(Some(s))
             }
             _ => Ok(None)
         }
     }
 
-    fn decimal_int(&mut self) -> Result<String, LexError> {
+    fn read_decimal_int(&mut self) -> Result<String, LexError> {
         let mut s = String::new();
-        match self.reader.curr_char() {
+        match self.peek() {
             Some('0') => { s.push('0'); return Ok(s); }
             Some(ch) if ch.is_digit(10) => { self.skip(); s.push(ch); }
             Some(ch) => return Err(LexError::UnexpectedChar(ch)),
             None => return Err(LexError::UnexpectedEOF)
         }
-        self.take_until(&mut s, &|ch| !ch.is_digit(10));
+        self.read_into_until(&mut s, &|ch| !ch.is_digit(10));
         Ok(s)
     }
 
-    fn int<F, G>(&mut self, radix: u32, pred: &F, cons: &G) -> Result<Token, LexError>
+    fn read_radix_int<F, G>(&mut self, radix: u32, pred: &F, cons: &G) -> Result<Token, LexError>
       where F: Fn(char) -> bool,
             G: Fn(char, String) -> Token
     {
@@ -395,72 +332,82 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         assert!(self.reader.next_char().is_some());
         let mut s = String::new();
         self.skip();
-        let flag = self.eat().unwrap();
-        try!(self.digit_into(&mut s, radix, pred));
-        self.take_until(&mut s, pred);
+        let flag = self.read_some();
+        try!(self.read_digit_into(&mut s, radix, pred));
+        self.read_into_until(&mut s, pred);
         Ok(cons(flag, s))
     }
 
-    fn hex_int(&mut self) -> Result<Token, LexError> {
-        self.int(16, &|ch| ch.is_es_hex_digit(), &Token::HexInt)
+    fn read_hex_int(&mut self) -> Result<Token, LexError> {
+        self.read_radix_int(16, &|ch| ch.is_es_hex_digit(), &Token::HexInt)
     }
 
-    fn oct_int(&mut self) -> Result<Token, LexError> {
-        self.int(8, &|ch| ch.is_es_oct_digit(), &|ch, s| Token::OctalInt(Some(ch), s))
+    fn read_oct_int(&mut self) -> Result<Token, LexError> {
+        self.read_radix_int(8, &|ch| ch.is_es_oct_digit(), &|ch, s| Token::OctalInt(Some(ch), s))
     }
 
-    fn deprecated_oct_int(&mut self) -> Token {
+    fn read_bin_int(&mut self) -> Result<Token, LexError> {
+        self.read_radix_int(2, &|ch| ch.is_es_bin_digit(), &Token::BinaryInt)
+    }
+
+    fn read_deprecated_oct_int(&mut self) -> Token {
         let mut s = String::new();
-        self.take_until(&mut s, &|ch| ch.is_es_oct_digit());
-        Token::OctalInt(None, s)
-    }
-
-    fn number(&mut self) -> Result<Token, LexError> {
-        if self.reader.curr_char() == Some('.') {
-            let frac = try!(self.decimal_digits());
-            let exp = try!(self.exp_part());
-            return Ok(Token::Float(None, Some(frac), exp));
-        }
-        if self.reader.curr_char() == Some('0') {
-            match self.reader.next_char() {
-                Some('x') | Some('X') => return self.hex_int(),
-                Some('o') | Some('O') => return self.oct_int(),
-                Some(ch) if ch.is_digit(10) => return Ok(self.deprecated_oct_int()),
-                _ => {
-                    self.skip();
-                    return Ok(Token::DecimalInt(String::from_str("0")));
-                }
-            }
-        }
-        let pos = try!(self.decimal_int());
-        let dot;
-        let frac = if self.reader.curr_char() == Some('.') {
-            dot = true;
-            self.skip();
-            match self.reader.curr_char() {
-                Some(ch) if ch.is_digit(10) => Some(try!(self.decimal_digits())),
-                _ => None
-            }
+        self.read_into_until(&mut s, &|ch| ch.is_digit(10));
+        if s.chars().all(|ch| ch.is_es_oct_digit()) {
+            Token::OctalInt(None, s)
         } else {
-            dot = false;
-            None
-        };
-        let exp = try!(self.exp_part());
-        if dot { Ok(Token::Float(Some(pos), frac, exp)) } else { Ok(Token::DecimalInt(pos)) }
+            Token::DecimalInt(s)
+        }
     }
 
-    fn string(&mut self) -> Result<Token, LexError> {
+    fn read_number(&mut self) -> Result<Token, LexError> {
+        match self.peek2() {
+            (Some('0'), Some('x')) | (Some('0'), Some('X')) => self.read_hex_int(),
+            (Some('0'), Some('o')) | (Some('0'), Some('O')) => self.read_oct_int(),
+            (Some('0'), Some('b')) | (Some('0'), Some('B')) => self.read_bin_int(),
+            (Some('0'), Some(ch)) if ch.is_digit(10) => return Ok({
+                self.skip();
+                self.read_deprecated_oct_int()
+            }),
+            (Some('.'), _) => {
+                let frac = try!(self.read_decimal_digits());
+                let exp = try!(self.read_exp_part());
+                Ok(Token::Float(None, Some(frac), exp))
+            }
+            (Some(ch), _) if ch.is_digit(10) => {
+                let pos = try!(self.read_decimal_int());
+                let (dot, frac) = if self.matches('.') {
+                    (true, match self.peek() {
+                        Some(ch) if ch.is_digit(10) => Some(try!(self.read_decimal_digits())),
+                        _ => None
+                    })
+                } else {
+                    (false, None)
+                };
+                let exp = try!(self.read_exp_part());
+                Ok(if dot {
+                    Token::Float(Some(pos), frac, exp)
+                } else {
+                    Token::DecimalInt(pos)
+                })
+            }
+            (Some(ch), _) => Err(LexError::UnexpectedChar(ch)),
+            (None, _) => Err(LexError::UnexpectedEOF)
+        }
+    }
+
+    fn read_string(&mut self) -> Result<Token, LexError> {
         let mut s = String::new();
         loop {
-            assert!(self.reader.curr_char().is_some());
-            let quote = self.eat().unwrap();
-            self.take_until(&mut s, &|ch| {
+            assert!(self.peek().is_some());
+            let quote = self.read_some();
+            self.read_into_until(&mut s, &|ch| {
                 ch == quote ||
                 ch == '\\' ||
                 ch.is_es_newline()
             });
-            match self.reader.curr_char() {
-                Some('\\') => { try!(self.string_escape(&mut s)); },
+            match self.peek() {
+                Some('\\') => { try!(self.read_string_escape(&mut s)); },
                 Some(ch) => {
                     if ch.is_es_newline() {
                         return Err(LexError::UnexpectedChar(ch));
@@ -473,15 +420,14 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         Ok(Token::String(s))
     }
 
-    fn unicode_escape_seq(&mut self, s: &mut String) -> Result<u32, LexError> {
+    fn read_unicode_escape_seq(&mut self, s: &mut String) -> Result<u32, LexError> {
         self.skip();
-        if self.reader.curr_char() == Some('{') {
+        if self.matches('{') {
             s.push('{');
-            self.skip();
             let mut digits = Vec::with_capacity(8);
-            digits.push(try!(self.hex_digit_into(s)));
-            try!(self.lex_until(&|ch| ch == '}', &mut |this| {
-                digits.push(try!(this.hex_digit_into(s)));
+            digits.push(try!(self.read_hex_digit_into(s)));
+            try!(self.read_until_with(&|ch| ch == '}', &mut |this| {
+                digits.push(try!(this.read_hex_digit_into(s)));
                 Ok(())
             }));
             s.push('}');
@@ -491,39 +437,39 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             let mut place = 0x1000;
             let mut code_point = 0;
             for i in 0..4 {
-                code_point += try!(self.hex_digit_into(s)) * place;
+                code_point += try!(self.read_hex_digit_into(s)) * place;
                 place >>= 4;
             }
             Ok(code_point)
         }
     }
 
-    fn string_escape(&mut self, s: &mut String) -> Result<(), LexError> {
-        s.push(self.eat().unwrap());
-        match self.reader.curr_char() {
+    fn read_string_escape(&mut self, s: &mut String) -> Result<(), LexError> {
+        s.push(self.read_some());
+        match self.peek() {
             Some('0') => {
                 self.skip();
                 for i in 0..3 {
-                    match self.reader.curr_char() {
+                    match self.peek() {
                         Some(ch) if ch.is_digit(8) => { s.push(ch); },
                         _ => { break; }
                     }
                 }
             },
             Some(ch) if ch.is_es_single_escape_char() => {
-                s.push(self.eat().unwrap());
+                s.push(self.read_some());
             },
             Some('x') => {
                 self.skip();
                 s.push('x');
-                try!(self.hex_digit_into(s));
-                try!(self.hex_digit_into(s));
+                try!(self.read_hex_digit_into(s));
+                try!(self.read_hex_digit_into(s));
             },
             Some('u') => {
-                try!(self.unicode_escape_seq(s));
+                try!(self.read_unicode_escape_seq(s));
             },
             Some(ch) if ch.is_es_newline() => {
-                self.newline_into(s);
+                self.read_newline_into(s);
             },
             Some(ch) => {
                 self.skip();
@@ -534,10 +480,10 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         Ok(())
     }
 
-    fn digit_into<F>(&mut self, s: &mut String, radix: u32, pred: &F) -> Result<u32, LexError>
+    fn read_digit_into<F>(&mut self, s: &mut String, radix: u32, pred: &F) -> Result<u32, LexError>
       where F: Fn(char) -> bool
     {
-        match self.reader.curr_char() {
+        match self.peek() {
             Some(ch) if pred(ch) => {
                 self.skip();
                 s.push(ch);
@@ -549,22 +495,17 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }
     }
 
-    fn oct_digit_into(&mut self, s: &mut String) -> Result<u32, LexError> {
-        self.digit_into(s, 8, &|ch| ch.is_es_oct_digit())
+    fn read_hex_digit_into(&mut self, s: &mut String) -> Result<u32, LexError> {
+        self.read_digit_into(s, 16, &|ch| ch.is_es_hex_digit())
     }
 
-    fn hex_digit_into(&mut self, s: &mut String) -> Result<u32, LexError> {
-        self.digit_into(s, 16, &|ch| ch.is_es_hex_digit())
-    }
-
-    fn word(&mut self) -> Result<Token, LexError> {
-        assert!(self.reader.curr_char().is_some());
-        assert!(self.reader.curr_char().unwrap().is_es_identifier_start());
+    fn read_word(&mut self) -> Result<Token, LexError> {
+        assert!(self.peek().map_or(false, |ch| ch.is_es_identifier_start()));
         let mut s = String::new();
-        s.push(self.eat().unwrap());
-        try!(self.lex_until(&|ch| ch == '\\' || ch.is_es_identifier_continue(), &mut |this| {
-            match this.reader.curr_char().unwrap() {
-                '\\' => this.word_escape(&mut s),
+        s.push(self.read_some());
+        try!(self.read_until_with(&|ch| ch == '\\' || ch.is_es_identifier_continue(), &mut |this| {
+            match this.read_some() {
+                '\\' => this.read_word_escape(&mut s),
                 ch => { this.skip(); s.push(ch); Ok(()) }
             }
         }));
@@ -574,11 +515,11 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }
     }
 
-    fn word_escape(&mut self, s: &mut String) -> Result<(), LexError> {
+    fn read_word_escape(&mut self, s: &mut String) -> Result<(), LexError> {
         try!(self.expect("u"));
         let mut dummy = String::new();
         self.skip();
-        let code_point = try!(self.unicode_escape_seq(&mut dummy));
+        let code_point = try!(self.read_unicode_escape_seq(&mut dummy));
         match char::from_u32(code_point) {
             Some(ch) => { s.push(ch); Ok(()) },
             None => Err(LexError::IllegalUnicode(code_point))
@@ -587,89 +528,85 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     fn read_next_token(&mut self) -> Result<Token, LexError> {
         self.skip_whitespace();
-        println!("inspecting {:?}", self.reader.curr_char());
+        println!("inspecting {:?}", self.peek());
         loop {
-            match self.reader.curr_char() {
-                Some('/') => {
-                    match self.reader.next_char() {
-                        Some('/') => self.skip_line_comment(),
-                        Some('*') => { try!(self.skip_block_comment()); },
-                        _ => return self.div_or_regexp()
+            match self.peek2() {
+                (Some('/'), Some('/')) => { self.skip_line_comment(); },
+                (Some('/'), Some('*')) => { try!(self.skip_block_comment()); },
+                (Some('/'), _) if !self.cx.get().is_operator() => return self.read_regexp(),
+                (Some('/'), Some('=')) => return Ok({ self.skip2(); Token::SlashAssign }),
+                (Some('/'), _) => return Ok({ self.skip(); Token::Slash }),
+                (Some('.'), Some(ch)) if ch.is_digit(10) => return self.read_number(),
+                (Some('.'), _) => return Ok({ self.skip(); Token::Dot }),
+                (Some('{'), _) => return Ok({ self.skip(); Token::LBrace }),
+                (Some('}'), _) => return Ok({ self.skip(); Token::RBrace }),
+                (Some('['), _) => return Ok({ self.skip(); Token::LBrack }),
+                (Some(']'), _) => return Ok({ self.skip(); Token::RBrack }),
+                (Some('('), _) => return Ok({ self.skip(); Token::LParen }),
+                (Some(')'), _) => return Ok({ self.skip(); Token::RParen }),
+                (Some(';'), _) => return Ok({ self.skip(); Token::Semi }),
+                (Some(':'), _) => return Ok({ self.skip(); Token::Colon }),
+                (Some(','), _) => return Ok({ self.skip(); Token::Comma }),
+                (Some('<'), Some('<')) => return Ok({
+                    self.skip2();
+                    if self.matches('=') { Token::LShiftAssign } else { Token::LShift }
+                }),
+                (Some('<'), Some('=')) => return Ok({ self.skip2(); Token::LEq }),
+                (Some('<'), _) => return Ok({ self.skip(); Token::LAngle }),
+                (Some('>'), Some('>')) => return Ok({
+                    self.skip2();
+                    match self.peek2() {
+                        (Some('>'), Some('=')) => return Ok({ self.skip2(); Token::URShiftAssign }),
+                        (Some('>'), _) => return Ok({ self.skip(); Token::URShift }),
+                        (Some('='), _) => return Ok({ self.skip(); Token::RShiftAssign }),
+                        _ => return Ok(Token::RShift)
                     }
-                },
-                Some('.') => {
-                    match self.reader.next_char() {
-                        Some(ch) if ch.is_digit(10) => { return self.number() },
-                        _ => { self.reader.skip(); return Ok(Token::Dot) }
-                    }
-                }
-                Some('{') => { self.skip(); return Ok(Token::LBrace) },
-                Some('}') => { self.skip(); return Ok(Token::RBrace) },
-                Some('[') => { self.skip(); return Ok(Token::LBrack) },
-                Some(']') => { self.skip(); return Ok(Token::RBrack) },
-                Some('(') => { self.skip(); return Ok(Token::LParen) },
-                Some(')') => { self.skip(); return Ok(Token::RParen) },
-                Some(';') => { self.skip(); return Ok(Token::Semi) },
-                Some(':') => { self.skip(); return Ok(Token::Colon) },
-                Some(',') => { self.skip(); return Ok(Token::Comma) },
-                Some('<') => return Ok(self.lt()),
-                Some('>') => return Ok(self.gt()),
-                Some('=') => return Ok(self.if_equality(Token::Assign, Token::Eq, Token::StrictEq)),
-                Some('+') => return Ok(self.plus()),
-                Some('-') => return Ok(self.minus()),
-                Some('*') => return Ok(self.if_assign(Token::StarAssign, Token::Star)),
-                Some('%') => return Ok(self.if_assign(Token::ModAssign, Token::Mod)),
-                Some('^') => return Ok(self.if_assign(Token::BitXorAssign, Token::BitXor)),
-                Some('&') => {
-                    self.skip();
-                    match self.reader.curr_char() {
-                        Some('&') => { self.skip(); return Ok(Token::LogicalAnd) },
-                        _ => return Ok(Token::BitAnd)
-                    }
-                },
-                Some('|') => {
-                    self.skip();
-                    match self.reader.curr_char() {
-                        Some('|') => { self.skip(); return Ok(Token::LogicalOr) },
-                        _ => return Ok(Token::BitOr)
-                    }
-                },
-                Some('~') => { self.skip(); return Ok(Token::Tilde) },
-                Some('!') => return Ok(self.if_equality(Token::Bang, Token::NEq, Token::StrictNEq)),
-                Some('?') => { self.skip(); return Ok(Token::Question) },
-                Some('"') => return self.string(),
-                Some('\'') => return self.string(),
-                Some(ch) if ch.is_es_newline() => {
-                    self.newline();
+                }),
+                (Some('>'), Some('=')) => return Ok({ self.skip2(); Token::GEq }),
+                (Some('>'), _) => return Ok({ self.skip(); Token::RAngle }),
+                (Some('='), Some('=')) => return Ok({
+                    self.skip2();
+                    if self.matches('=') { Token::StrictEq } else { Token::Eq }
+                }),
+                (Some('='), _) => return Ok({ self.skip(); Token::Assign }),
+                (Some('+'), Some('+')) => return Ok({ self.skip2(); Token::Inc }),
+                (Some('+'), Some('=')) => return Ok({ self.skip2(); Token::PlusAssign }),
+                (Some('+'), _) => return Ok({ self.skip(); Token::Plus }),
+                (Some('-'), Some('-')) => return Ok({ self.skip2(); Token::Dec }),
+                (Some('-'), Some('=')) => return Ok({ self.skip2(); Token::MinusAssign }),
+                (Some('-'), _) => return Ok({ self.skip(); Token::Minus }),
+                (Some('*'), Some('=')) => return Ok({ self.skip2(); Token::StarAssign }),
+                (Some('*'), _) => return Ok({ self.skip(); Token::Star }),
+                (Some('%'), Some('=')) => return Ok({ self.skip2(); Token::ModAssign }),
+                (Some('%'), _) => return Ok({ self.skip(); Token::Mod }),
+                (Some('^'), Some('=')) => return Ok({ self.skip2(); Token::BitXorAssign }),
+                (Some('^'), _) => return Ok({ self.skip(); Token::BitXor }),
+                (Some('&'), Some('&')) => return Ok({ self.skip2(); Token::LogicalAnd }),
+                (Some('&'), Some('=')) => return Ok({ self.skip2(); Token::BitAndAssign }),
+                (Some('&'), _) => return Ok({ self.skip(); Token::BitAnd }),
+                (Some('|'), Some('|')) => return Ok({ self.skip2(); Token::LogicalOr }),
+                (Some('|'), Some('=')) => return Ok({ self.skip2(); Token::BitOrAssign }),
+                (Some('|'), _) => return Ok({ self.skip(); Token::BitOr }),
+                (Some('~'), _) => { self.skip(); return Ok(Token::Tilde) },
+                (Some('!'), Some('=')) => return Ok({
+                    self.skip2();
+                    if self.matches('=') { Token::StrictNEq } else { Token::NEq }
+                }),
+                (Some('!'), _) => return Ok({ self.skip(); Token::Bang }),
+                (Some('?'), _) => { self.skip(); return Ok(Token::Question) },
+                (Some('"'), _) | (Some('\''), _) => return self.read_string(),
+                (Some(ch), _) if ch.is_es_newline() => {
+                    self.skip_newline();
                     if self.cx.get().is_asi_possible() {
                         return Ok(Token::Newline);
                     }
                 }
-                Some(ch) if ch.is_digit(10) => return self.number(),
-                Some(ch) if ch.is_es_identifier_start() => return self.word(),
-                Some(ch) => return Err(LexError::UnexpectedChar(ch)),
-                None => return Ok(Token::EOF)
+                (Some(ch), _) if ch.is_digit(10) => return self.read_number(),
+                (Some(ch), _) if ch.is_es_identifier_start() => return self.read_word(),
+                (Some(ch), _) => return Err(LexError::UnexpectedChar(ch)),
+                (None, _) => return Ok(Token::EOF)
             }
         }
-    }
-
-    fn newline(&mut self) {
-        assert!(self.reader.curr_char().map_or(false, |ch| ch.is_es_newline()));
-        if self.reader.curr_char() == Some('\r') && self.reader.next_char() == Some('\n') {
-            self.skip();
-        }
-        self.skip();
-    }
-
-    fn newline_into(&mut self, s: &mut String) {
-        assert!(self.reader.curr_char().map_or(false, |ch| ch.is_es_newline()));
-        if self.reader.curr_char() == Some('\r') && self.reader.next_char() == Some('\n') {
-            s.push('\r');
-            s.push('\n');
-            self.skip2();
-            return;
-        }
-        s.push(self.eat().unwrap());
     }
 }
 

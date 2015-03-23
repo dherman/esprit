@@ -11,8 +11,8 @@ impl Context {
     pub fn new() -> Context {
         Context { asi: false, operator: false }
     }
-    pub fn is_asi_possible(&mut self) -> bool { self.asi }
-    pub fn is_operator(&mut self) -> bool { self.operator }
+    pub fn is_asi_possible(&self) -> bool { self.asi }
+    pub fn is_operator(&self) -> bool { self.operator }
 }
 
 /*
