@@ -104,8 +104,14 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     // generic lexing utilities
 
-    fn read_some(&mut self) -> char {
+    fn read(&mut self) -> char {
         let ch = self.reader.curr_char().unwrap();
+        self.skip();
+        ch
+    }
+
+    fn reread(&mut self, ch: char) -> char {
+        assert!(self.peek() == Some(ch));
         self.skip();
         ch
     }
@@ -187,15 +193,13 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }
     }
 
-    fn expect(&mut self, expected: &str) -> Result<(), LexError> {
-        for expected_ch in expected.chars() {
-            match self.peek() {
-                Some(ch) if ch == expected_ch => (),
-                Some(ch) => return Err(LexError::UnexpectedChar(ch)),
-                None => return Err(LexError::UnexpectedEOF)
-            }
-            self.skip();
+    fn expect(&mut self, expected: char) -> Result<(), LexError> {
+        match self.peek() {
+            Some(ch) if ch == expected => (),
+            Some(ch) => return Err(LexError::UnexpectedChar(ch)),
+            None => return Err(LexError::UnexpectedEOF)
         }
+        self.skip();
         Ok(())
     }
 
@@ -217,7 +221,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             self.skip2();
             return;
         }
-        s.push(self.read_some());
+        s.push(self.read());
     }
 
     fn skip_whitespace(&mut self) {
@@ -231,14 +235,16 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     fn skip_block_comment(&mut self) -> Result<(), LexError> {
         self.skip_until2(&|curr, next| curr == '*' && next == '/');
-        self.expect("*/")
+        try!(self.expect('*'));
+        try!(self.expect('/'));
+        Ok(())
     }
 
     fn read_regexp(&mut self) -> Result<Token, LexError> {
-        try!(self.expect("/"));
         let mut s = String::new();
+        self.reread('/');
         try!(self.read_until_with(&|ch| ch == '/', &mut |this| { this.read_regexp_char(&mut s) }));
-        try!(self.expect("/"));
+        self.reread('/');
         Ok(Token::RegExp(s))
     }
 
@@ -247,34 +253,31 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             Some('\\') => self.read_regexp_backslash(s),
             Some('[') => self.read_regexp_class(s),
             Some(ch) if ch.is_es_newline() => Err(LexError::UnexpectedChar(ch)),
-            Some(ch) => { self.skip(); s.push(ch); Ok(()) },
+            Some(ch) => { s.push(self.reread(ch)); Ok(()) },
             None => Err(LexError::UnexpectedEOF)
         }
     }
 
     fn read_regexp_backslash(&mut self, s: &mut String) -> Result<(), LexError> {
-        s.push('\\');
-        self.skip();
+        s.push(self.reread('\\'));
         match self.peek() {
             Some(ch) if ch.is_es_newline() => Err(LexError::UnexpectedChar(ch)),
-            Some(ch) => { self.skip(); s.push(ch); Ok(()) },
+            Some(ch) => { s.push(self.reread(ch)); Ok(()) },
             None => Err(LexError::UnexpectedEOF)
         }
     }
 
     fn read_regexp_class(&mut self, s: &mut String) -> Result<(), LexError> {
-        self.skip();
-        s.push('[');
+        s.push(self.reread('['));
         try!(self.read_until_with(&|ch| ch == ']', &mut |this| { this.read_regexp_class_char(s) }));
-        self.skip();
-        s.push(']');
+        s.push(self.reread(']'));
         Ok(())
     }
 
     fn read_regexp_class_char(&mut self, s: &mut String) -> Result<(), LexError> {
         match self.peek() {
             Some('\\') => self.read_regexp_backslash(s),
-            Some(ch) => { self.skip(); s.push(ch); Ok(()) },
+            Some(ch) => { s.push(self.reread(ch)); Ok(()) },
             None => Err(LexError::UnexpectedEOF)
         }
     }
@@ -300,9 +303,9 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         match self.peek() {
             Some('e') | Some('E') => {
                 let mut s = String::new();
-                s.push(self.read_some());
+                s.push(self.read());
                 match self.peek() {
-                    Some('+') | Some('-') => { s.push(self.read_some()); }
+                    Some('+') | Some('-') => { s.push(self.read()); }
                     _ => ()
                 }
                 try!(self.read_decimal_digits_into(&mut s));
@@ -316,7 +319,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         let mut s = String::new();
         match self.peek() {
             Some('0') => { s.push('0'); return Ok(s); }
-            Some(ch) if ch.is_digit(10) => { self.skip(); s.push(ch); }
+            Some(ch) if ch.is_digit(10) => { s.push(self.reread(ch)); }
             Some(ch) => return Err(LexError::UnexpectedChar(ch)),
             None => return Err(LexError::UnexpectedEOF)
         }
@@ -332,7 +335,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         assert!(self.reader.next_char().is_some());
         let mut s = String::new();
         self.skip();
-        let flag = self.read_some();
+        let flag = self.read();
         try!(self.read_digit_into(&mut s, radix, pred));
         self.read_into_until(&mut s, pred);
         Ok(cons(flag, s))
@@ -400,7 +403,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         let mut s = String::new();
         loop {
             assert!(self.peek().is_some());
-            let quote = self.read_some();
+            let quote = self.read();
             self.read_into_until(&mut s, &|ch| {
                 ch == quote ||
                 ch == '\\' ||
@@ -430,8 +433,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 digits.push(try!(this.read_hex_digit_into(s)));
                 Ok(())
             }));
-            s.push('}');
-            self.skip();
+            s.push(self.reread('}'));
             Ok(add_digits(digits, 16))
         } else {
             let mut place = 0x1000;
@@ -445,7 +447,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn read_string_escape(&mut self, s: &mut String) -> Result<(), LexError> {
-        s.push(self.read_some());
+        s.push(self.read());
         match self.peek() {
             Some('0') => {
                 self.skip();
@@ -457,11 +459,10 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 }
             },
             Some(ch) if ch.is_es_single_escape_char() => {
-                s.push(self.read_some());
+                s.push(self.read());
             },
             Some('x') => {
-                self.skip();
-                s.push('x');
+                s.push(self.reread('x'));
                 try!(self.read_hex_digit_into(s));
                 try!(self.read_hex_digit_into(s));
             },
@@ -472,8 +473,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 self.read_newline_into(s);
             },
             Some(ch) => {
-                self.skip();
-                s.push(ch);
+                s.push(self.reread(ch));
             },
             None => () // error will be reported from caller
         }
@@ -485,8 +485,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     {
         match self.peek() {
             Some(ch) if pred(ch) => {
-                self.skip();
-                s.push(ch);
+                s.push(self.reread(ch));
                 assert!(ch.is_digit(radix));
                 Ok(ch.to_digit(radix).unwrap())
             },
@@ -502,11 +501,11 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     fn read_word(&mut self) -> Result<Token, LexError> {
         assert!(self.peek().map_or(false, |ch| ch.is_es_identifier_start()));
         let mut s = String::new();
-        s.push(self.read_some());
+        s.push(self.read());
         try!(self.read_until_with(&|ch| ch == '\\' || ch.is_es_identifier_continue(), &mut |this| {
-            match this.read_some() {
+            match this.read() {
                 '\\' => this.read_word_escape(&mut s),
-                ch => { this.skip(); s.push(ch); Ok(()) }
+                ch => { s.push(this.reread(ch)); Ok(()) }
             }
         }));
         match self.reserved.get(&s[..]) {
@@ -516,7 +515,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn read_word_escape(&mut self, s: &mut String) -> Result<(), LexError> {
-        try!(self.expect("u"));
+        try!(self.expect('u'));
         let mut dummy = String::new();
         self.skip();
         let code_point = try!(self.read_unicode_escape_seq(&mut dummy));
