@@ -180,6 +180,18 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }
     }
 
+    fn read_into_until2<F>(&mut self, s: &mut String, pred: &F)
+      where F: Fn(char, char) -> bool
+    {
+        loop {
+            match self.peek2() {
+                (None, _) | (_, None) => return,
+                (Some(curr), Some(next)) if pred(curr, next) => return,
+                _ => { s.push(self.read()); }
+            }
+        }
+    }
+
     fn read_until_with<F, G>(&mut self, pred: &F, read: &mut G) -> Result<(), LexError>
       where F: Fn(char) -> bool,
             G: FnMut(&mut Self) -> Result<(), LexError>
@@ -228,9 +240,24 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         self.skip_while(&|ch| ch.is_es_whitespace());
     }
 
+    fn read_line_comment(&mut self) -> Token {
+        self.skip2();
+        let mut s = String::new();
+        self.read_into_until(&mut s, &|ch| ch.is_es_newline());
+        Token::LineComment(s)
+    }
+
     fn skip_line_comment(&mut self) {
         self.skip2();
         self.skip_until(&|ch| ch.is_es_newline());
+    }
+
+    fn read_block_comment(&mut self) -> Result<Token, LexError> {
+        let mut s = String::new();
+        self.read_into_until2(&mut s, &|curr, next| curr == '*' && next == '/');
+        try!(self.expect('*'));
+        try!(self.expect('/'));
+        Ok(Token::BlockComment(s))
     }
 
     fn skip_block_comment(&mut self) -> Result<(), LexError> {
@@ -526,13 +553,24 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn read_next_token(&mut self) -> Result<Token, LexError> {
-        self.skip_whitespace();
-        println!("inspecting {:?}", self.peek());
         loop {
             match self.peek2() {
-                (Some('/'), Some('/')) => { self.skip_line_comment(); }
-                (Some('/'), Some('*')) => { try!(self.skip_block_comment()); }
-                (Some('/'), _) if !self.cx.get().is_operator() => return self.read_regexp(),
+                (Some(ch), _) if ch.is_es_whitespace() => { self.skip_whitespace() }
+                (Some('/'), Some('/')) => {
+                    if self.cx.get().comment_tokens {
+                        return Ok(self.read_line_comment());
+                    } else {
+                        self.skip_line_comment();
+                    }
+                }
+                (Some('/'), Some('*')) => {
+                    if self.cx.get().comment_tokens {
+                        return self.read_block_comment();
+                    } else {
+                        try!(self.skip_block_comment());
+                    }
+                }
+                (Some('/'), _) if !self.cx.get().operator => return self.read_regexp(),
                 (Some('/'), Some('=')) => return Ok({ self.skip2(); Token::SlashAssign }),
                 (Some('/'), _) => return Ok({ self.skip(); Token::Slash }),
                 (Some('.'), Some(ch)) if ch.is_digit(10) => return self.read_number(),
@@ -596,7 +634,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 (Some('"'), _) | (Some('\''), _) => return self.read_string(),
                 (Some(ch), _) if ch.is_es_newline() => {
                     self.skip_newline();
-                    if self.cx.get().is_asi_possible() {
+                    if self.cx.get().asi {
                         return Ok(Token::Newline);
                     }
                 }

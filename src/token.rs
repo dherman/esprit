@@ -133,6 +133,8 @@ pub enum Token {
 
     Identifier(String),
 
+    LineComment(String),
+    BlockComment(String),
     Newline,
     EOF
 }

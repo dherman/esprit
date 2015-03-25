@@ -25,7 +25,7 @@ use context::Context;
 #[test]
 fn it_lexes() {
     let chars = "  1 + 1  ".chars();
-    let cx = Rc::new(Cell::new(Context::new()));
+    let cx = Rc::new(Cell::new(Context { asi: false, operator: false, comment_tokens: false }));
     let lexer = Lexer::new(chars, cx.clone());
 
     assert_eq!(lexer.collect(), vec![Token::DecimalInt("1".to_string()), Token::Plus, Token::DecimalInt("1".to_string())]);
@@ -34,7 +34,7 @@ fn it_lexes() {
 #[test]
 fn it_parses() {
     let chars = "  1 + 1  ".chars();
-    let cx = Rc::new(Cell::new(Context::new()));
+    let cx = Rc::new(Cell::new(Context { asi: false, operator: false, comment_tokens: false }));
     let lexer = Lexer::new(chars, cx.clone());
     let mut parser = Parser::new(lexer, cx.clone());
 
