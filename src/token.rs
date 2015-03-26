@@ -17,6 +17,9 @@ pub enum ReservedWord {
     True,
     False,
 
+    Arguments,
+    Eval,
+
     // 11.6.2.1 Keywords
     Break,
     Case,
@@ -56,7 +59,7 @@ pub enum ReservedWord {
 
     // 11.6.2.2 Future Reserved Words
     Enum,
-    //Await,
+    Await,
     Implements,
     Interface,
     Package,

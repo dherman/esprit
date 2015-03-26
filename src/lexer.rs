@@ -8,6 +8,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 use regex::Regex;
 use context::Context;
+use context::Mode::*;
 use token::Posn;
 use token::ReservedWord;
 use eschar::ESCharExt;
@@ -49,7 +50,8 @@ pub struct Lexer<I> {
     reader: Reader<I>,
     cx: Rc<Cell<Context>>,
     lookahead: TokenBuffer,
-    reserved: HashMap<&'static str, ReservedWord>
+    reserved: HashMap<&'static str, ReservedWord>,
+    strict_reserved: HashMap<&'static str, ReservedWord>
 }
 
 impl<I> Lexer<I> where I: Iterator<Item=char> {
@@ -61,6 +63,10 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             cx: cx,
             lookahead: TokenBuffer::new(),
             reserved: reserved_words![
+                // Pseudo-reserved words
+                ("arguments",  Arguments),  ("eval",       Eval),
+
+                // Keyword
                 ("null",       Null),       ("true",       True),       ("false",    False),
                 ("break",      Break),      ("case",       Case),       ("catch",    Catch),
                 ("class",      Class),      ("const",      Const),      ("continue", Continue),
@@ -72,10 +78,18 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 ("return",     Return),     ("super",      Super),      ("switch",   Switch),
                 ("this",       This),       ("throw",      Throw),      ("try",      Try),
                 ("typeof",     Typeof),     ("var",        Var),        ("void",     Void),
-                ("while",      While),      ("with",       With),       ("yield",    Yield),
-                ("enum",       Enum),    // ("await",      Await),
+                ("while",      While),      ("with",       With),
+
+                // FutureReservedWord
+                ("enum",       Enum)
+            ],
+            strict_reserved: reserved_words![
+                // FutureReservedWord (strict mode)
                 ("implements", Implements), ("interface",  Interface),  ("package",  Package),
-                ("private",    Private),    ("protected",  Protected),  ("public",   Public)
+                ("private",    Private),    ("protected",  Protected),  ("public",   Public),
+
+                // Pseudo-reserved words (strict mode)
+                ("let",        Let),        ("static",     Static),     ("yield",    Yield)
             ]
         }
     }
@@ -535,9 +549,21 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 ch => { s.push(this.reread(ch)); Ok(()) }
             }
         }));
-        match self.reserved.get(&s[..]) {
-            Some(word) => Ok(Token::Reserved(*word)),
-            None => Ok(Token::Identifier(s))
+        match (self.reserved.get(&s[..]), self.cx.get()) {
+            (Some(word), _) => Ok(Token::Reserved(*word)),
+            (None, Context { mode: Sloppy, generator: true, .. }) if s == "yield" => {
+                Ok(Token::Reserved(ReservedWord::Yield))
+            }
+            (None, Context { mode: Sloppy, .. }) => Ok(Token::Identifier(s)),
+            (None, Context { mode: Module, .. }) if s == "await" => {
+                Ok(Token::Reserved(ReservedWord::Await))
+            }
+            (None, Context { mode: Strict, .. }) | (None, Context { mode: Module, .. }) => {
+                match self.strict_reserved.get(&s[..]) {
+                    Some(word) => Ok(Token::Reserved(*word)),
+                    None => Ok(Token::Identifier(s))
+                }
+            }
         }
     }
 
