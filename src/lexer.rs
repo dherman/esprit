@@ -1,15 +1,12 @@
 use std::collections::HashMap;
-use std::borrow::Borrow;
 use std::char;
 
 use token::Token;
 
 use std::cell::Cell;
 use std::rc::Rc;
-use regex::Regex;
 use context::Context;
 use context::Mode::*;
-use token::Posn;
 use token::ReservedWord;
 use eschar::ESCharExt;
 use reader::Reader;
@@ -213,7 +210,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         loop {
             match self.peek() {
                 Some(ch) if pred(ch) => return Ok(()),
-                Some(ch) => { try!(read(self)); }
+                Some(_) => { try!(read(self)); }
                 None => return Ok(())
             }
         }
@@ -329,8 +326,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             None => return Err(LexError::UnexpectedEOF),
             _ => ()
         }
-        let mut s = String::new();
-        self.read_into_until(&mut s, &|ch| !ch.is_digit(10));
+        self.read_into_until(s, &|ch| !ch.is_digit(10));
         Ok(())
     }
 
@@ -421,6 +417,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             (Some(ch), _) if ch.is_digit(10) => {
                 let pos = try!(self.read_decimal_int());
                 let (dot, frac) = if self.matches('.') {
+
                     (true, match self.peek() {
                         Some(ch) if ch.is_digit(10) => Some(try!(self.read_decimal_digits())),
                         _ => None
@@ -442,24 +439,22 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     fn read_string(&mut self) -> Result<Token, LexError> {
         let mut s = String::new();
-        loop {
-            debug_assert!(self.peek().is_some());
-            let quote = self.read();
-            self.read_into_until(&mut s, &|ch| {
-                ch == quote ||
-                ch == '\\' ||
-                ch.is_es_newline()
-            });
-            match self.peek() {
-                Some('\\') => { try!(self.read_string_escape(&mut s)); }
-                Some(ch) => {
-                    if ch.is_es_newline() {
-                        return Err(LexError::UnexpectedChar(ch));
-                    }
-                    self.skip();
+        debug_assert!(self.peek().is_some());
+        let quote = self.read();
+        self.read_into_until(&mut s, &|ch| {
+            ch == quote ||
+            ch == '\\' ||
+            ch.is_es_newline()
+        });
+        match self.peek() {
+            Some('\\') => { try!(self.read_string_escape(&mut s)); }
+            Some(ch) => {
+                if ch.is_es_newline() {
+                    return Err(LexError::UnexpectedChar(ch));
                 }
-                None => return Err(LexError::UnexpectedEOF)
+                self.skip();
             }
+            None => return Err(LexError::UnexpectedEOF)
         }
         Ok(Token::String(s))
     }
@@ -479,7 +474,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         } else {
             let mut place = 0x1000;
             let mut code_point = 0;
-            for i in 0..4 {
+            for _ in 0..4 {
                 code_point += try!(self.read_hex_digit_into(s)) * place;
                 place >>= 4;
             }
@@ -492,7 +487,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         match self.peek() {
             Some('0') => {
                 self.skip();
-                for i in 0..3 {
+                for _ in 0..3 {
                     match self.peek() {
                         Some(ch) if ch.is_digit(8) => { s.push(ch); },
                         _ => { break; }

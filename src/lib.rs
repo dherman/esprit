@@ -2,8 +2,6 @@
 //use std::io::prelude::*;
 #![cfg(test)]
 
-extern crate regex;
-
 mod token;
 mod lexer;
 mod parser;
