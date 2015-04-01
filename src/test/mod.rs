@@ -90,7 +90,7 @@ fn nullary(token: Token) -> Box<Matcher> {
 }
 
 fn unary_string<F:Fn(String) -> Token + 'static>(f: F) -> Box<Matcher> {
-    matcher(|data| {
+    matcher(move |data| {
         data.remove("value")
             .map(|str| f(str.into_string()))
     })
