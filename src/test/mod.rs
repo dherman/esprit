@@ -69,6 +69,10 @@ fn parse_expect_pass(test: &mut Object) -> ExpectPass {
     }
 }
 
+fn nullary(token: Token) -> Box<Fn(&mut Object) -> Option<Token>> {
+    Box::new(|_| { Some(token) })
+}
+
 fn deserialize_token(mut data: Json) -> Token {
     let mut obj = data.as_object_mut().unwrap();
     let ty = obj.remove("type").unwrap().into_string();
