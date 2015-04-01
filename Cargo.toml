@@ -3,3 +3,6 @@
 name = "bissap"
 version = "0.0.1"
 authors = ["Dave Herman <dherman@mozilla.com>"]
+
+[dependencies]
+rustc-serialize = "0.3.7"

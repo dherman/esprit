@@ -2,6 +2,8 @@
 //use std::io::prelude::*;
 #![cfg(test)]
 
+extern crate "rustc-serialize" as rustc_serialize;
+
 mod token;
 mod lexer;
 mod parser;
