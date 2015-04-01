@@ -13,7 +13,7 @@ pub struct DynJson {
 }
 
 impl Decodable for DynJson {
-    fn decode<D: Decoder>(d: &mut D) -> Result<Self, u32> {
+    fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
         unimplemented!()
     }
 }
