@@ -69,51 +69,16 @@ fn parse_expect_pass(test: &mut Object) -> ExpectPass {
     }
 }
 
-trait Matcher {
-    fn test(self: Box<Self>, arg: &mut Object) -> Option<Token>;
-}
-
-impl<F> Matcher for F
-    where F: FnOnce(&mut Object) -> Option<Token>
-{
-    fn test(self: Box<F>, arg: &mut Object) -> Option<Token> {
-        self(arg)
-    }
-}
-
-fn matcher<F:FnOnce(&mut Object) -> Option<Token> + 'static>(f: F) -> Box<Matcher> {
-    Box::new(f)
-}
-
-fn nullary(token: Token) -> Box<Matcher> {
-    matcher(|_| { Some(token) })
-}
-
-fn unary_string<F:Fn(String) -> Token + 'static>(f: F) -> Box<Matcher> {
-    matcher(move |data| {
-        data.remove("value")
-            .map(|str| f(str.into_string()))
-    })
-}
-
 fn deserialize_token(mut data: Json) -> Token {
     let mut obj = data.as_object_mut().unwrap();
     let ty = obj.remove("type").unwrap().into_string();
 
-    let mut matchers: HashMap<&str, Box<Matcher>> = HashMap::new();
-    matchers.insert("LBrace", nullary(Token::LBrace));
-    matchers.insert("DecimalInt", matcher(|data| -> Option<Token> {
-        match data.remove("value") {
-            None => None,
-            Some(str) => Some(Token::DecimalInt(str.into_string()))
-        }
-    }));
-    matchers.insert("String", unary_string(Token::String));
-
-    let f = matchers.remove("DecimalInt").unwrap();
-    let mut data = Json::from_str("{\"type\":\"DecimalInt\",\"value\":\"11.3\"}").unwrap();
-    let obj = data.as_object_mut().unwrap();
-    f.test(obj).unwrap()
+    match &ty[..] {
+        "LBrace"        => Token::LBrace,
+        "DecimalInt"    => Token::DecimalInt(obj.remove("value").unwrap().into_string()),
+        "String"        => Token::String(obj.remove("value").unwrap().into_string()),
+        _               => panic!("invalid token")
+    }
 }
 
 fn parse_test(mut test: Json) -> TestCase {
