@@ -89,6 +89,13 @@ fn nullary(token: Token) -> Box<Matcher> {
     matcher(|_| { Some(token) })
 }
 
+fn unary_string<F:Fn(String) -> Token>(f: F) -> Box<Matcher> {
+    matcher(|data| {
+        data.remove("value")
+            .map(|str| f(str.into_string()))
+    })
+}
+
 fn deserialize_token(mut data: Json) -> Token {
     let mut obj = data.as_object_mut().unwrap();
     let ty = obj.remove("type").unwrap().into_string();
@@ -101,6 +108,8 @@ fn deserialize_token(mut data: Json) -> Token {
             Some(str) => Some(Token::DecimalInt(str.into_string()))
         }
     }));
+    matchers.insert("String", unary_string(Token::String));
+
     let f = matchers.remove("DecimalInt").unwrap();
     let mut data = Json::from_str("{\"type\":\"DecimalInt\",\"value\":\"11.3\"}").unwrap();
     let obj = data.as_object_mut().unwrap();
