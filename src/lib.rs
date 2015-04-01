@@ -10,6 +10,7 @@ mod context;
 mod eschar;
 mod reader;
 mod tokbuf;
+mod test::util;
 
 use std::cell::Cell;
 use std::rc::Rc;
