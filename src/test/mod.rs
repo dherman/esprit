@@ -74,8 +74,8 @@ fn deserialize_token(mut data: Json) -> Token {
     let ty = obj.remove("type").unwrap().into_string();
 
     let mut matchers: HashMap<&str, Box<Fn(&mut Object) -> Option<Token>>> = HashMap::new();
-    matchers.insert("LBrace", Box::new(|_:&mut Object| -> Option<Token> { Some(Token::LBrace) }));
-    matchers.insert("DecimalInt", Box::new(|data:&mut Object| -> Option<Token> {
+    matchers.insert("LBrace", Box::new(|_| -> Option<Token> { Some(Token::LBrace) }));
+    matchers.insert("DecimalInt", Box::new(|data| -> Option<Token> {
         match data.remove("value") {
             None => None,
             Some(str) => Some(Token::DecimalInt(str.into_string()))
