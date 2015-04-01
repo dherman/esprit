@@ -57,10 +57,10 @@ pub fn read_tests(path: &str) -> Vec<TestCase> {
     let mut f: File = File::open(path).unwrap();
     let mut s = String::new();
     f.read_to_string(&mut s);
-    parse_tests(s)
+    parse_tests(&s)
 }
 
 pub fn parse_tests(src: &str) -> Vec<TestCase> {
-    let data: Json = decode(src).unwrap();
+    let data: Json = src.parse().unwrap();
     unimplemented!()
 }
