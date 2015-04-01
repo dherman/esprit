@@ -53,6 +53,10 @@ impl JsonExt for Json {
     }
 }
 
+fn parse_test(mut test: Json) -> TestCase {
+    unimplemented!()
+}
+
 pub fn read_tests(path: &str) -> Vec<TestCase> {
     let mut f: File = File::open(path).unwrap();
     let mut s = String::new();
@@ -62,5 +66,6 @@ pub fn read_tests(path: &str) -> Vec<TestCase> {
 
 pub fn parse_tests(src: &str) -> Vec<TestCase> {
     let data: Json = src.parse().unwrap();
-    unimplemented!()
+    data.into_array()
+        .map(parse_test)
 }
