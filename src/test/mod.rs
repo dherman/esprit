@@ -53,8 +53,29 @@ impl JsonExt for Json {
     }
 }
 
+fn parse_expect_fail(test: &mut Object) -> ExpectFail {
+    ExpectFail {
+        source: test.remove("source").unwrap().into_string(),
+        error: test.remove("error").unwrap().into_string(),
+        options: None
+    }
+}
+
+fn parse_expect_pass(test: &mut Object) -> ExpectPass {
+    ExpectPass {
+        source: test.remove("source").unwrap().into_string(),
+        expected: test.remove("expected").unwrap(),
+        options: None
+    }
+}
+
 fn parse_test(mut test: Json) -> TestCase {
-    unimplemented!()
+    let obj = test.as_object_mut().unwrap();
+    if obj.contains_key("error") {
+        TestCase::Fail(parse_expect_fail(obj))
+    } else {
+        TestCase::Pass(parse_expect_pass(obj))
+    }
 }
 
 pub fn read_tests(path: &str) -> Vec<TestCase> {
