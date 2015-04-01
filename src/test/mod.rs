@@ -69,6 +69,15 @@ fn parse_expect_pass(test: &mut Object) -> ExpectPass {
     }
 }
 
+fn deserialize_token(mut data: Json) -> Token {
+    let mut obj = data.as_object_mut().unwrap();
+    let ty = obj.remove("type").unwrap().into_string();
+
+    if ty == "LBrace" { unimplemented!() }
+    else if ty == "RBrace" { unimplemented!() }
+    else { panic!("invalid token") }
+}
+
 fn parse_test(mut test: Json) -> TestCase {
     let obj = test.as_object_mut().unwrap();
     if obj.contains_key("error") {
