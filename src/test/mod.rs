@@ -67,5 +67,7 @@ pub fn read_tests(path: &str) -> Vec<TestCase> {
 pub fn parse_tests(src: &str) -> Vec<TestCase> {
     let data: Json = src.parse().unwrap();
     data.into_array()
+        .into_iter()
         .map(parse_test)
+        .collect()
 }
