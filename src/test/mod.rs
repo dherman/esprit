@@ -2,27 +2,16 @@
 
 use std::collections::HashMap;
 use rustc_serialize::json;
-use rustc_serialize::json::{Json, Object};
+use rustc_serialize::json::{decode, Json, Object};
 use rustc_serialize::{Decoder, Decodable};
 use std::io::prelude::*;
 use std::fs::File;
 use token::{Token, ReservedWord};
 
-pub struct DynJson {
-    json: Json
-}
-
-impl Decodable for DynJson {
-    fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
-        unimplemented!()
-    }
-}
-
-#[derive(RustcDecodable)]
 pub struct ExpectPass {
     source: String,
-    expected: DynJson,
-    options: Option<DynJson>
+    expected: Json,
+    options: Option<Json>
 }
 
 pub struct ExpectFail {
@@ -64,3 +53,14 @@ impl JsonExt for Json {
     }
 }
 
+pub fn read_tests(path: &str) -> Vec<TestCase> {
+    let mut f: File = File::open(path).unwrap();
+    let mut s = String::new();
+    f.read_to_string(&mut s);
+    parse_tests(s)
+}
+
+pub fn parse_tests(src: &str) -> Vec<TestCase> {
+    let data: Json = decode(src).unwrap();
+    unimplemented!()
+}
