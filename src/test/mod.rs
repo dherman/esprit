@@ -9,11 +9,21 @@ use std::fs::File;
 use std::io::Result;
 use token::{Token, ReservedWord};
 
+pub struct DynJson {
+    json: Json
+}
+
+impl Decodable for DynJson {
+    fn decode<D: Decoder>(d: &mut D) -> Result<Self, Error> {
+        unimplemented!()
+    }
+}
+
 #[derive(RustcDecodable)]
 pub struct ExpectPass {
     source: String,
-    expected: Json,
-    options: Option<Json>
+    expected: DynJson,
+    options: Option<DynJson>
 }
 
 pub struct ExpectFail {
