@@ -73,9 +73,17 @@ fn deserialize_token(mut data: Json) -> Token {
     let mut obj = data.as_object_mut().unwrap();
     let ty = obj.remove("type").unwrap().into_string();
 
-    if ty == "LBrace" { unimplemented!() }
-    else if ty == "RBrace" { unimplemented!() }
-    else { panic!("invalid token") }
+    let mut matchers = HashMap::new();
+    matchers.insert("LBrace", &|_:&mut Object| -> Option<Token> { Some(Token::LBrace) });
+    matchers.insert("DecimalInt", &|data:&mut Object| -> Option<Token> {
+        match data.remove("value") {
+            None => None,
+            Some(str) => Some(Token::DecimalInt(str.into_string()))
+        }
+    });
+    let f = matchers.get("DecimalInt").unwrap();
+    let obj = Json::from_str("{\"type\":\"DecimalInt\",\"value\":\"11.3\"}").unwrap().as_object_mut().unwrap();
+    f(obj).unwrap()
 }
 
 fn parse_test(mut test: Json) -> TestCase {
