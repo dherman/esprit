@@ -6,7 +6,6 @@ use rustc_serialize::json::{Json, Object};
 use rustc_serialize::{Decoder, Decodable};
 use std::io::prelude::*;
 use std::fs::File;
-use std::io::Result;
 use token::{Token, ReservedWord};
 
 pub struct DynJson {
@@ -14,7 +13,7 @@ pub struct DynJson {
 }
 
 impl Decodable for DynJson {
-    fn decode<D: Decoder>(d: &mut D) -> Result<Self, Error> {
+    fn decode<D: Decoder>(d: &mut D) -> Result<Self, u32> {
         unimplemented!()
     }
 }
