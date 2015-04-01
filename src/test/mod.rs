@@ -69,7 +69,7 @@ fn parse_expect_pass(test: &mut Object) -> ExpectPass {
     }
 }
 
-fn nullary(token: Token) -> Box<Fn(&mut Object) -> Option<Token>> {
+fn nullary(token: Token) -> Box<FnOnce(&mut Object) -> Option<Token>> {
     Box::new(|_| { Some(token) })
 }
 
@@ -77,7 +77,7 @@ fn deserialize_token(mut data: Json) -> Token {
     let mut obj = data.as_object_mut().unwrap();
     let ty = obj.remove("type").unwrap().into_string();
 
-    let mut matchers: HashMap<&str, Box<Fn(&mut Object) -> Option<Token>>> = HashMap::new();
+    let mut matchers: HashMap<&str, Box<FnOnce(&mut Object) -> Option<Token>>> = HashMap::new();
     matchers.insert("LBrace", Box::new(|_| -> Option<Token> { Some(Token::LBrace) }));
     matchers.insert("DecimalInt", Box::new(|data| -> Option<Token> {
         match data.remove("value") {
