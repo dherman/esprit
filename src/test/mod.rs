@@ -186,8 +186,11 @@ fn deserialize_token(mut data: Json) -> Token {
         "EOF"           => Token::EOF,
         "DecimalInt"    => Token::DecimalInt(arr.remove(0).into_string()),
         "BinaryInt"     => {
-            let flag = arr.remove(0).into_string().remove(0);
-            Token::BinaryInt(flag, arr.remove(0).into_string())
+            match &arr[0..1] {
+                [flag, value] => Token::BinaryInt(flag.into_string().remove(0),
+                                                  value.into_string()),
+                _ => panic!("invalid token")
+            }
         }
         "OctalInt"      => {
             let flag = arr.remove(0).into_string_opt().map(|mut str| str.remove(0));
