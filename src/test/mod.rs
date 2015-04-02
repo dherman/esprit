@@ -201,22 +201,21 @@ fn deserialize_token(mut data: Json) -> Token {
         "EOF"           => Token::EOF,
         "DecimalInt"    => Token::DecimalInt(arr.remove(0).into_string()),
         "BinaryInt"     => {
-            let (flag, value) = tuplify!(arr, (_, _));
+            let (flag, value) = tuplify!(arr, ((), ()));
             Token::BinaryInt(flag.into_string().remove(0), value.into_string())
         }
         "OctalInt"      => {
-            let flag = arr.remove(0).into_string_opt().map(|mut str| str.remove(0));
-            Token::OctalInt(flag, arr.remove(0).into_string())
+            let (flag, value) = tuplify!(arr, ((), ()));
+            Token::OctalInt(flag.into_string_opt().map(|mut str| str.remove(0)),
+                            value.into_string())
         }
         "HexInt"        => {
-            let flag = arr.remove(0).into_string().remove(0);
-            Token::HexInt(flag, arr.remove(0).into_string())
+            let (flag, value) = tuplify!(arr, ((), ()));
+            Token::HexInt(flag.into_string().remove(0), value.into_string())
         }
         "Float"         => {
-            let int = arr.remove(0).into_string_opt();
-            let frac = arr.remove(0).into_string_opt();
-            let exp = arr.remove(0).into_string_opt();
-            Token::Float(int, frac, exp)
+            let (int, frac, exp) = tuplify!(arr, ((), (), ()));
+            Token::Float(int.into_string_opt(), frac.into_string_opt(), exp.into_string_opt())
         }
         "String"        => Token::String(arr.remove(0).into_string()),
         "RegExp"        => Token::RegExp(arr.remove(0).into_string()),
