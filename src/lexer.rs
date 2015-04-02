@@ -683,11 +683,11 @@ impl<I> Iterator for Lexer<I> where I: Iterator<Item=char> {
 #[cfg(test)]
 mod tests {
 
-    use test::parse_tests;
+    use test::deserialize_lexer_tests;
 
     #[test]
     pub fn go() {
-        let acorn = parse_tests(include_str!("../tests/acorn/tests.json"));
+        let tests = deserialize_lexer_tests(include_str!("../tests/lexer/tests.json"));
     }
 
 }

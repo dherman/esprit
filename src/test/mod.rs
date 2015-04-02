@@ -1,28 +1,69 @@
 #![cfg(test)]
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use rustc_serialize::json;
-use rustc_serialize::json::{Json, Object};
+use rustc_serialize::json::{Json, Object, Array};
 use rustc_serialize::{Decoder, Decodable};
 use std::io::prelude::*;
 use std::fs::File;
 use token::{Token, ReservedWord};
+use context::{Context, Mode};
 
-pub struct ExpectPass {
+pub struct ParserTest {
     source: String,
-    expected: Json,
+    expected: Result<Json, String>,
     options: Option<Json>
 }
 
-pub struct ExpectFail {
+pub struct LexerTest {
     source: String,
-    error: String,
-    options: Option<Json>
+    context: Context,
+    expected: Result<Token, String>
 }
 
-pub enum TestCase {
-    Pass(ExpectPass),
-    Fail(ExpectFail)
+fn deserialize_parser_test(test: &mut Object) -> ParserTest {
+    ParserTest {
+        source: test.remove("source").unwrap().into_string(),
+        expected: if test.contains_key("error") {
+            Err(test.remove("error").unwrap().into_string())
+        } else {
+            Ok(test.remove("expected").unwrap())
+        },
+        options: None
+    }
+}
+
+fn deserialize_string_set(data: Array) -> HashSet<String> {
+    let mut set = HashSet::new();
+    for s in data.into_iter() {
+        set.insert(s.into_string());
+    }
+    set
+}
+
+fn deserialize_lexer_context(data: &mut Object) -> Context {
+    let mut cx = data.remove("context").unwrap();
+    let set = deserialize_string_set(cx.into_array());
+    Context {
+        asi: set.contains("asi"),
+        operator: set.contains("operator"),
+        comment_tokens: set.contains("comments"),
+        generator: set.contains("generator"),
+        mode: Mode::Sloppy
+    }
+}
+
+fn deserialize_lexer_test(mut test: Json) -> LexerTest {
+    let mut obj = test.as_object_mut().unwrap();
+    LexerTest {
+        source: obj.remove("source").unwrap().into_string(),
+        context: deserialize_lexer_context(obj),
+        expected: if obj.contains_key("error") {
+            Err(obj.remove("error").unwrap().into_string())
+        } else {
+            Ok(deserialize_token(obj.remove("expected").unwrap()))
+        }
+    }
 }
 
 trait JsonExt {
@@ -50,22 +91,6 @@ impl JsonExt for Json {
             Json::String(string) => Some(string),
             _ => panic!("expected string or null")
         }
-    }
-}
-
-fn parse_expect_fail(test: &mut Object) -> ExpectFail {
-    ExpectFail {
-        source: test.remove("source").unwrap().into_string(),
-        error: test.remove("error").unwrap().into_string(),
-        options: None
-    }
-}
-
-fn parse_expect_pass(test: &mut Object) -> ExpectPass {
-    ExpectPass {
-        source: test.remove("source").unwrap().into_string(),
-        expected: test.remove("expected").unwrap(),
-        options: None
     }
 }
 
@@ -226,21 +251,10 @@ fn deserialize_token(mut data: Json) -> Token {
     }
 }
 
-fn parse_test(mut test: Json) -> TestCase {
-    let obj = test.as_object_mut().unwrap();
-    if obj.contains_key("error") {
-        TestCase::Fail(parse_expect_fail(obj))
-    } else {
-        TestCase::Pass(parse_expect_pass(obj))
-    }
-}
-
-pub fn parse_tests(src: &str) -> Vec<TestCase> {
-    let t = Json::from_str("[\"DecimalInt\",\"11.3\"]").unwrap();
-    println!("yo: {:?}", deserialize_token(t));
+pub fn deserialize_lexer_tests(src: &str) -> Vec<LexerTest> {
     let data: Json = src.parse().unwrap();
     data.into_array()
         .into_iter()
-        .map(parse_test)
+        .map(deserialize_lexer_test)
         .collect()
 }
