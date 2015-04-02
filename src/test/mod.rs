@@ -10,15 +10,15 @@ use token::{Token, ReservedWord};
 use context::{Context, Mode};
 
 pub struct ParserTest {
-    source: String,
-    expected: Result<Json, String>,
-    options: Option<Json>
+    pub source: String,
+    pub expected: Result<Json, String>,
+    pub options: Option<Json>
 }
 
 pub struct LexerTest {
-    source: String,
-    context: Context,
-    expected: Result<Token, String>
+    pub source: String,
+    pub context: Context,
+    pub expected: Result<Token, String>
 }
 
 fn deserialize_parser_test(test: &mut Object) -> ParserTest {

@@ -683,11 +683,35 @@ impl<I> Iterator for Lexer<I> where I: Iterator<Item=char> {
 #[cfg(test)]
 mod tests {
 
-    use test::deserialize_lexer_tests;
+    use test::{deserialize_lexer_tests, LexerTest};
+    use lexer::Lexer;
+    use std::cell::Cell;
+    use std::rc::Rc;
 
     #[test]
     pub fn go() {
         let tests = deserialize_lexer_tests(include_str!("../tests/lexer/tests.json"));
+        for test in tests {
+            match test {
+                LexerTest { source, context, expected } => {
+                    let chars = source.chars();
+                    let cx = Rc::new(Cell::new(context));
+                    let mut lexer = Lexer::new(chars, cx.clone());
+                    match (expected, lexer.read_token()) {
+                        (Ok(exp_token), Ok(act_token)) => {
+                            assert_eq!(exp_token, act_token);
+                        }
+                        (Ok(_), Err(_)) => {
+                            panic!("unexpected lexer error")
+                        }
+                        (Err(_), Ok(_)) => {
+                            panic!("unexpected token, expected error")
+                        }
+                        (Err(_), Err(_)) => { }
+                    }
+                }
+            }
+        }
     }
 
 }
