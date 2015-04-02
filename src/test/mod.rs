@@ -124,12 +124,12 @@ fn deserialize_reserved(word: &str) -> ReservedWord {
 }
 
 fn deserialize_token(mut data: Json) -> Token {
-    let mut obj = data.as_object_mut().unwrap();
-    let ty = obj.remove("type").unwrap().into_string();
+    let mut arr = data.into_array();
+    let ty = arr.remove(0).into_string();
 
     match &ty[..] {
         "Reserved"      => {
-            let s = obj.remove("value").unwrap().into_string();
+            let s = arr.remove(0).into_string();
             Token::Reserved(deserialize_reserved(&s[..]))
         }
         "LBrace"        => Token::LBrace,
@@ -184,30 +184,30 @@ fn deserialize_token(mut data: Json) -> Token {
         "Arrow"         => Token::Arrow,
         "Newline"       => Token::Newline,
         "EOF"           => Token::EOF,
-        "DecimalInt"    => Token::DecimalInt(obj.remove("value").unwrap().into_string()),
+        "DecimalInt"    => Token::DecimalInt(arr.remove(0).into_string()),
         "BinaryInt"     => {
-            let flag = obj.remove("flag").unwrap().into_string().remove(0);
-            Token::BinaryInt(flag, obj.remove("value").unwrap().into_string())
+            let flag = arr.remove(0).into_string().remove(0);
+            Token::BinaryInt(flag, arr.remove(0).into_string())
         }
         "OctalInt"      => {
-            let flag = obj.remove("flag").unwrap().into_string_opt().map(|mut str| str.remove(0));
-            Token::OctalInt(flag, obj.remove("value").unwrap().into_string())
+            let flag = arr.remove(0).into_string_opt().map(|mut str| str.remove(0));
+            Token::OctalInt(flag, arr.remove(0).into_string())
         }
         "HexInt"        => {
-            let flag = obj.remove("flag").unwrap().into_string().remove(0);
-            Token::HexInt(flag, obj.remove("value").unwrap().into_string())
+            let flag = arr.remove(0).into_string().remove(0);
+            Token::HexInt(flag, arr.remove(0).into_string())
         }
         "Float"         => {
-            let int = obj.remove("int").unwrap().into_string_opt();
-            let frac = obj.remove("frac").unwrap().into_string_opt();
-            let exp = obj.remove("exp").unwrap().into_string_opt();
+            let int = arr.remove(0).into_string_opt();
+            let frac = arr.remove(0).into_string_opt();
+            let exp = arr.remove(0).into_string_opt();
             Token::Float(int, frac, exp)
         }
-        "String"        => Token::String(obj.remove("value").unwrap().into_string()),
-        "RegExp"        => Token::RegExp(obj.remove("value").unwrap().into_string()),
-        "Identifier"    => Token::Identifier(obj.remove("value").unwrap().into_string()),
-        "LineComment"   => Token::LineComment(obj.remove("value").unwrap().into_string()),
-        "BlockComment"  => Token::BlockComment(obj.remove("value").unwrap().into_string()),
+        "String"        => Token::String(arr.remove(0).into_string()),
+        "RegExp"        => Token::RegExp(arr.remove(0).into_string()),
+        "Identifier"    => Token::Identifier(arr.remove(0).into_string()),
+        "LineComment"   => Token::LineComment(arr.remove(0).into_string()),
+        "BlockComment"  => Token::BlockComment(arr.remove(0).into_string()),
         _               => panic!("invalid token")
     }
 }
@@ -222,7 +222,7 @@ fn parse_test(mut test: Json) -> TestCase {
 }
 
 pub fn parse_tests(src: &str) -> Vec<TestCase> {
-    let t = Json::from_str("{\"type\":\"DecimalInt\",\"value\":\"11.3\"}").unwrap();
+    let t = Json::from_str("[\"DecimalInt\",\"11.3\"]").unwrap();
     println!("yo: {:?}", deserialize_token(t));
     let data: Json = src.parse().unwrap();
     data.into_array()
