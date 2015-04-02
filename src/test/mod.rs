@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 use rustc_serialize::json;
-use rustc_serialize::json::{decode, Json, Object};
+use rustc_serialize::json::{Json, Object};
 use rustc_serialize::{Decoder, Decodable};
 use std::io::prelude::*;
 use std::fs::File;
@@ -222,6 +222,8 @@ fn parse_test(mut test: Json) -> TestCase {
 }
 
 pub fn parse_tests(src: &str) -> Vec<TestCase> {
+    let t = Json::from_str("{\"type\":\"DecimalInt\",\"value\":\"11.3\"}").unwrap();
+    println!("yo: {:?}", deserialize_token(t));
     let data: Json = src.parse().unwrap();
     data.into_array()
         .into_iter()
