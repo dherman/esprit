@@ -123,6 +123,21 @@ fn deserialize_reserved(word: &str) -> ReservedWord {
     }
 }
 
+macro_rules! right {
+    ( $l:expr, $r:expr ) => { $r }
+}
+
+macro_rules! tuplify {
+    ( $v:expr, ( $($dummy:tt),* ) ) => {
+        {
+            let mut t = $v.into_iter();
+            ($(
+                right!($dummy, t.next().unwrap())
+            ),*)
+        }
+    };
+}
+
 fn deserialize_token(mut data: Json) -> Token {
     let mut arr = data.into_array();
     let ty = arr.remove(0).into_string();
@@ -186,11 +201,8 @@ fn deserialize_token(mut data: Json) -> Token {
         "EOF"           => Token::EOF,
         "DecimalInt"    => Token::DecimalInt(arr.remove(0).into_string()),
         "BinaryInt"     => {
-            match arr[0..1] {
-                [flag, value] => Token::BinaryInt(flag.into_string().remove(0),
-                                                  value.into_string()),
-                _ => panic!("invalid token")
-            }
+            let (flag, value) = tuplify!(arr, (_, _));
+            Token::BinaryInt(flag.into_string().remove(0), value.into_string())
         }
         "OctalInt"      => {
             let flag = arr.remove(0).into_string_opt().map(|mut str| str.remove(0));
