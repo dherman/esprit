@@ -243,7 +243,10 @@ fn deserialize_token(mut data: Json) -> Token {
             Token::Float(int.into_string_opt(), frac.into_string_opt(), exp.into_string_opt())
         }
         "String"        => Token::String(arr.remove(0).into_string()),
-        "RegExp"        => Token::RegExp(arr.remove(0).into_string()),
+        "RegExp"        => {
+            let (pattern, flags) = tuplify!(arr, ((), ()));
+            Token::RegExp(pattern.into_string(), flags.into_string().chars().collect())
+        }
         "Identifier"    => Token::Identifier(arr.remove(0).into_string()),
         "LineComment"   => Token::LineComment(arr.remove(0).into_string()),
         "BlockComment"  => Token::BlockComment(arr.remove(0).into_string()),

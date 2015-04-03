@@ -132,7 +132,7 @@ pub enum Token {
     Float(Option<String>, Option<String>, Option<String>),
 
     String(String),
-    RegExp(String),
+    RegExp(String, Vec<char>),
 
     Identifier(String),
 

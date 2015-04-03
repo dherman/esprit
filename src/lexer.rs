@@ -283,7 +283,8 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         self.reread('/');
         try!(self.read_until_with(&|ch| ch == '/', &mut |this| { this.read_regexp_char(&mut s) }));
         self.reread('/');
-        Ok(Token::RegExp(s))
+        let flags = try!(self.read_word_parts());
+        Ok(Token::RegExp(s, flags.chars().collect()))
     }
 
     fn read_regexp_char(&mut self, s: &mut String) -> Result<(), LexError> {
@@ -534,16 +535,26 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         self.read_digit_into(s, 16, &|ch| ch.is_es_hex_digit())
     }
 
-    fn read_word(&mut self) -> Result<Token, LexError> {
-        debug_assert!(self.peek().map_or(false, |ch| ch.is_es_identifier_start()));
+    fn read_word_parts(&mut self) -> Result<String, LexError> {
         let mut s = String::new();
-        s.push(self.read());
-        try!(self.read_until_with(&|ch| ch == '\\' || ch.is_es_identifier_continue(), &mut |this| {
+        try!(self.read_until_with(&|ch| ch != '\\' && !ch.is_es_identifier_continue(), &mut |this| {
             match this.read() {
                 '\\' => this.read_word_escape(&mut s),
-                ch => { s.push(this.reread(ch)); Ok(()) }
+                ch => { s.push(ch); Ok(()) }
             }
         }));
+        Ok(s)
+    }
+
+    fn read_word(&mut self) -> Result<Token, LexError> {
+        debug_assert!(self.peek().map_or(false, |ch| ch.is_es_identifier_start()));
+        let s = try!(self.read_word_parts());
+        if s.len() == 0 {
+            match self.peek() {
+                Some(ch) => { return Err(LexError::UnexpectedChar(ch)); }
+                None => { return Err(LexError::UnexpectedEOF); }
+            }
+        }
         match (self.reserved.get(&s[..]), self.cx.get()) {
             (Some(word), _) => Ok(Token::Reserved(*word)),
             (None, Context { mode: Sloppy, generator: true, .. }) if s == "yield" => {
