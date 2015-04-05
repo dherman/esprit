@@ -1,0 +1,91 @@
+[
+{"source": "/",                       "context": ["operator"], "expected": ["Slash"]},
+{"source": "/=",                      "context": ["operator"], "expected": ["SlashAssign"]},
+{"source": "/x/g",                    "context": [],           "expected": ["RegExp", "x", "g"]},
+{"source": "/=x/g",                   "context": [],           "expected": ["RegExp", "=x", "g"]},
+{"source": "// stuff\n",              "context": ["comments"], "expected": ["LineComment", " stuff"]},
+{"source": "/* stuff */\n",           "context": ["comments"], "expected": ["BlockComment", " stuff "]},
+{"source": "/* stuff\nthings */\n",   "context": ["comments"], "expected": ["BlockComment", " stuff\nthings "]},
+
+{"source": ".12", "context": [], "expected": ["Float", null, "12", null]},
+{"source": ".",   "context": [], "expected": ["Dot"]},
+{"source": "{",   "context": [], "expected": ["LBrace"]},
+{"source": "}",   "context": [], "expected": ["RBrace"]},
+{"source": "[",   "context": [], "expected": ["LBrack"]},
+{"source": "]",   "context": [], "expected": ["RBrack"]},
+{"source": "(",   "context": [], "expected": ["LParen"]},
+{"source": ")",   "context": [], "expected": ["RParen"]},
+{"source": ";",   "context": [], "expected": ["Semi"]},
+{"source": ":",   "context": [], "expected": ["Colon"]},
+{"source": ",",   "context": [], "expected": ["Comma"]},
+
+{"source": "<",    "context": ["operator"], "expected": ["LAngle"]},
+{"source": "<=",   "context": ["operator"], "expected": ["LEq"]},
+{"source": "<<",   "context": ["operator"], "expected": ["LShift"]},
+{"source": "<<=",  "context": ["operator"], "expected": ["LShiftAssign"]},
+{"source": ">",    "context": ["operator"], "expected": ["RAngle"]},
+{"source": ">=",   "context": ["operator"], "expected": ["GEq"]},
+{"source": ">>",   "context": ["operator"], "expected": ["RShift"]},
+{"source": ">>>",  "context": ["operator"], "expected": ["URShift"]},
+{"source": ">>=",  "context": ["operator"], "expected": ["RShiftAssign"]},
+{"source": ">>>=", "context": ["operator"], "expected": ["URShiftAssign"]},
+
+{"source": "=",   "context": ["operator"], "expected": ["Assign"]},
+{"source": "==",  "context": ["operator"], "expected": ["Eq"]},
+{"source": "===", "context": ["operator"], "expected": ["StrictEq"]},
+
+{"source": "!",   "context": ["operator"], "expected": ["Bang"]},
+{"source": "!=",  "context": ["operator"], "expected": ["NEq"]},
+{"source": "!==", "context": ["operator"], "expected": ["StrictNEq"]},
+
+{"source": "+",  "context": ["operator"], "expected": ["Plus"]},
+{"source": "+=", "context": ["operator"], "expected": ["PlusAssign"]},
+{"source": "++", "context": ["operator"], "expected": ["Inc"]},
+
+{"source": "-",  "context": ["operator"], "expected": ["Minus"]},
+{"source": "-=", "context": ["operator"], "expected": ["MinusAssign"]},
+{"source": "--", "context": ["operator"], "expected": ["Dec"]},
+
+{"source": "*",  "context": ["operator"], "expected": ["Star"]},
+{"source": "*=", "context": ["operator"], "expected": ["StarAssign"]},
+
+{"source": "%",  "context": ["operator"], "expected": ["Mod"]},
+{"source": "%=", "context": ["operator"], "expected": ["ModAssign"]},
+
+{"source": "^",  "context": ["operator"], "expected": ["BitXor"]},
+{"source": "^=", "context": ["operator"], "expected": ["BitXorAssign"]},
+
+{"source": "&",  "context": ["operator"], "expected": ["BitAnd"]},
+{"source": "&=", "context": ["operator"], "expected": ["BitAndAssign"]},
+{"source": "&&", "context": ["operator"], "expected": ["LogicalAnd"]},
+
+{"source": "|",  "context": ["operator"], "expected": ["BitOr"]},
+{"source": "|=", "context": ["operator"], "expected": ["BitOrAssign"]},
+{"source": "||", "context": ["operator"], "expected": ["LogicalOr"]},
+
+{"source": "~", "context": ["operator"], "expected": ["Tilde"]},
+{"source": "?", "context": ["operator"], "expected": ["Question"]},
+
+{"source": "foo",                         "context": [], "expected": ["Identifier", "foo"]},
+{"source": "\\u0066\\u006f\\u006f",       "context": [], "expected": ["Identifier", "foo"]},
+{"source": "\\u{0066}\\u{006f}\\u{006f}", "context": [], "expected": ["Identifier", "foo"]},
+{"source": "$",                           "context": [], "expected": ["Identifier", "$"]},
+{"source": "_",                           "context": [], "expected": ["Identifier", "_"]},
+{"source": "a",                           "context": [], "expected": ["Identifier", "a"]},
+{"source": "a1",                          "context": [], "expected": ["Identifier", "a1"]},
+
+{"source": "'foo'",                       "context": [], "expected": ["String", "foo"]},
+{"source": "'\"foo\"'",                   "context": [], "expected": ["String", "\"foo\""]},
+{"source": "'\\\"foo\\\"'",               "context": [], "expected": ["String", "\\\"foo\\\""]},
+
+{"source": "\"foo\"",                     "context": [], "expected": ["String", "foo"]},
+{"source": "\"'foo'\"",                   "context": [], "expected": ["String", "'foo'"]},
+{"source": "\"\\'foo\\'\"",               "context": [], "expected": ["String", "\\'foo\\'"]},
+
+{"source": "'\\u0066\\u006f\\u006f'",       "context": [], "expected": ["String", "\\u0066\\u006f\\u006f"]},
+{"source": "'\\u{0066}\\u{006f}\\u{006f}'", "context": [], "expected": ["String", "\\u{0066}\\u{006f}\\u{006f}"]},
+{"source": "'\\u{66}\\u{6f}\\u{6f}'",       "context": [], "expected": ["String", "\\u{66}\\u{6f}\\u{6f}"]},
+{"source": "'\\146\\157\\157'",             "context": [], "expected": ["String", "\\146\\157\\157"]},
+
+{"source": "null",  "context": [], "expected": ["Reserved", "Null"]}
+]

@@ -185,7 +185,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         loop {
             match self.peek() {
                 Some(ch) if pred(ch) => return,
-                Some(ch) => { s.push(ch); }
+                Some(ch) => { s.push(self.reread(ch)); }
                 None => return,
             }
         }
@@ -265,6 +265,8 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     fn read_block_comment(&mut self) -> Result<Token, LexError> {
         let mut s = String::new();
+        self.reread('/');
+        self.reread('*');
         self.read_into_until2(&mut s, &|curr, next| curr == '*' && next == '/');
         try!(self.expect('*'));
         try!(self.expect('/'));
@@ -411,6 +413,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 self.read_deprecated_oct_int()
             }),
             (Some('.'), _) => {
+                self.skip();
                 let frac = try!(self.read_decimal_digits());
                 let exp = try!(self.read_exp_part());
                 Ok(Token::Float(None, Some(frac), exp))
@@ -442,26 +445,25 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         let mut s = String::new();
         debug_assert!(self.peek().is_some());
         let quote = self.read();
-        self.read_into_until(&mut s, &|ch| {
-            ch == quote ||
-            ch == '\\' ||
-            ch.is_es_newline()
-        });
-        match self.peek() {
-            Some('\\') => { try!(self.read_string_escape(&mut s)); }
-            Some(ch) => {
-                if ch.is_es_newline() {
+        loop {
+            self.read_into_until(&mut s, &|ch| {
+                ch == quote ||
+                ch == '\\' ||
+                ch.is_es_newline()
+            });
+            match self.peek() {
+                Some('\\') => { try!(self.read_string_escape(&mut s)); }
+                Some(ch) if ch.is_es_newline() => {
                     return Err(LexError::UnexpectedChar(ch));
                 }
-                self.skip();
+                Some(_) => { self.skip(); break; }
+                None => return Err(LexError::UnexpectedEOF)
             }
-            None => return Err(LexError::UnexpectedEOF)
         }
         Ok(Token::String(s))
     }
 
     fn read_unicode_escape_seq(&mut self, s: &mut String) -> Result<u32, LexError> {
-        self.skip();
         if self.matches('{') {
             s.push('{');
             let mut digits = Vec::with_capacity(8);
@@ -504,6 +506,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 try!(self.read_hex_digit_into(s));
             }
             Some('u') => {
+                s.push(self.reread('u'));
                 try!(self.read_unicode_escape_seq(s));
             }
             Some(ch) if ch.is_es_newline() => {
@@ -547,7 +550,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn read_word(&mut self) -> Result<Token, LexError> {
-        debug_assert!(self.peek().map_or(false, |ch| ch.is_es_identifier_start()));
+        debug_assert!(self.peek().map_or(false, |ch| ch == '\\' || ch.is_es_identifier_start()));
         let s = try!(self.read_word_parts());
         if s.len() == 0 {
             match self.peek() {
@@ -576,7 +579,6 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     fn read_word_escape(&mut self, s: &mut String) -> Result<(), LexError> {
         try!(self.expect('u'));
         let mut dummy = String::new();
-        self.skip();
         let code_point = try!(self.read_unicode_escape_seq(&mut dummy));
         match char::from_u32(code_point) {
             Some(ch) => { s.push(ch); Ok(()) }
@@ -672,6 +674,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 }
                 (Some(ch), _) if ch.is_digit(10) => return self.read_number(),
                 (Some(ch), _) if ch.is_es_identifier_start() => return self.read_word(),
+                (Some('\\'), _) => return self.read_word(),
                 (Some(ch), _) => return Err(LexError::UnexpectedChar(ch)),
                 (None, _) => return Ok(Token::EOF)
             }
@@ -695,33 +698,45 @@ impl<I> Iterator for Lexer<I> where I: Iterator<Item=char> {
 mod tests {
 
     use test::{deserialize_lexer_tests, LexerTest};
-    use lexer::Lexer;
+    use lexer::{Lexer, LexError};
+    use context::Context;
+    use token::Token;
     use std::cell::Cell;
     use std::rc::Rc;
+    use std::str::Chars;
+
+    fn lex2(source: &String, context: Context) -> Result<(Token, Token), LexError> {
+        let chars = source.chars();
+        let cx = Rc::new(Cell::new(context));
+        let mut lexer = Lexer::new(chars, cx.clone());
+        Ok((try!(lexer.read_token()), try!(lexer.read_token())))
+    }
+
+    fn assert_test2(expected: &Result<Token, String>, expected_next: Token, actual: Result<(Token, Token), LexError>) {
+        match (expected, &actual) {
+            (&Ok(ref expected), &Ok((ref actual, ref actual_next))) => {
+                assert_eq!(expected, actual);
+                assert_eq!(&expected_next, actual_next);
+            }
+            (&Ok(_), &Err(ref err)) => {
+                panic!("unexpected lexer error: {:?}", err);
+            }
+            (&Err(_), &Ok(_)) => {
+                panic!("unexpected token, expected error");
+            }
+            (&Err(_), &Err(_)) => { }
+        }
+    }
 
     #[test]
     pub fn go() {
         let tests = deserialize_lexer_tests(include_str!("../tests/lexer/tests.json"));
-        for test in tests {
-            match test {
-                LexerTest { source, context, expected } => {
-                    let chars = source.chars();
-                    let cx = Rc::new(Cell::new(context));
-                    let mut lexer = Lexer::new(chars, cx.clone());
-                    match (expected, lexer.read_token()) {
-                        (Ok(exp_token), Ok(act_token)) => {
-                            assert_eq!(exp_token, act_token);
-                        }
-                        (Ok(_), Err(_)) => {
-                            panic!("unexpected lexer error")
-                        }
-                        (Err(_), Ok(_)) => {
-                            panic!("unexpected token, expected error")
-                        }
-                        (Err(_), Err(_)) => { }
-                    }
-                }
-            }
+        for LexerTest { source, context, expected } in tests {
+            assert_test2(&expected, Token::EOF, lex2(&source, context));
+            assert_test2(&expected, Token::EOF, lex2(&format!("{} ", source), context));
+            assert_test2(&expected, Token::EOF, lex2(&format!(" {}", source), context));
+            assert_test2(&expected, Token::EOF, lex2(&format!(" {} ", source), context));
+            assert_test2(&expected, Token::Semi, lex2(&format!("{};", source), context));
         }
     }
 
