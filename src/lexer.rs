@@ -43,14 +43,16 @@ fn add_digits(digits: Vec<u32>, radix: u32) -> u32 {
     sum
 }
 
-struct SpanTracker<'a, I> where I: Iterator<Item=char>, I: 'a {
-    lexer: &'a Lexer<I>,
+struct SpanTracker {
     start: Posn
 }
 
-impl<'a, I> SpanTracker<'a, I> where I: Iterator<Item=char> {
-    fn end(&self, data: TokenData) -> Token {
-        Token::new(self.start, self.lexer.posn(), data)
+impl SpanTracker {
+    fn end<I>(&self, lexer: &Lexer<I>, data: TokenData) -> Token
+      where I: Iterator<Item=char>
+    {
+        let end = lexer.posn();
+        Token::new(self.start, end, data)
     }
 }
 
@@ -130,9 +132,8 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         self.reader.curr_posn()
     }
 
-    fn start<'a>(&'a self) -> SpanTracker<'a, I> {
-        let posn = self.posn();
-        SpanTracker { lexer: self, start: posn }
+    fn start(&self) -> SpanTracker {
+        SpanTracker { start: self.posn() }
     }
 
     // generic lexing utilities
@@ -274,11 +275,11 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn read_line_comment(&mut self) -> Token {
-        let mut span = self.start();
+        let span = self.start();
         self.skip2();
         let mut s = String::new();
         self.read_into_until(&mut s, &|ch| ch.is_es_newline());
-        span.end(TokenData::LineComment(s))
+        span.end(self, TokenData::LineComment(s))
     }
 
     fn skip_line_comment(&mut self) {
@@ -287,15 +288,14 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn read_block_comment(&mut self) -> Result<Token, LexError> {
-        let start = self.posn();
+        let span = self.start();
         let mut s = String::new();
         self.reread('/');
         self.reread('*');
         self.read_into_until2(&mut s, &|curr, next| curr == '*' && next == '/');
         try!(self.expect('*'));
         try!(self.expect('/'));
-        let end = self.posn();
-        Ok(Token::new(start, end, TokenData::BlockComment(s)))
+        Ok(span.end(self, TokenData::BlockComment(s)))
     }
 
     fn skip_block_comment(&mut self) -> Result<(), LexError> {
@@ -306,14 +306,13 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn read_regexp(&mut self) -> Result<Token, LexError> {
-        let start = self.posn();
+        let span = self.start();
         let mut s = String::new();
         self.reread('/');
         try!(self.read_until_with(&|ch| ch == '/', &mut |this| { this.read_regexp_char(&mut s) }));
         self.reread('/');
         let flags = try!(self.read_word_parts());
-        let end = self.posn();
-        Ok(Token::new(start, end, TokenData::RegExp(s, flags.chars().collect())))
+        Ok(span.end(self, TokenData::RegExp(s, flags.chars().collect())))
     }
 
     fn read_regexp_char(&mut self, s: &mut String) -> Result<(), LexError> {
@@ -400,14 +399,13 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     {
         debug_assert!(self.reader.curr_char().is_some());
         debug_assert!(self.reader.next_char().is_some());
-        let start = self.posn();
+        let span = self.start();
         let mut s = String::new();
         self.skip();
         let flag = self.read();
         try!(self.read_digit_into(&mut s, radix, pred));
         self.read_into_until(&mut s, pred);
-        let end = self.posn();
-        Ok(Token::new(start, end, cons(flag, s)))
+        Ok(span.end(self, cons(flag, s)))
     }
 
     fn read_hex_int(&mut self) -> Result<Token, LexError> {
@@ -423,15 +421,14 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn read_deprecated_oct_int(&mut self) -> Token {
-        let start = self.posn();
+        let span = self.start();
         let mut s = String::new();
         self.read_into_until(&mut s, &|ch| ch.is_digit(10));
-        let end = self.posn();
-        Token::new(start, end, (if s.chars().all(|ch| ch.is_es_oct_digit()) {
+        span.end(self, if s.chars().all(|ch| ch.is_es_oct_digit()) {
             TokenData::OctalInt(None, s)
         } else {
             TokenData::DecimalInt(s)
-        }))
+        })
     }
 
     fn read_number(&mut self) -> Result<Token, LexError> {
@@ -444,15 +441,14 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 self.read_deprecated_oct_int()
             }),
             (Some('.'), _) => {
-                let start = self.posn();
+                let span = self.start();
                 self.skip();
                 let frac = try!(self.read_decimal_digits());
                 let exp = try!(self.read_exp_part());
-                let end = self.posn();
-                Ok(Token::new(start, end, TokenData::Float(None, Some(frac), exp)))
+                Ok(span.end(self, TokenData::Float(None, Some(frac), exp)))
             }
             (Some(ch), _) if ch.is_digit(10) => {
-                let start = self.posn();
+                let span = self.start();
                 let pos = try!(self.read_decimal_int());
                 let (dot, frac) = if self.matches('.') {
 
@@ -464,12 +460,11 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                     (false, None)
                 };
                 let exp = try!(self.read_exp_part());
-                let end = self.posn();
-                Ok(Token::new(start, end, (if dot {
+                Ok(span.end(self, if dot {
                     TokenData::Float(Some(pos), frac, exp)
                 } else {
                     TokenData::DecimalInt(pos)
-                })))
+                }))
             }
             (Some(ch), _) => Err(LexError::UnexpectedChar(ch)),
             (None, _) => Err(LexError::UnexpectedEOF)
@@ -478,7 +473,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     fn read_string(&mut self) -> Result<Token, LexError> {
         debug_assert!(self.peek().is_some());
-        let start = self.posn();
+        let span = self.start();
         let mut s = String::new();
         let quote = self.read();
         loop {
@@ -496,8 +491,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 None => return Err(LexError::UnexpectedEOF)
             }
         }
-        let end = self.posn();
-        Ok(Token::new(start, end, TokenData::String(s)))
+        Ok(span.end(self, TokenData::String(s)))
     }
 
     fn read_unicode_escape_seq(&mut self, s: &mut String) -> Result<u32, LexError> {
@@ -588,7 +582,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     fn read_word(&mut self) -> Result<Token, LexError> {
         debug_assert!(self.peek().map_or(false, |ch| ch == '\\' || ch.is_es_identifier_start()));
-        let start = self.posn();
+        let span = self.start();
         let s = try!(self.read_word_parts());
         if s.len() == 0 {
             match self.peek() {
@@ -596,8 +590,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 None => { return Err(LexError::UnexpectedEOF); }
             }
         }
-        let end = self.posn();
-        Ok(Token::new(start, end, match (self.reserved.get(&s[..]), self.cx.get()) {
+        Ok(span.end(self, match (self.reserved.get(&s[..]), self.cx.get()) {
             (Some(word), _) => TokenData::Reserved(*word),
             (None, Context { mode: Sloppy, generator: true, .. }) if s == "yield" => {
                 TokenData::Reserved(ReservedWord::Yield)
@@ -626,25 +619,22 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn read_punc(&mut self, data: TokenData) -> Token {
-        let start = self.posn();
+        let span = self.start();
         self.skip();
-        let end = self.posn();
-        Token::new(start, end, data)
+        span.end(self, data)
     }
 
     fn read_punc2(&mut self, data: TokenData) -> Token {
-        let start = self.posn();
+        let span = self.start();
         self.skip2();
-        let end = self.posn();
-        Token::new(start, end, data)
+        span.end(self, data)
     }
 
     fn read_punc2_3(&mut self, ch: char, data2: TokenData, data3: TokenData) -> Token {
-        let start = self.posn();
+        let span = self.start();
         self.skip2();
         let data = if self.matches(ch) { data3 } else { data2 };
-        let end = self.posn();
-        Token::new(start, end, data)
+        span.end(self, data)
     }
 
     fn read_next_token(&mut self) -> Result<Token, LexError> {
@@ -683,7 +673,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 (Some('<'), Some('=')) => return Ok(self.read_punc2(TokenData::LEq)),
                 (Some('<'), _) => return Ok(self.read_punc(TokenData::LAngle)),
                 (Some('>'), Some('>')) => return Ok({
-                    let start = self.posn();
+                    let span = self.start();
                     self.skip2();
                     let data = match self.peek2() {
                         (Some('>'), Some('=')) => { self.skip2(); TokenData::URShiftAssign }
@@ -691,8 +681,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                         (Some('='), _) => { self.skip(); TokenData::RShiftAssign }
                         _ => TokenData::RShift
                     };
-                    let end = self.posn();
-                    Token::new(start, end, data)
+                    span.end(self, data)
                 }),
                 (Some('>'), Some('=')) => return Ok(self.read_punc2(TokenData::GEq)),
                 (Some('>'), _) => return Ok(self.read_punc(TokenData::RAngle)),
@@ -722,11 +711,10 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 (Some('?'), _) => return Ok(self.read_punc(TokenData::Question)),
                 (Some('"'), _) | (Some('\''), _) => return self.read_string(),
                 (Some(ch), _) if ch.is_es_newline() => {
-                    let start = self.posn();
+                    let span = self.start();
                     self.skip_newline();
-                    let end = self.posn();
                     if self.cx.get().asi {
-                        return Ok(Token::new(start, end, TokenData::Newline));
+                        return Ok(span.end(self, TokenData::Newline));
                     }
                 }
                 (Some(ch), _) if ch.is_digit(10) => return self.read_number(),
