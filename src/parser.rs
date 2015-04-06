@@ -1,4 +1,4 @@
-use token::Token;
+use token::{Token, TokenData};
 use lexer::Lexer;
 
 use std::cell::Cell;
@@ -29,19 +29,19 @@ impl<I> Parser<I> where I: Iterator<Item=char> {
 impl<I> Parser<I> where I: Iterator<Item=char> {
     pub fn expr(&mut self) -> Result<Expr, ParseError> {
         let left = match self.lexer.read_token() {
-            Ok(Token::DecimalInt(_)) => Expr::Number(1.0),
+            Ok(Token { data: TokenData::DecimalInt(_), .. }) => Expr::Number(1.0),
             Ok(t) => return Err(ParseError::UnexpectedToken(t)),
             Err(e) => return Err(ParseError::LexError(e))
         };
 
         let op = match self.lexer.read_token() {
-            Ok(Token::Plus) => Binop::Plus,
+            Ok(Token { data: TokenData::Plus, .. }) => Binop::Plus,
             Ok(t) => return Err(ParseError::UnexpectedToken(t)),
             Err(e) => return Err(ParseError::LexError(e))
         };
 
         let right = match self.lexer.read_token() {
-            Ok(Token::DecimalInt(_)) => Expr::Number(1.0),
+            Ok(Token { data: TokenData::DecimalInt(_), .. }) => Expr::Number(1.0),
             Ok(t) => return Err(ParseError::UnexpectedToken(t)),
             Err(e) => return Err(ParseError::LexError(e))
         };

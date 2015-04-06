@@ -5,7 +5,7 @@ pub struct Posn {
     pub column: u32
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Copy, Eq, PartialEq)]
 pub struct Span {
     start: Posn,
     end: Posn
@@ -69,8 +69,26 @@ pub enum ReservedWord {
 }
 
 #[derive(Debug, PartialEq)]
+pub struct Token {
+    pub span: Span,
+    pub data: TokenData
+}
+
+impl Token {
+    pub fn new(start: Posn, end: Posn, data: TokenData) -> Token {
+        Token {
+            span: Span {
+                start: start,
+                end: end
+            },
+            data: data
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
 #[allow(dead_code)]
-pub enum Token {
+pub enum TokenData {
     Reserved(ReservedWord),
 
     // 11.7 Punctuators

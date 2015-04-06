@@ -6,7 +6,7 @@ use rustc_serialize::json::{Json, Object, Array};
 use rustc_serialize::{Decoder, Decodable};
 use std::io::prelude::*;
 use std::fs::File;
-use token::{Token, ReservedWord};
+use token::{TokenData, ReservedWord};
 use context::{Context, Mode};
 
 pub struct ParserTest {
@@ -18,7 +18,7 @@ pub struct ParserTest {
 pub struct LexerTest {
     pub source: String,
     pub context: Context,
-    pub expected: Result<Token, String>
+    pub expected: Result<TokenData, String>
 }
 
 fn deserialize_parser_test(test: &mut Object) -> ParserTest {
@@ -163,93 +163,93 @@ macro_rules! tuplify {
     };
 }
 
-fn deserialize_token(mut data: Json) -> Token {
+fn deserialize_token(mut data: Json) -> TokenData {
     let mut arr = data.into_array();
     let ty = arr.remove(0).into_string();
 
     match &ty[..] {
         "Reserved"      => {
             let s = arr.remove(0).into_string();
-            Token::Reserved(deserialize_reserved(&s[..]))
+            TokenData::Reserved(deserialize_reserved(&s[..]))
         }
-        "LBrace"        => Token::LBrace,
-        "RBrace"        => Token::RBrace,
-        "LParen"        => Token::LParen,
-        "RParen"        => Token::RParen,
-        "LBrack"        => Token::LBrack,
-        "RBrack"        => Token::RBrack,
-        "Dot"           => Token::Dot,
-        //"Ellipsis"    => Token::Ellipsis,
-        "Semi"          => Token::Semi,
-        "Comma"         => Token::Comma,
-        "LAngle"        => Token::LAngle,
-        "RAngle"        => Token::RAngle,
-        "LEq"           => Token::LEq,
-        "GEq"           => Token::GEq,
-        "Eq"            => Token::Eq,
-        "NEq"           => Token::NEq,
-        "StrictEq"      => Token::StrictEq,
-        "StrictNEq"     => Token::StrictNEq,
-        "Plus"          => Token::Plus,
-        "Minus"         => Token::Minus,
-        "Star"          => Token::Star,
-        "Mod"           => Token::Mod,
-        "Slash"         => Token::Slash,
-        "Inc"           => Token::Inc,
-        "Dec"           => Token::Dec,
-        "LShift"        => Token::LShift,
-        "RShift"        => Token::RShift,
-        "URShift"       => Token::URShift,
-        "BitAnd"        => Token::BitAnd,
-        "BitOr"         => Token::BitOr,
-        "BitXor"        => Token::BitXor,
-        "Bang"          => Token::Bang,
-        "Tilde"         => Token::Tilde,
-        "LogicalAnd"    => Token::LogicalAnd,
-        "LogicalOr"     => Token::LogicalOr,
-        "Question"      => Token::Question,
-        "Colon"         => Token::Colon,
-        "Assign"        => Token::Assign,
-        "PlusAssign"    => Token::PlusAssign,
-        "MinusAssign"   => Token::MinusAssign,
-        "StarAssign"    => Token::StarAssign,
-        "SlashAssign"   => Token::SlashAssign,
-        "ModAssign"     => Token::ModAssign,
-        "LShiftAssign"  => Token::LShiftAssign,
-        "RShiftAssign"  => Token::RShiftAssign,
-        "URShiftAssign" => Token::URShiftAssign,
-        "BitAndAssign"  => Token::BitAndAssign,
-        "BitOrAssign"   => Token::BitOrAssign,
-        "BitXorAssign"  => Token::BitXorAssign,
-        "Arrow"         => Token::Arrow,
-        "Newline"       => Token::Newline,
-        "EOF"           => Token::EOF,
-        "DecimalInt"    => Token::DecimalInt(arr.remove(0).into_string()),
+        "LBrace"        => TokenData::LBrace,
+        "RBrace"        => TokenData::RBrace,
+        "LParen"        => TokenData::LParen,
+        "RParen"        => TokenData::RParen,
+        "LBrack"        => TokenData::LBrack,
+        "RBrack"        => TokenData::RBrack,
+        "Dot"           => TokenData::Dot,
+        //"Ellipsis"    => TokenData::Ellipsis,
+        "Semi"          => TokenData::Semi,
+        "Comma"         => TokenData::Comma,
+        "LAngle"        => TokenData::LAngle,
+        "RAngle"        => TokenData::RAngle,
+        "LEq"           => TokenData::LEq,
+        "GEq"           => TokenData::GEq,
+        "Eq"            => TokenData::Eq,
+        "NEq"           => TokenData::NEq,
+        "StrictEq"      => TokenData::StrictEq,
+        "StrictNEq"     => TokenData::StrictNEq,
+        "Plus"          => TokenData::Plus,
+        "Minus"         => TokenData::Minus,
+        "Star"          => TokenData::Star,
+        "Mod"           => TokenData::Mod,
+        "Slash"         => TokenData::Slash,
+        "Inc"           => TokenData::Inc,
+        "Dec"           => TokenData::Dec,
+        "LShift"        => TokenData::LShift,
+        "RShift"        => TokenData::RShift,
+        "URShift"       => TokenData::URShift,
+        "BitAnd"        => TokenData::BitAnd,
+        "BitOr"         => TokenData::BitOr,
+        "BitXor"        => TokenData::BitXor,
+        "Bang"          => TokenData::Bang,
+        "Tilde"         => TokenData::Tilde,
+        "LogicalAnd"    => TokenData::LogicalAnd,
+        "LogicalOr"     => TokenData::LogicalOr,
+        "Question"      => TokenData::Question,
+        "Colon"         => TokenData::Colon,
+        "Assign"        => TokenData::Assign,
+        "PlusAssign"    => TokenData::PlusAssign,
+        "MinusAssign"   => TokenData::MinusAssign,
+        "StarAssign"    => TokenData::StarAssign,
+        "SlashAssign"   => TokenData::SlashAssign,
+        "ModAssign"     => TokenData::ModAssign,
+        "LShiftAssign"  => TokenData::LShiftAssign,
+        "RShiftAssign"  => TokenData::RShiftAssign,
+        "URShiftAssign" => TokenData::URShiftAssign,
+        "BitAndAssign"  => TokenData::BitAndAssign,
+        "BitOrAssign"   => TokenData::BitOrAssign,
+        "BitXorAssign"  => TokenData::BitXorAssign,
+        "Arrow"         => TokenData::Arrow,
+        "Newline"       => TokenData::Newline,
+        "EOF"           => TokenData::EOF,
+        "DecimalInt"    => TokenData::DecimalInt(arr.remove(0).into_string()),
         "BinaryInt"     => {
             let (flag, value) = tuplify!(arr, ((), ()));
-            Token::BinaryInt(flag.into_string().remove(0), value.into_string())
+            TokenData::BinaryInt(flag.into_string().remove(0), value.into_string())
         }
         "OctalInt"      => {
             let (flag, value) = tuplify!(arr, ((), ()));
-            Token::OctalInt(flag.into_string_opt().map(|mut str| str.remove(0)),
+            TokenData::OctalInt(flag.into_string_opt().map(|mut str| str.remove(0)),
                             value.into_string())
         }
         "HexInt"        => {
             let (flag, value) = tuplify!(arr, ((), ()));
-            Token::HexInt(flag.into_string().remove(0), value.into_string())
+            TokenData::HexInt(flag.into_string().remove(0), value.into_string())
         }
         "Float"         => {
             let (int, frac, exp) = tuplify!(arr, ((), (), ()));
-            Token::Float(int.into_string_opt(), frac.into_string_opt(), exp.into_string_opt())
+            TokenData::Float(int.into_string_opt(), frac.into_string_opt(), exp.into_string_opt())
         }
-        "String"        => Token::String(arr.remove(0).into_string()),
+        "String"        => TokenData::String(arr.remove(0).into_string()),
         "RegExp"        => {
             let (pattern, flags) = tuplify!(arr, ((), ()));
-            Token::RegExp(pattern.into_string(), flags.into_string().chars().collect())
+            TokenData::RegExp(pattern.into_string(), flags.into_string().chars().collect())
         }
-        "Identifier"    => Token::Identifier(arr.remove(0).into_string()),
-        "LineComment"   => Token::LineComment(arr.remove(0).into_string()),
-        "BlockComment"  => Token::BlockComment(arr.remove(0).into_string()),
+        "Identifier"    => TokenData::Identifier(arr.remove(0).into_string()),
+        "LineComment"   => TokenData::LineComment(arr.remove(0).into_string()),
+        "BlockComment"  => TokenData::BlockComment(arr.remove(0).into_string()),
         _               => panic!("invalid token")
     }
 }

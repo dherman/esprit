@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::char;
 
-use token::Token;
+use token::{Token, TokenData, Span, Posn};
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -111,6 +111,12 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     pub fn unread_token(&mut self, token: Token) {
         self.lookahead.unread_token(token);
+    }
+
+    // source location
+
+    fn posn(&mut self) -> Posn {
+        self.reader.curr_posn()
     }
 
     // generic lexing utilities
@@ -252,10 +258,12 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn read_line_comment(&mut self) -> Token {
+        let start = self.posn();
         self.skip2();
         let mut s = String::new();
         self.read_into_until(&mut s, &|ch| ch.is_es_newline());
-        Token::LineComment(s)
+        let end = self.posn();
+        Token::new(start, end, TokenData::LineComment(s))
     }
 
     fn skip_line_comment(&mut self) {
@@ -264,13 +272,15 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn read_block_comment(&mut self) -> Result<Token, LexError> {
+        let start = self.posn();
         let mut s = String::new();
         self.reread('/');
         self.reread('*');
         self.read_into_until2(&mut s, &|curr, next| curr == '*' && next == '/');
         try!(self.expect('*'));
         try!(self.expect('/'));
-        Ok(Token::BlockComment(s))
+        let end = self.posn();
+        Ok(Token::new(start, end, TokenData::BlockComment(s)))
     }
 
     fn skip_block_comment(&mut self) -> Result<(), LexError> {
@@ -281,12 +291,14 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn read_regexp(&mut self) -> Result<Token, LexError> {
+        let start = self.posn();
         let mut s = String::new();
         self.reread('/');
         try!(self.read_until_with(&|ch| ch == '/', &mut |this| { this.read_regexp_char(&mut s) }));
         self.reread('/');
         let flags = try!(self.read_word_parts());
-        Ok(Token::RegExp(s, flags.chars().collect()))
+        let end = self.posn();
+        Ok(Token::new(start, end, TokenData::RegExp(s, flags.chars().collect())))
     }
 
     fn read_regexp_char(&mut self, s: &mut String) -> Result<(), LexError> {
@@ -369,38 +381,42 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     fn read_radix_int<F, G>(&mut self, radix: u32, pred: &F, cons: &G) -> Result<Token, LexError>
       where F: Fn(char) -> bool,
-            G: Fn(char, String) -> Token
+            G: Fn(char, String) -> TokenData
     {
         debug_assert!(self.reader.curr_char().is_some());
         debug_assert!(self.reader.next_char().is_some());
+        let start = self.posn();
         let mut s = String::new();
         self.skip();
         let flag = self.read();
         try!(self.read_digit_into(&mut s, radix, pred));
         self.read_into_until(&mut s, pred);
-        Ok(cons(flag, s))
+        let end = self.posn();
+        Ok(Token::new(start, end, cons(flag, s)))
     }
 
     fn read_hex_int(&mut self) -> Result<Token, LexError> {
-        self.read_radix_int(16, &|ch| ch.is_es_hex_digit(), &Token::HexInt)
+        self.read_radix_int(16, &|ch| ch.is_es_hex_digit(), &TokenData::HexInt)
     }
 
     fn read_oct_int(&mut self) -> Result<Token, LexError> {
-        self.read_radix_int(8, &|ch| ch.is_es_oct_digit(), &|ch, s| Token::OctalInt(Some(ch), s))
+        self.read_radix_int(8, &|ch| ch.is_es_oct_digit(), &|ch, s| TokenData::OctalInt(Some(ch), s))
     }
 
     fn read_bin_int(&mut self) -> Result<Token, LexError> {
-        self.read_radix_int(2, &|ch| ch.is_es_bin_digit(), &Token::BinaryInt)
+        self.read_radix_int(2, &|ch| ch.is_es_bin_digit(), &TokenData::BinaryInt)
     }
 
     fn read_deprecated_oct_int(&mut self) -> Token {
+        let start = self.posn();
         let mut s = String::new();
         self.read_into_until(&mut s, &|ch| ch.is_digit(10));
-        if s.chars().all(|ch| ch.is_es_oct_digit()) {
-            Token::OctalInt(None, s)
+        let end = self.posn();
+        Token::new(start, end, (if s.chars().all(|ch| ch.is_es_oct_digit()) {
+            TokenData::OctalInt(None, s)
         } else {
-            Token::DecimalInt(s)
-        }
+            TokenData::DecimalInt(s)
+        }))
     }
 
     fn read_number(&mut self) -> Result<Token, LexError> {
@@ -413,12 +429,15 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 self.read_deprecated_oct_int()
             }),
             (Some('.'), _) => {
+                let start = self.posn();
                 self.skip();
                 let frac = try!(self.read_decimal_digits());
                 let exp = try!(self.read_exp_part());
-                Ok(Token::Float(None, Some(frac), exp))
+                let end = self.posn();
+                Ok(Token::new(start, end, TokenData::Float(None, Some(frac), exp)))
             }
             (Some(ch), _) if ch.is_digit(10) => {
+                let start = self.posn();
                 let pos = try!(self.read_decimal_int());
                 let (dot, frac) = if self.matches('.') {
 
@@ -430,11 +449,12 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                     (false, None)
                 };
                 let exp = try!(self.read_exp_part());
-                Ok(if dot {
-                    Token::Float(Some(pos), frac, exp)
+                let end = self.posn();
+                Ok(Token::new(start, end, (if dot {
+                    TokenData::Float(Some(pos), frac, exp)
                 } else {
-                    Token::DecimalInt(pos)
-                })
+                    TokenData::DecimalInt(pos)
+                })))
             }
             (Some(ch), _) => Err(LexError::UnexpectedChar(ch)),
             (None, _) => Err(LexError::UnexpectedEOF)
@@ -442,8 +462,9 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn read_string(&mut self) -> Result<Token, LexError> {
-        let mut s = String::new();
         debug_assert!(self.peek().is_some());
+        let start = self.posn();
+        let mut s = String::new();
         let quote = self.read();
         loop {
             self.read_into_until(&mut s, &|ch| {
@@ -460,7 +481,8 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 None => return Err(LexError::UnexpectedEOF)
             }
         }
-        Ok(Token::String(s))
+        let end = self.posn();
+        Ok(Token::new(start, end, TokenData::String(s)))
     }
 
     fn read_unicode_escape_seq(&mut self, s: &mut String) -> Result<u32, LexError> {
@@ -551,6 +573,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     fn read_word(&mut self) -> Result<Token, LexError> {
         debug_assert!(self.peek().map_or(false, |ch| ch == '\\' || ch.is_es_identifier_start()));
+        let start = self.posn();
         let s = try!(self.read_word_parts());
         if s.len() == 0 {
             match self.peek() {
@@ -558,22 +581,23 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 None => { return Err(LexError::UnexpectedEOF); }
             }
         }
-        match (self.reserved.get(&s[..]), self.cx.get()) {
-            (Some(word), _) => Ok(Token::Reserved(*word)),
+        let end = self.posn();
+        Ok(Token::new(start, end, match (self.reserved.get(&s[..]), self.cx.get()) {
+            (Some(word), _) => TokenData::Reserved(*word),
             (None, Context { mode: Sloppy, generator: true, .. }) if s == "yield" => {
-                Ok(Token::Reserved(ReservedWord::Yield))
+                TokenData::Reserved(ReservedWord::Yield)
             }
-            (None, Context { mode: Sloppy, .. }) => Ok(Token::Identifier(s)),
+            (None, Context { mode: Sloppy, .. }) => TokenData::Identifier(s),
             (None, Context { mode: Module, .. }) if s == "await" => {
-                Ok(Token::Reserved(ReservedWord::Await))
+                TokenData::Reserved(ReservedWord::Await)
             }
             (None, Context { mode: Strict, .. }) | (None, Context { mode: Module, .. }) => {
                 match self.strict_reserved.get(&s[..]) {
-                    Some(word) => Ok(Token::Reserved(*word)),
-                    None => Ok(Token::Identifier(s))
+                    Some(word) => TokenData::Reserved(*word),
+                    None => TokenData::Identifier(s)
                 }
             }
-        }
+        }))
     }
 
     fn read_word_escape(&mut self, s: &mut String) -> Result<(), LexError> {
@@ -584,6 +608,28 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             Some(ch) => { s.push(ch); Ok(()) }
             None => Err(LexError::IllegalUnicode(code_point))
         }
+    }
+
+    fn read_punc(&mut self, data: TokenData) -> Token {
+        let start = self.posn();
+        self.skip();
+        let end = self.posn();
+        Token::new(start, end, data)
+    }
+
+    fn read_punc2(&mut self, data: TokenData) -> Token {
+        let start = self.posn();
+        self.skip2();
+        let end = self.posn();
+        Token::new(start, end, data)
+    }
+
+    fn read_punc2_3(&mut self, ch: char, data2: TokenData, data3: TokenData) -> Token {
+        let start = self.posn();
+        self.skip2();
+        let data = if self.matches(ch) { data3 } else { data2 };
+        let end = self.posn();
+        Token::new(start, end, data)
     }
 
     fn read_next_token(&mut self) -> Result<Token, LexError> {
@@ -605,78 +651,74 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                     }
                 }
                 (Some('/'), _) if !self.cx.get().operator => return self.read_regexp(),
-                (Some('/'), Some('=')) => return Ok({ self.skip2(); Token::SlashAssign }),
-                (Some('/'), _) => return Ok({ self.skip(); Token::Slash }),
+                (Some('/'), Some('=')) => return Ok(self.read_punc2(TokenData::SlashAssign)),
+                (Some('/'), _) => return Ok(self.read_punc(TokenData::Slash)),
                 (Some('.'), Some(ch)) if ch.is_digit(10) => return self.read_number(),
-                (Some('.'), _) => return Ok({ self.skip(); Token::Dot }),
-                (Some('{'), _) => return Ok({ self.skip(); Token::LBrace }),
-                (Some('}'), _) => return Ok({ self.skip(); Token::RBrace }),
-                (Some('['), _) => return Ok({ self.skip(); Token::LBrack }),
-                (Some(']'), _) => return Ok({ self.skip(); Token::RBrack }),
-                (Some('('), _) => return Ok({ self.skip(); Token::LParen }),
-                (Some(')'), _) => return Ok({ self.skip(); Token::RParen }),
-                (Some(';'), _) => return Ok({ self.skip(); Token::Semi }),
-                (Some(':'), _) => return Ok({ self.skip(); Token::Colon }),
-                (Some(','), _) => return Ok({ self.skip(); Token::Comma }),
-                (Some('<'), Some('<')) => return Ok({
-                    self.skip2();
-                    if self.matches('=') { Token::LShiftAssign } else { Token::LShift }
-                }),
-                (Some('<'), Some('=')) => return Ok({ self.skip2(); Token::LEq }),
-                (Some('<'), _) => return Ok({ self.skip(); Token::LAngle }),
+                (Some('.'), _) => return Ok(self.read_punc(TokenData::Dot)),
+                (Some('{'), _) => return Ok(self.read_punc(TokenData::LBrace)),
+                (Some('}'), _) => return Ok(self.read_punc(TokenData::RBrace)),
+                (Some('['), _) => return Ok(self.read_punc(TokenData::LBrack)),
+                (Some(']'), _) => return Ok(self.read_punc(TokenData::RBrack)),
+                (Some('('), _) => return Ok(self.read_punc(TokenData::LParen)),
+                (Some(')'), _) => return Ok(self.read_punc(TokenData::RParen)),
+                (Some(';'), _) => return Ok(self.read_punc(TokenData::Semi)),
+                (Some(':'), _) => return Ok(self.read_punc(TokenData::Colon)),
+                (Some(','), _) => return Ok(self.read_punc(TokenData::Comma)),
+                (Some('<'), Some('<')) => return Ok(self.read_punc2_3('=', TokenData::LShift, TokenData::LShiftAssign)),
+                (Some('<'), Some('=')) => return Ok(self.read_punc2(TokenData::LEq)),
+                (Some('<'), _) => return Ok(self.read_punc(TokenData::LAngle)),
                 (Some('>'), Some('>')) => return Ok({
+                    let start = self.posn();
                     self.skip2();
-                    match self.peek2() {
-                        (Some('>'), Some('=')) => return Ok({ self.skip2(); Token::URShiftAssign }),
-                        (Some('>'), _) => return Ok({ self.skip(); Token::URShift }),
-                        (Some('='), _) => return Ok({ self.skip(); Token::RShiftAssign }),
-                        _ => return Ok(Token::RShift)
-                    }
+                    let data = match self.peek2() {
+                        (Some('>'), Some('=')) => { self.skip2(); TokenData::URShiftAssign }
+                        (Some('>'), _) => { self.skip(); TokenData::URShift }
+                        (Some('='), _) => { self.skip(); TokenData::RShiftAssign }
+                        _ => TokenData::RShift
+                    };
+                    let end = self.posn();
+                    Token::new(start, end, data)
                 }),
-                (Some('>'), Some('=')) => return Ok({ self.skip2(); Token::GEq }),
-                (Some('>'), _) => return Ok({ self.skip(); Token::RAngle }),
-                (Some('='), Some('=')) => return Ok({
-                    self.skip2();
-                    if self.matches('=') { Token::StrictEq } else { Token::Eq }
-                }),
-                (Some('='), _) => return Ok({ self.skip(); Token::Assign }),
-                (Some('+'), Some('+')) => return Ok({ self.skip2(); Token::Inc }),
-                (Some('+'), Some('=')) => return Ok({ self.skip2(); Token::PlusAssign }),
-                (Some('+'), _) => return Ok({ self.skip(); Token::Plus }),
-                (Some('-'), Some('-')) => return Ok({ self.skip2(); Token::Dec }),
-                (Some('-'), Some('=')) => return Ok({ self.skip2(); Token::MinusAssign }),
-                (Some('-'), _) => return Ok({ self.skip(); Token::Minus }),
-                (Some('*'), Some('=')) => return Ok({ self.skip2(); Token::StarAssign }),
-                (Some('*'), _) => return Ok({ self.skip(); Token::Star }),
-                (Some('%'), Some('=')) => return Ok({ self.skip2(); Token::ModAssign }),
-                (Some('%'), _) => return Ok({ self.skip(); Token::Mod }),
-                (Some('^'), Some('=')) => return Ok({ self.skip2(); Token::BitXorAssign }),
-                (Some('^'), _) => return Ok({ self.skip(); Token::BitXor }),
-                (Some('&'), Some('&')) => return Ok({ self.skip2(); Token::LogicalAnd }),
-                (Some('&'), Some('=')) => return Ok({ self.skip2(); Token::BitAndAssign }),
-                (Some('&'), _) => return Ok({ self.skip(); Token::BitAnd }),
-                (Some('|'), Some('|')) => return Ok({ self.skip2(); Token::LogicalOr }),
-                (Some('|'), Some('=')) => return Ok({ self.skip2(); Token::BitOrAssign }),
-                (Some('|'), _) => return Ok({ self.skip(); Token::BitOr }),
-                (Some('~'), _) => { self.skip(); return Ok(Token::Tilde) }
-                (Some('!'), Some('=')) => return Ok({
-                    self.skip2();
-                    if self.matches('=') { Token::StrictNEq } else { Token::NEq }
-                }),
-                (Some('!'), _) => return Ok({ self.skip(); Token::Bang }),
-                (Some('?'), _) => { self.skip(); return Ok(Token::Question) },
+                (Some('>'), Some('=')) => return Ok(self.read_punc2(TokenData::GEq)),
+                (Some('>'), _) => return Ok(self.read_punc(TokenData::RAngle)),
+                (Some('='), Some('=')) => return Ok(self.read_punc2_3('=', TokenData::Eq, TokenData::StrictEq)),
+                (Some('='), _) => return Ok(self.read_punc(TokenData::Assign)),
+                (Some('+'), Some('+')) => return Ok(self.read_punc2(TokenData::Inc)),
+                (Some('+'), Some('=')) => return Ok(self.read_punc2(TokenData::PlusAssign)),
+                (Some('+'), _) => return Ok(self.read_punc(TokenData::Plus)),
+                (Some('-'), Some('-')) => return Ok(self.read_punc2(TokenData::Dec)),
+                (Some('-'), Some('=')) => return Ok(self.read_punc2(TokenData::MinusAssign)),
+                (Some('-'), _) => return Ok(self.read_punc(TokenData::Minus)),
+                (Some('*'), Some('=')) => return Ok(self.read_punc2(TokenData::StarAssign)),
+                (Some('*'), _) => return Ok(self.read_punc(TokenData::Star)),
+                (Some('%'), Some('=')) => return Ok(self.read_punc2(TokenData::ModAssign)),
+                (Some('%'), _) => return Ok(self.read_punc(TokenData::Mod)),
+                (Some('^'), Some('=')) => return Ok(self.read_punc2(TokenData::BitXorAssign)),
+                (Some('^'), _) => return Ok(self.read_punc(TokenData::BitXor)),
+                (Some('&'), Some('&')) => return Ok(self.read_punc2(TokenData::LogicalAnd)),
+                (Some('&'), Some('=')) => return Ok(self.read_punc2(TokenData::BitAndAssign)),
+                (Some('&'), _) => return Ok(self.read_punc(TokenData::BitAnd)),
+                (Some('|'), Some('|')) => return Ok(self.read_punc2(TokenData::LogicalOr)),
+                (Some('|'), Some('=')) => return Ok(self.read_punc2(TokenData::BitOrAssign)),
+                (Some('|'), _) => return Ok(self.read_punc(TokenData::BitOr)),
+                (Some('~'), _) => return Ok(self.read_punc(TokenData::Tilde)),
+                (Some('!'), Some('=')) => return Ok(self.read_punc2_3('=', TokenData::NEq, TokenData::StrictNEq)),
+                (Some('!'), _) => return Ok(self.read_punc(TokenData::Bang)),
+                (Some('?'), _) => return Ok(self.read_punc(TokenData::Question)),
                 (Some('"'), _) | (Some('\''), _) => return self.read_string(),
                 (Some(ch), _) if ch.is_es_newline() => {
+                    let start = self.posn();
                     self.skip_newline();
+                    let end = self.posn();
                     if self.cx.get().asi {
-                        return Ok(Token::Newline);
+                        return Ok(Token::new(start, end, TokenData::Newline));
                     }
                 }
                 (Some(ch), _) if ch.is_digit(10) => return self.read_number(),
                 (Some(ch), _) if ch.is_es_identifier_start() => return self.read_word(),
                 (Some('\\'), _) => return self.read_word(),
                 (Some(ch), _) => return Err(LexError::UnexpectedChar(ch)),
-                (None, _) => return Ok(Token::EOF)
+                (None, _) => return Ok(Token::new(self.posn(), self.posn(), TokenData::EOF))
             }
         }
     }
@@ -687,7 +729,7 @@ impl<I> Iterator for Lexer<I> where I: Iterator<Item=char> {
 
     fn next(&mut self) -> Option<Token> {
         match self.read_token() {
-            Ok(Token::EOF) => None,
+            Ok(Token { data: TokenData::EOF, .. }) => None,
             Ok(t) => Some(t),
             Err(_) => None
         }
@@ -700,7 +742,7 @@ mod tests {
     use test::{deserialize_lexer_tests, LexerTest};
     use lexer::{Lexer, LexError};
     use context::Context;
-    use token::Token;
+    use token::{Token, TokenData};
     use std::cell::Cell;
     use std::rc::Rc;
     use std::str::Chars;
@@ -712,9 +754,9 @@ mod tests {
         Ok((try!(lexer.read_token()), try!(lexer.read_token())))
     }
 
-    fn assert_test2(expected: &Result<Token, String>, expected_next: Token, actual: Result<(Token, Token), LexError>) {
+    fn assert_test2(expected: &Result<TokenData, String>, expected_next: TokenData, actual: Result<(Token, Token), LexError>) {
         match (expected, &actual) {
-            (&Ok(ref expected), &Ok((ref actual, ref actual_next))) => {
+            (&Ok(ref expected), &Ok((Token { data: ref actual, .. }, Token { data: ref actual_next, .. }))) => {
                 assert_eq!(expected, actual);
                 assert_eq!(&expected_next, actual_next);
             }
@@ -732,11 +774,11 @@ mod tests {
     pub fn go() {
         let tests = deserialize_lexer_tests(include_str!("../tests/lexer/tests.json"));
         for LexerTest { source, context, expected } in tests {
-            assert_test2(&expected, Token::EOF, lex2(&source, context));
-            assert_test2(&expected, Token::EOF, lex2(&format!("{} ", source), context));
-            assert_test2(&expected, Token::EOF, lex2(&format!(" {}", source), context));
-            assert_test2(&expected, Token::EOF, lex2(&format!(" {} ", source), context));
-            assert_test2(&expected, Token::Semi, lex2(&format!("{};", source), context));
+            assert_test2(&expected, TokenData::EOF, lex2(&source, context));
+            assert_test2(&expected, TokenData::EOF, lex2(&format!("{} ", source), context));
+            assert_test2(&expected, TokenData::EOF, lex2(&format!(" {}", source), context));
+            assert_test2(&expected, TokenData::EOF, lex2(&format!(" {} ", source), context));
+            assert_test2(&expected, TokenData::Semi, lex2(&format!("{};", source), context));
         }
     }
 
