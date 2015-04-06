@@ -24,7 +24,7 @@ impl<I> Reader<I> where I: Iterator<Item=char> {
     }
 
     pub fn curr_char(&mut self) -> Option<char> { self.curr_char }
-    pub fn curr_posn(&mut self) -> Posn { self.curr_posn }
+    pub fn curr_posn(&self) -> Posn { self.curr_posn }
     pub fn next_char(&mut self) -> Option<char> { self.next_char }
 
     pub fn skip(&mut self) {

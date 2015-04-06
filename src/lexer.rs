@@ -44,12 +44,12 @@ fn add_digits(digits: Vec<u32>, radix: u32) -> u32 {
 }
 
 struct SpanTracker<'a, I> where I: Iterator<Item=char>, I: 'a {
-    lexer: &'a mut Lexer<I>,
+    lexer: &'a Lexer<I>,
     start: Posn
 }
 
 impl<'a, I> SpanTracker<'a, I> where I: Iterator<Item=char> {
-    fn end(&mut self, data: TokenData) -> Token {
+    fn end(&self, data: TokenData) -> Token {
         Token::new(self.start, self.lexer.posn(), data)
     }
 }
@@ -126,11 +126,11 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     // source location
 
-    fn posn(&mut self) -> Posn {
+    fn posn(&self) -> Posn {
         self.reader.curr_posn()
     }
 
-    fn start<'a>(&'a mut self) -> SpanTracker<'a, I> {
+    fn start<'a>(&'a self) -> SpanTracker<'a, I> {
         let posn = self.posn();
         SpanTracker { lexer: self, start: posn }
     }
