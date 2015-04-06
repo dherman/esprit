@@ -43,6 +43,17 @@ fn add_digits(digits: Vec<u32>, radix: u32) -> u32 {
     sum
 }
 
+struct SpanTracker<'a, I> where I: Iterator<Item=char>, I: 'a {
+    lexer: &'a mut Lexer<I>,
+    start: Posn
+}
+
+impl<'a, I> SpanTracker<'a, I> where I: Iterator<Item=char> {
+    fn end(&mut self, data: TokenData) -> Token {
+        Token::new(self.start, self.lexer.posn(), data)
+    }
+}
+
 pub struct Lexer<I> {
     reader: Reader<I>,
     cx: Rc<Cell<Context>>,
@@ -117,6 +128,11 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     fn posn(&mut self) -> Posn {
         self.reader.curr_posn()
+    }
+
+    fn start<'a>(&'a mut self) -> SpanTracker<'a, I> {
+        let posn = self.posn();
+        SpanTracker { lexer: self, start: posn }
     }
 
     // generic lexing utilities
@@ -258,12 +274,11 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn read_line_comment(&mut self) -> Token {
-        let start = self.posn();
+        let mut span = self.start();
         self.skip2();
         let mut s = String::new();
         self.read_into_until(&mut s, &|ch| ch.is_es_newline());
-        let end = self.posn();
-        Token::new(start, end, TokenData::LineComment(s))
+        span.end(TokenData::LineComment(s))
     }
 
     fn skip_line_comment(&mut self) {
