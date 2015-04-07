@@ -220,3 +220,19 @@ pub enum PattData {
 }
 
 pub type Patt = Loc<PattData>;
+
+#[derive(Debug, PartialEq)]
+pub struct ScriptData {
+    pub body: Vec<Stmt>
+}
+
+pub type Script = Loc<ScriptData>;
+
+/*
+#[derive(Debug, PartialEq)]
+pub struct ModuleData {
+    pub body: Vec<ModItem>
+}
+
+pub type Module = Loc<ModuleData>;
+*/

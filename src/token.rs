@@ -1,11 +1,11 @@
-#[derive(Debug, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct Posn {
     pub offset: u32,
     pub line: u32,
     pub column: u32
 }
 
-#[derive(Debug, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct Span {
     pub start: Posn,
     pub end: Posn
@@ -43,7 +43,7 @@ pub fn span<T, U>(left: &T, right: &U) -> Span
     }
 }
 
-#[derive(Debug, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum ReservedWord {
     Null,
     True,

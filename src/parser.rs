@@ -3,7 +3,7 @@ use lexer::Lexer;
 
 use std::cell::Cell;
 use std::rc::Rc;
-use ast::{Expr, ExprData, Binop, BinopTag};
+use ast::{Expr, ExprData, Binop, BinopTag, Script, ScriptData, Stmt, StmtData};
 use lexer::LexError;
 use context::Context;
 
@@ -26,6 +26,20 @@ impl<I> Parser<I> where I: Iterator<Item=char> {
 }
 
 impl<I> Parser<I> where I: Iterator<Item=char> {
+    pub fn script(&mut self) -> Result<Script, ParseError> {
+        unimplemented!()
+    }
+
+    pub fn statement_list(&mut self) -> Result<Vec<Stmt>, ParseError> {
+        unimplemented!()
+    }
+
+/*
+    pub fn module(&mut self) -> Result<Module, ParseError> {
+        unimplemented!()
+    }
+*/
+
     pub fn expr(&mut self) -> Result<Expr, ParseError> {
         let left = match self.lexer.read_token() {
             Ok(Token { data: TokenData::DecimalInt(_), span }) => Expr { span: span, data: ExprData::Number(1.0) },
