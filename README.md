@@ -6,7 +6,7 @@ A JavaScript parser written in Rust.
 
 # License
 
-MIT
+[MIT](https://github.com/dherman/kora/blob/master/LICENSE)
 
 # Image Credits
 
