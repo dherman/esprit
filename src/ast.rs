@@ -1,19 +1,25 @@
 #![allow(dead_code)]
 
+use token::{Posn, Span, Loc};
+
 #[derive(Debug, Eq, PartialEq)]
-pub struct Id {
-    name: String
+pub struct IdData {
+    pub name: String
 }
 
-#[derive(Debug, PartialEq)]
-pub struct Fun {
-    id: Option<Id>,
-    params: Vec<Patt>,
-    body: Vec<Stmt>
-}
+pub type Id = Loc<IdData>;
 
 #[derive(Debug, PartialEq)]
-pub enum Stmt {
+pub struct FunData {
+    pub id: Option<Id>,
+    pub params: Vec<Patt>,
+    pub body: Vec<Stmt>
+}
+
+pub type Fun = Loc<FunData>;
+
+#[derive(Debug, PartialEq)]
+pub enum StmtData {
     Empty,
     Block(Vec<Stmt>),
     Expr(Expr),
@@ -33,44 +39,58 @@ pub enum Stmt {
     Debugger
 }
 
+pub type Stmt = Loc<StmtData>;
+
 #[derive(Debug, PartialEq)]
-pub enum ForHead {
+pub enum ForHeadData {
     Var(Vec<VarDtor>),
     Expr(Expr)
 }
 
+pub type ForHead = Loc<ForHeadData>;
+
 #[derive(Debug, PartialEq)]
-pub enum ForInHead {
+pub enum ForInHeadData {
     Var(Vec<VarDtor>),
     Expr(Expr)
 }
 
+pub type ForInHead = Loc<ForInHeadData>;
+
 #[derive(Debug, PartialEq)]
-pub enum Decl {
+pub enum DeclData {
     Fun(Fun),
     Var(Vec<VarDtor>)
 }
 
+pub type Decl = Loc<DeclData>;
+
 #[derive(Debug, PartialEq)]
-pub struct VarDtor {
+pub struct VarDtorData {
     id: Patt,
     init: Option<Expr>
 }
 
-#[derive(Debug, PartialEq)]
-pub struct Catch {
-    param: Patt,
-    body: Vec<Stmt>
-}
+pub type VarDtor = Loc<VarDtorData>;
 
 #[derive(Debug, PartialEq)]
-pub struct Case {
-    test: Option<Expr>,
-    body: Vec<Stmt>
+pub struct CatchData {
+    pub param: Patt,
+    pub body: Vec<Stmt>
 }
+
+pub type Catch = Loc<CatchData>;
+
+#[derive(Debug, PartialEq)]
+pub struct CaseData {
+    pub test: Option<Expr>,
+    pub body: Vec<Stmt>
+}
+
+pub type Case = Loc<CaseData>;
 
 #[derive(Debug, Eq, PartialEq)]
-pub enum Unop {
+pub enum UnopTag {
     Minus,
     Plus,
     Not,
@@ -80,8 +100,10 @@ pub enum Unop {
     Delete
 }
 
+pub type Unop = Loc<UnopTag>;
+
 #[derive(Debug, Eq, PartialEq)]
-pub enum Binop {
+pub enum BinopTag {
     Eq,
     NEq,
     StrictEq,
@@ -105,14 +127,18 @@ pub enum Binop {
     Instanceof,
 }
 
+pub type Binop = Loc<BinopTag>;
+
 #[derive(Debug, Eq, PartialEq)]
-pub enum Logop {
+pub enum LogopTag {
     Or,
     And
 }
 
+pub type Logop = Loc<LogopTag>;
+
 #[derive(Debug, Eq, PartialEq)]
-pub enum Assop {
+pub enum AssopTag {
     Eq,
     PlusEq,
     MinusEq,
@@ -127,8 +153,10 @@ pub enum Assop {
     BitAndEq
 }
 
+pub type Assop = Loc<AssopTag>;
+
 #[derive(Debug, PartialEq)]
-pub enum Expr {
+pub enum ExprData {
     This,
     Arr(Vec<Option<Expr>>),
     Obj(Vec<Prop>),
@@ -155,14 +183,18 @@ pub enum Expr {
     String(String)
 }
 
-#[derive(Debug, PartialEq)]
-pub struct Prop {
-    key: PropKey,
-    val: PropVal
-}
+pub type Expr = Loc<ExprData>;
 
 #[derive(Debug, PartialEq)]
-pub enum PropKey {
+pub struct PropData {
+    pub key: PropKey,
+    pub val: PropVal
+}
+
+pub type Prop = Loc<PropData>;
+
+#[derive(Debug, PartialEq)]
+pub enum PropKeyData {
     Id(Id),
     String(String),
     Number(f64),
@@ -171,14 +203,20 @@ pub enum PropKey {
     False
 }
 
+pub type PropKey = Loc<PropKeyData>;
+
 #[derive(Debug, PartialEq)]
-pub enum PropVal {
+pub enum PropValData {
     Init(Expr),
     Get(Vec<Stmt>),
     Set(Patt, Vec<Stmt>)
 }
 
+pub type PropVal = Loc<PropValData>;
+
 #[derive(Debug, Eq, PartialEq)]
-pub enum Patt {
+pub enum PattData {
     Id(Id)
 }
+
+pub type Patt = Loc<PattData>;

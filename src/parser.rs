@@ -1,10 +1,9 @@
-use token::{Token, TokenData};
+use token::{Token, TokenData, Span, span};
 use lexer::Lexer;
 
 use std::cell::Cell;
 use std::rc::Rc;
-use ast::Binop;
-use ast::Expr;
+use ast::{Expr, ExprData, Binop, BinopTag};
 use lexer::LexError;
 use context::Context;
 
@@ -29,23 +28,26 @@ impl<I> Parser<I> where I: Iterator<Item=char> {
 impl<I> Parser<I> where I: Iterator<Item=char> {
     pub fn expr(&mut self) -> Result<Expr, ParseError> {
         let left = match self.lexer.read_token() {
-            Ok(Token { data: TokenData::DecimalInt(_), .. }) => Expr::Number(1.0),
+            Ok(Token { data: TokenData::DecimalInt(_), span }) => Expr { span: span, data: ExprData::Number(1.0) },
             Ok(t) => return Err(ParseError::UnexpectedToken(t)),
             Err(e) => return Err(ParseError::LexError(e))
         };
 
         let op = match self.lexer.read_token() {
-            Ok(Token { data: TokenData::Plus, .. }) => Binop::Plus,
+            Ok(Token { data: TokenData::Plus, span }) => Binop { span: span, data: BinopTag::Plus },
             Ok(t) => return Err(ParseError::UnexpectedToken(t)),
             Err(e) => return Err(ParseError::LexError(e))
         };
 
         let right = match self.lexer.read_token() {
-            Ok(Token { data: TokenData::DecimalInt(_), .. }) => Expr::Number(1.0),
+            Ok(Token { data: TokenData::DecimalInt(_), span }) => Expr { span: span, data: ExprData::Number(1.0) },
             Ok(t) => return Err(ParseError::UnexpectedToken(t)),
             Err(e) => return Err(ParseError::LexError(e))
         };
 
-        Ok(Expr::Binop(op, Box::new(left), Box::new(right)))
+        Ok(Expr {
+            span: span(&left, &right),
+            data: ExprData::Binop(op, Box::new(left), Box::new(right))
+        })
     }
 }

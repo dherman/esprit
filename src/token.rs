@@ -7,8 +7,40 @@ pub struct Posn {
 
 #[derive(Debug, Copy, Eq, PartialEq)]
 pub struct Span {
-    start: Posn,
-    end: Posn
+    pub start: Posn,
+    pub end: Posn
+}
+
+pub trait HasSpan {
+    fn span(&self) -> Span;
+}
+
+impl HasSpan for Span {
+    fn span(&self) -> Span {
+        *self
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct Loc<T> {
+    pub span: Span,
+    pub data: T
+}
+
+impl<T> HasSpan for Loc<T> {
+    fn span(&self) -> Span {
+        self.span
+    }
+}
+
+pub fn span<T, U>(left: &T, right: &U) -> Span
+  where T: HasSpan,
+        U: HasSpan
+{
+    Span {
+        start: left.span().start,
+        end: right.span().end
+    }
 }
 
 #[derive(Debug, Copy, Eq, PartialEq)]
@@ -68,11 +100,7 @@ pub enum ReservedWord {
     Public
 }
 
-#[derive(Debug, PartialEq)]
-pub struct Token {
-    pub span: Span,
-    pub data: TokenData
-}
+pub type Token = Loc<TokenData>;
 
 impl Token {
     pub fn new(start: Posn, end: Posn, data: TokenData) -> Token {
