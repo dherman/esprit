@@ -128,7 +128,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     // source location
 
-    fn posn(&self) -> Posn {
+    pub fn posn(&self) -> Posn {
         self.reader.curr_posn()
     }
 
