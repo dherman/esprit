@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::char;
 
-use token::{Token, TokenData, Span, Posn};
+use loc::*;
+use token::{Token, TokenData, Exp, CharCase, Sign, NumberLiteral, Radix};
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -52,7 +53,7 @@ impl SpanTracker {
       where I: Iterator<Item=char>
     {
         let end = lexer.posn();
-        Token::new(self.start, end, data)
+        Token::new(&self.start, &end, data)
     }
 }
 
@@ -112,6 +113,11 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             self.lookahead.push_token(token);
         }
         Ok(self.lookahead.peek_token())
+    }
+
+    pub fn skip_token(&mut self) -> Result<(), LexError> {
+        try!(self.read_token());
+        Ok(())
     }
 
     pub fn read_token(&mut self) -> Result<Token, LexError> {
@@ -239,6 +245,15 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }
     }
 
+    fn fail_if<F>(&mut self, pred: &F) -> Result<(), LexError>
+      where F: Fn(char) -> bool
+    {
+        match self.peek() {
+            Some(ch) if pred(ch) => Err(LexError::UnexpectedChar(ch)),
+            _ => Ok(())
+        }
+    }
+
     fn expect(&mut self, expected: char) -> Result<(), LexError> {
         match self.peek() {
             Some(ch) if ch == expected => (),
@@ -251,13 +266,15 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     // lexical grammar
 
-    fn skip_newline(&mut self) {
+    fn skip_newlines(&mut self) {
         debug_assert!(self.peek().map_or(false, |ch| ch.is_es_newline()));
-        if self.peek2() == (Some('\r'), Some('\n')) {
-            self.skip2();
-            return;
+        loop {
+            match self.peek2() {
+                (Some('\r'), Some('\n'))            => { self.skip2(); }
+                (Some(ch), _) if ch.is_es_newline() => { self.skip(); }
+                _                                   => { break; }
+            }
         }
-        self.skip();
     }
 
     fn read_newline_into(&mut self, s: &mut String) {
@@ -365,26 +382,27 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         Ok(s)
     }
 
-    fn read_exp_part(&mut self) -> Result<Option<String>, LexError> {
-        match self.peek() {
-            Some('e') | Some('E') => {
-                let mut s = String::new();
-                s.push(self.read());
-                match self.peek() {
-                    Some('+') | Some('-') => { s.push(self.read()); }
-                    _ => ()
-                }
-                try!(self.read_decimal_digits_into(&mut s));
-                Ok(Some(s))
-            }
-            _ => Ok(None)
-        }
+    fn read_exp_part(&mut self) -> Result<Option<Exp>, LexError> {
+        let e = match self.peek() {
+            Some('e') => CharCase::LowerCase,
+            Some('E') => CharCase::UpperCase,
+            _ => { return Ok(None); }
+        };
+        self.skip();
+        let sign = match self.peek() {
+            Some('+') => { self.skip(); Some(Sign::Plus) }
+            Some('-') => { self.skip(); Some(Sign::Minus) }
+            _ => None
+        };
+        let mut value = String::new();
+        try!(self.read_decimal_digits_into(&mut value));
+        Ok(Some(Exp { e: e, sign: sign, value: value }))
     }
 
     fn read_decimal_int(&mut self) -> Result<String, LexError> {
         let mut s = String::new();
         match self.peek() {
-            Some('0') => { s.push('0'); return Ok(s); }
+            Some('0') => { s.push(self.reread('0')); return Ok(s); }
             Some(ch) if ch.is_digit(10) => { s.push(self.reread(ch)); }
             Some(ch) => return Err(LexError::UnexpectedChar(ch)),
             None => return Err(LexError::UnexpectedEOF)
@@ -395,57 +413,65 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     fn read_radix_int<F, G>(&mut self, radix: u32, pred: &F, cons: &G) -> Result<Token, LexError>
       where F: Fn(char) -> bool,
-            G: Fn(char, String) -> TokenData
+            G: Fn(CharCase, String) -> TokenData
     {
-        debug_assert!(self.reader.curr_char().is_some());
-        debug_assert!(self.reader.next_char().is_some());
+        debug_assert!(self.reader.curr_char() == Some('0'));
+        debug_assert!(self.reader.next_char().map_or(false, |ch| ch.is_alphabetic()));
         let span = self.start();
         let mut s = String::new();
         self.skip();
-        let flag = self.read();
+        let flag = if self.read().is_lowercase() {
+            CharCase::LowerCase
+        } else {
+            CharCase::UpperCase
+        };
         try!(self.read_digit_into(&mut s, radix, pred));
-        self.read_into_until(&mut s, pred);
+        self.read_into_until(&mut s, &|ch| !pred(ch));
         Ok(span.end(self, cons(flag, s)))
     }
 
     fn read_hex_int(&mut self) -> Result<Token, LexError> {
-        self.read_radix_int(16, &|ch| ch.is_es_hex_digit(), &TokenData::HexInt)
+        self.read_radix_int(16, &|ch| ch.is_es_hex_digit(), &|cc, s| {
+            TokenData::Number(NumberLiteral::RadixInt(Radix::Hex(cc), s))
+        })
     }
 
     fn read_oct_int(&mut self) -> Result<Token, LexError> {
-        self.read_radix_int(8, &|ch| ch.is_es_oct_digit(), &|ch, s| TokenData::OctalInt(Some(ch), s))
+        self.read_radix_int(8, &|ch| ch.is_es_oct_digit(), &|cc, s| {
+            TokenData::Number(NumberLiteral::RadixInt(Radix::Oct(Some(cc)), s))
+        })
     }
 
     fn read_bin_int(&mut self) -> Result<Token, LexError> {
-        self.read_radix_int(2, &|ch| ch.is_es_bin_digit(), &TokenData::BinaryInt)
+        self.read_radix_int(2, &|ch| ch.is_es_bin_digit(), &|cc, s| {
+            TokenData::Number(NumberLiteral::RadixInt(Radix::Bin(cc), s))
+        })
     }
 
     fn read_deprecated_oct_int(&mut self) -> Token {
         let span = self.start();
+        self.skip();
         let mut s = String::new();
-        self.read_into_until(&mut s, &|ch| ch.is_digit(10));
-        span.end(self, if s.chars().all(|ch| ch.is_es_oct_digit()) {
-            TokenData::OctalInt(None, s)
+        self.read_into_until(&mut s, &|ch| !ch.is_digit(10));
+        span.end(self, TokenData::Number(if s.chars().all(|ch| ch.is_es_oct_digit()) {
+            NumberLiteral::RadixInt(Radix::Oct(None), s)
         } else {
-            TokenData::DecimalInt(s)
-        })
+            NumberLiteral::DecimalInt(format!("0{}", s), None)
+        }))
     }
 
     fn read_number(&mut self) -> Result<Token, LexError> {
-        match self.peek2() {
+        let result = try!(match self.peek2() {
             (Some('0'), Some('x')) | (Some('0'), Some('X')) => self.read_hex_int(),
             (Some('0'), Some('o')) | (Some('0'), Some('O')) => self.read_oct_int(),
             (Some('0'), Some('b')) | (Some('0'), Some('B')) => self.read_bin_int(),
-            (Some('0'), Some(ch)) if ch.is_digit(10) => return Ok({
-                self.skip();
-                self.read_deprecated_oct_int()
-            }),
+            (Some('0'), Some(ch)) if ch.is_digit(10) => Ok(self.read_deprecated_oct_int()),
             (Some('.'), _) => {
                 let span = self.start();
                 self.skip();
                 let frac = try!(self.read_decimal_digits());
                 let exp = try!(self.read_exp_part());
-                Ok(span.end(self, TokenData::Float(None, Some(frac), exp)))
+                Ok(span.end(self, TokenData::Number(NumberLiteral::Float(None, Some(frac), exp))))
             }
             (Some(ch), _) if ch.is_digit(10) => {
                 let span = self.start();
@@ -460,15 +486,17 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                     (false, None)
                 };
                 let exp = try!(self.read_exp_part());
-                Ok(span.end(self, if dot {
-                    TokenData::Float(Some(pos), frac, exp)
+                Ok(span.end(self, TokenData::Number(if dot {
+                    NumberLiteral::Float(Some(pos), frac, exp)
                 } else {
-                    TokenData::DecimalInt(pos)
-                }))
+                    NumberLiteral::DecimalInt(pos, exp)
+                })))
             }
             (Some(ch), _) => Err(LexError::UnexpectedChar(ch)),
             (None, _) => Err(LexError::UnexpectedEOF)
-        }
+        });
+        try!(self.fail_if(&|ch| ch.is_es_identifier_start() || ch.is_digit(10)));
+        Ok(result)
     }
 
     fn read_string(&mut self) -> Result<Token, LexError> {
@@ -642,14 +670,14 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             match self.peek2() {
                 (Some(ch), _) if ch.is_es_whitespace() => { self.skip_whitespace() }
                 (Some('/'), Some('/')) => {
-                    if self.cx.get().comment_tokens {
+                    if self.cx.get().comments {
                         return Ok(self.read_line_comment());
                     } else {
                         self.skip_line_comment();
                     }
                 }
                 (Some('/'), Some('*')) => {
-                    if self.cx.get().comment_tokens {
+                    if self.cx.get().comments {
                         return self.read_block_comment();
                     } else {
                         try!(self.skip_block_comment());
@@ -712,8 +740,8 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 (Some('"'), _) | (Some('\''), _) => return self.read_string(),
                 (Some(ch), _) if ch.is_es_newline() => {
                     let span = self.start();
-                    self.skip_newline();
-                    if self.cx.get().asi {
+                    self.skip_newlines();
+                    if self.cx.get().newlines {
                         return Ok(span.end(self, TokenData::Newline));
                     }
                 }
@@ -721,7 +749,10 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 (Some(ch), _) if ch.is_es_identifier_start() => return self.read_word(),
                 (Some('\\'), _) => return self.read_word(),
                 (Some(ch), _) => return Err(LexError::UnexpectedChar(ch)),
-                (None, _) => return Ok(Token::new(self.posn(), self.posn(), TokenData::EOF))
+                (None, _) => {
+                    let here = self.posn();
+                    return Ok(Token::new(&here, &here, TokenData::EOF))
+                }
             }
         }
     }

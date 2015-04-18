@@ -1,47 +1,4 @@
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub struct Posn {
-    pub offset: u32,
-    pub line: u32,
-    pub column: u32
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub struct Span {
-    pub start: Posn,
-    pub end: Posn
-}
-
-pub trait HasSpan {
-    fn span(&self) -> Span;
-}
-
-impl HasSpan for Span {
-    fn span(&self) -> Span {
-        *self
-    }
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct Loc<T> {
-    pub span: Span,
-    pub data: T
-}
-
-impl<T> HasSpan for Loc<T> {
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-
-pub fn span<T, U>(left: &T, right: &U) -> Span
-  where T: HasSpan,
-        U: HasSpan
-{
-    Span {
-        start: left.span().start,
-        end: right.span().end
-    }
-}
+use loc::*;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum ReservedWord {
@@ -103,12 +60,9 @@ pub enum ReservedWord {
 pub type Token = Loc<TokenData>;
 
 impl Token {
-    pub fn new(start: Posn, end: Posn, data: TokenData) -> Token {
+    pub fn new<T: HasSpan>(start: &T, end: &T, data: TokenData) -> Token {
         Token {
-            span: Span {
-                start: start,
-                end: end
-            },
+            span: span(start, end),
             data: data
         }
     }
@@ -171,11 +125,7 @@ pub enum TokenData {
     BitXorAssign,
     Arrow,
 
-    DecimalInt(String),
-    BinaryInt(char, String),
-    OctalInt(Option<char>, String),
-    HexInt(char, String),
-    Float(Option<String>, Option<String>, Option<String>),
+    Number(NumberLiteral),
 
     String(String),
     RegExp(String, Vec<char>),
@@ -186,4 +136,37 @@ pub enum TokenData {
     BlockComment(String),
     Newline,
     EOF
+}
+
+#[derive(Debug, PartialEq)]
+pub enum NumberLiteral {
+    DecimalInt(String, Option<Exp>),
+    RadixInt(Radix, String),
+    Float(Option<String>, Option<String>, Option<Exp>)
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Exp {
+    pub e: CharCase,
+    pub sign: Option<Sign>,
+    pub value: String
+}
+
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub enum Radix {
+    Bin(CharCase),
+    Oct(Option<CharCase>),
+    Hex(CharCase)
+}
+
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub enum CharCase {
+    LowerCase,
+    UpperCase
+}
+
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub enum Sign {
+    Plus,
+    Minus
 }

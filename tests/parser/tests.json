@@ -1,0 +1,3 @@
+[
+{"source": "var x = null;", "expected": {"type":"Program","body":[{"type":"VariableDeclaration","declarations":[{"type":"VariableDeclarator","id":{"type":"Identifier","name":"x"},"init":{"type":"Literal","value":null}}]}]}}
+]

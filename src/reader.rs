@@ -1,4 +1,4 @@
-use token::Posn;
+use loc::Posn;
 
 pub struct Reader<I> {
     chars: I,

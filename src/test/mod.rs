@@ -6,12 +6,14 @@ use rustc_serialize::json::{Json, Object, Array};
 use rustc_serialize::{Decoder, Decodable};
 use std::io::prelude::*;
 use std::fs::File;
-use token::{TokenData, ReservedWord};
+use token::{TokenData, ReservedWord, Exp, CharCase, Sign, NumberLiteral, Radix};
 use context::{Context, Mode};
+use ast::*;
+use loc::*;
 
 pub struct ParserTest {
     pub source: String,
-    pub expected: Result<Json, String>,
+    pub expected: Result<Script, String>,
     pub options: Option<Json>
 }
 
@@ -21,13 +23,14 @@ pub struct LexerTest {
     pub expected: Result<TokenData, String>
 }
 
-fn deserialize_parser_test(test: &mut Object) -> ParserTest {
+fn deserialize_parser_test(mut test: Json) -> ParserTest {
+    let mut obj = test.as_object_mut().unwrap();
     ParserTest {
-        source: test.remove("source").unwrap().into_string(),
-        expected: if test.contains_key("error") {
-            Err(test.remove("error").unwrap().into_string())
+        source: obj.remove("source").unwrap().into_string(),
+        expected: if obj.contains_key("error") {
+            Err(obj.remove("error").unwrap().into_string())
         } else {
-            Ok(test.remove("expected").unwrap())
+            Ok(deserialize_program(obj.remove("expected").unwrap()))
         },
         options: None
     }
@@ -45,9 +48,9 @@ fn deserialize_lexer_context(data: &mut Object) -> Context {
     let mut cx = data.remove("context").unwrap();
     let set = deserialize_string_set(cx.into_array());
     Context {
-        asi: set.contains("asi"),
+        newlines: set.contains("newlines"),
         operator: set.contains("operator"),
-        comment_tokens: set.contains("comments"),
+        comments: set.contains("comments"),
         generator: set.contains("generator"),
         mode: Mode::Sloppy
     }
@@ -66,10 +69,28 @@ fn deserialize_lexer_test(mut test: Json) -> LexerTest {
     }
 }
 
+macro_rules! right {
+    ( $l:expr, $r:expr ) => { $r }
+}
+
+macro_rules! tuplify {
+    ( $v:expr, ( $($dummy:tt),* ) ) => {
+        {
+            let mut t = $v.into_iter();
+            ($(
+                right!($dummy, t.next().unwrap())
+            ),*)
+        }
+    };
+}
+
 trait JsonExt {
     fn into_array(self) -> json::Array;
     fn into_string(self) -> String;
     fn into_string_opt(self) -> Option<String>;
+    fn into_exp_opt(self) -> Option<Exp>;
+    fn into_char_case(self) -> CharCase;
+    fn into_char_case_opt(self) -> Option<CharCase>;
 }
 
 impl JsonExt for Json {
@@ -90,6 +111,42 @@ impl JsonExt for Json {
             Json::Null => None,
             Json::String(string) => Some(string),
             _ => panic!("expected string or null")
+        }
+    }
+    fn into_char_case(self) -> CharCase {
+        let ch = self.into_string().remove(0);
+        if ch.is_lowercase() {
+            CharCase::LowerCase
+        } else if ch.is_uppercase() {
+            CharCase::UpperCase
+        } else {
+            panic!("expected lowercase or uppercase letter")
+        }
+    }
+    fn into_char_case_opt(self) -> Option<CharCase> {
+        match self {
+            Json::Null => None,
+            _ => Some(self.into_char_case())
+        }
+    }
+    fn into_exp_opt(self) -> Option<Exp> {
+        match self {
+            Json::Null => None,
+            _ => {
+                let mut arr = self.into_array();
+                let (e, sign, value) = tuplify!(arr, ((), (), ()));
+                Some(Exp {
+                    e: e.into_char_case(),
+                    sign: sign.into_string_opt().map(|mut s| {
+                        if s.remove(0) == '+' {
+                            Sign::Plus
+                        } else {
+                            Sign::Minus
+                        }
+                    }),
+                    value: value.into_string()
+                })
+            }
         }
     }
 }
@@ -148,19 +205,64 @@ fn deserialize_reserved(word: &str) -> ReservedWord {
     }
 }
 
-macro_rules! right {
-    ( $l:expr, $r:expr ) => { $r }
+fn deserialize_identifier(data: &mut Object) -> Id {
+    (IdData { name: data.remove("name").unwrap().into_string() }).into_empty_loc()
 }
 
-macro_rules! tuplify {
-    ( $v:expr, ( $($dummy:tt),* ) ) => {
-        {
-            let mut t = $v.into_iter();
-            ($(
-                right!($dummy, t.next().unwrap())
-            ),*)
+fn deserialize_literal(data: &mut Object) -> Expr {
+    let val = data.remove("value").unwrap();
+    match val {
+        Json::Null => ExprData::Null.into_empty_loc(),
+        _ => panic!("unrecognized literal")
+    }
+}
+
+fn deserialize_expression(data: &mut Object) -> Expr {
+    let ty = data.remove("type").unwrap().into_string();
+    match &ty[..] {
+        "Identifier" => deserialize_identifier(data).into_expr(),
+        "Literal" => deserialize_literal(data),
+        _ => panic!("unrecognized expression")
+    }
+}
+
+fn deserialize_var_declarator(mut data: Json) -> VarDtor {
+    let mut obj = data.as_object_mut().unwrap();
+    let mut id = deserialize_identifier(obj.remove("id").unwrap().as_object_mut().unwrap());
+    let mut init = deserialize_expression(obj.remove("init").unwrap().as_object_mut().unwrap());
+    (VarDtorData {
+        id: (PattData::Id(id)).into_empty_loc(),
+        init: Some(init)
+    }).into_empty_loc()
+}
+
+fn deserialize_stmt_list_item(mut data: Json) -> StmtListItem {
+    let mut obj = data.as_object_mut().unwrap();
+    let ty = obj.remove("type").unwrap().into_string();
+    match &ty[..] {
+        "VariableDeclaration" => {
+            let dtors = obj.remove("declarations").unwrap()
+                           .into_array()
+                           .into_iter()
+                           .map(deserialize_var_declarator)
+                           .collect();
+            (StmtListItem::Stmt(StmtData::Var(AutoSemi {
+                inserted: false,
+                node: dtors
+            }).into_empty_loc()))
         }
-    };
+        _ => panic!("unrecognized statement list item")
+    }
+}
+
+fn deserialize_program(mut data: Json) -> Script {
+    let mut obj = data.as_object_mut().unwrap();
+    let mut body = obj.remove("body").unwrap()
+                      .into_array()
+                      .into_iter()
+                      .map(deserialize_stmt_list_item)
+                      .collect();
+    (ScriptData { body: body }).into_empty_loc()
 }
 
 fn deserialize_token(mut data: Json) -> TokenData {
@@ -224,23 +326,25 @@ fn deserialize_token(mut data: Json) -> TokenData {
         "Arrow"         => TokenData::Arrow,
         "Newline"       => TokenData::Newline,
         "EOF"           => TokenData::EOF,
-        "DecimalInt"    => TokenData::DecimalInt(arr.remove(0).into_string()),
+        "DecimalInt"    => {
+            let (value, exp) = tuplify!(arr, ((), ()));
+            TokenData::Number(NumberLiteral::DecimalInt(value.into_string(), exp.into_exp_opt()))
+        }
         "BinaryInt"     => {
             let (flag, value) = tuplify!(arr, ((), ()));
-            TokenData::BinaryInt(flag.into_string().remove(0), value.into_string())
+            TokenData::Number(NumberLiteral::RadixInt(Radix::Bin(flag.into_char_case()), value.into_string()))
         }
         "OctalInt"      => {
             let (flag, value) = tuplify!(arr, ((), ()));
-            TokenData::OctalInt(flag.into_string_opt().map(|mut str| str.remove(0)),
-                            value.into_string())
+            TokenData::Number(NumberLiteral::RadixInt(Radix::Oct(flag.into_char_case_opt()), value.into_string()))
         }
         "HexInt"        => {
             let (flag, value) = tuplify!(arr, ((), ()));
-            TokenData::HexInt(flag.into_string().remove(0), value.into_string())
+            TokenData::Number(NumberLiteral::RadixInt(Radix::Hex(flag.into_char_case()), value.into_string()))
         }
         "Float"         => {
             let (int, frac, exp) = tuplify!(arr, ((), (), ()));
-            TokenData::Float(int.into_string_opt(), frac.into_string_opt(), exp.into_string_opt())
+            TokenData::Number(NumberLiteral::Float(int.into_string_opt(), frac.into_string_opt(), exp.into_exp_opt()))
         }
         "String"        => TokenData::String(arr.remove(0).into_string()),
         "RegExp"        => {
@@ -259,5 +363,13 @@ pub fn deserialize_lexer_tests(src: &str) -> Vec<LexerTest> {
     data.into_array()
         .into_iter()
         .map(deserialize_lexer_test)
+        .collect()
+}
+
+pub fn deserialize_parser_tests(src: &str) -> Vec<ParserTest> {
+    let data: Json = src.parse().unwrap();
+    data.into_array()
+        .into_iter()
+        .map(deserialize_parser_test)
         .collect()
 }
