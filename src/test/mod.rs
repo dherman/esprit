@@ -9,7 +9,7 @@ use std::fs::File;
 use token::{TokenData, ReservedWord, Exp, CharCase, Sign, NumberLiteral, Radix};
 use context::{Context, Mode};
 use ast::*;
-use loc::*;
+use track::*;
 
 pub struct ParserTest {
     pub source: String,
@@ -206,13 +206,13 @@ fn deserialize_reserved(word: &str) -> ReservedWord {
 }
 
 fn deserialize_identifier(data: &mut Object) -> Id {
-    (IdData { name: data.remove("name").unwrap().into_string() }).into_empty_loc()
+    (IdData { name: data.remove("name").unwrap().into_string() }).tracked(None)
 }
 
 fn deserialize_literal(data: &mut Object) -> Expr {
     let val = data.remove("value").unwrap();
     match val {
-        Json::Null => ExprData::Null.into_empty_loc(),
+        Json::Null => ExprData::Null.tracked(None),
         _ => panic!("unrecognized literal")
     }
 }
@@ -231,9 +231,9 @@ fn deserialize_var_declarator(mut data: Json) -> VarDtor {
     let mut id = deserialize_identifier(obj.remove("id").unwrap().as_object_mut().unwrap());
     let mut init = deserialize_expression(obj.remove("init").unwrap().as_object_mut().unwrap());
     (VarDtorData {
-        id: (PattData::Id(id)).into_empty_loc(),
+        id: (PattData::Id(id)).tracked(None),
         init: Some(init)
-    }).into_empty_loc()
+    }).tracked(None)
 }
 
 fn deserialize_stmt_list_item(mut data: Json) -> StmtListItem {
@@ -249,7 +249,7 @@ fn deserialize_stmt_list_item(mut data: Json) -> StmtListItem {
             (StmtListItem::Stmt(StmtData::Var(AutoSemi {
                 inserted: false,
                 node: dtors
-            }).into_empty_loc()))
+            }).tracked(None)))
         }
         _ => panic!("unrecognized statement list item")
     }
@@ -262,7 +262,7 @@ fn deserialize_program(mut data: Json) -> Script {
                       .into_iter()
                       .map(deserialize_stmt_list_item)
                       .collect();
-    (ScriptData { body: body }).into_empty_loc()
+    (ScriptData { body: body }).tracked(None)
 }
 
 fn deserialize_token(mut data: Json) -> TokenData {

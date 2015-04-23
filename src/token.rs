@@ -1,4 +1,4 @@
-use loc::*;
+use track::*;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum ReservedWord {
@@ -57,13 +57,13 @@ pub enum ReservedWord {
     Public
 }
 
-pub type Token = Loc<TokenData>;
+pub type Token = Tracked<TokenData>;
 
 impl Token {
-    pub fn new<T: HasSpan>(start: &T, end: &T, data: TokenData) -> Token {
+    pub fn new<T: Track>(start: &T, end: &T, value: TokenData) -> Token {
         Token {
-            span: span(start, end),
-            data: data
+            location: span(start, end),
+            value: value
         }
     }
 }

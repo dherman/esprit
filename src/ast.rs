@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use loc::*;
+use track::*;
 use token::{NumberLiteral};
 
 #[derive(Debug, PartialEq, Eq)]
@@ -9,14 +9,11 @@ pub struct AutoSemi<T> {
     pub node: T
 }
 
-impl<T> EraseLoc for AutoSemi<T>
-  where T: EraseLoc
+impl<T> Untrack for AutoSemi<T>
+  where T: Untrack
 {
-    fn erase_loc(self) -> Self {
-        AutoSemi {
-            inserted: self.inserted,
-            node: self.node.erase_loc()
-        }
+    fn untrack(&mut self) {
+        self.node.untrack();
     }
 }
 
@@ -25,32 +22,26 @@ pub struct IdData {
     pub name: String
 }
 
-impl EraseLoc for IdData {
-    fn erase_loc(self) -> Self { self }
+impl Untrack for IdData {
+    fn untrack(&mut self) { }
 }
 
-pub type Id = Loc<IdData>;
+pub type Id = Tracked<IdData>;
 
 impl Id {
-    pub fn new(name: String, span: Option<Span>) -> Id {
+    pub fn new(name: String, location: Option<Span>) -> Id {
         Id {
-            data: IdData { name: name },
-            span: span
+            value: IdData { name: name },
+            location: location
         }
     }
 
     pub fn into_patt(self) -> Patt {
-        Patt {
-            span: self.span,
-            data: PattData::Id(self)
-        }
+        self.map_self(PattData::Id)
     }
 
     pub fn into_expr(self) -> Expr {
-        Expr {
-            span: self.span,
-            data: ExprData::Id(self)
-        }
+        self.map_self(ExprData::Id)
     }
 }
 
@@ -61,17 +52,15 @@ pub struct FunData {
     pub body: Vec<Stmt>
 }
 
-impl EraseLoc for FunData {
-    fn erase_loc(self) -> Self {
-        FunData {
-            id: self.id.erase_loc(),
-            params: self.params.erase_loc(),
-            body: self.body.erase_loc()
-        }
+impl Untrack for FunData {
+    fn untrack(&mut self) {
+        self.id.untrack();
+        self.params.untrack();
+        self.body.untrack();
     }
 }
 
-pub type Fun = Loc<FunData>;
+pub type Fun = Tracked<FunData>;
 
 #[derive(Debug, PartialEq)]
 pub enum StmtData {
@@ -95,32 +84,32 @@ pub enum StmtData {
     Debugger
 }
 
-impl EraseLoc for StmtData {
-    fn erase_loc(self) -> Self {
-        match self {
-            StmtData::Empty                     => self,
-            StmtData::Block(items)              => StmtData::Block(items.erase_loc()),
-            StmtData::Var(dtors)                => StmtData::Var(dtors.erase_loc()),
-            StmtData::Expr(expr)                => StmtData::Expr(expr.erase_loc()),
-            StmtData::If(test, cons, alt)       => StmtData::If(test.erase_loc(), cons.erase_loc(), alt.erase_loc()),
-            StmtData::Label(lab, stmt)          => StmtData::Label(lab.erase_loc(), stmt.erase_loc()),
-            StmtData::Break(lab)                => StmtData::Break(lab.erase_loc()),
-            StmtData::Cont(lab)                 => StmtData::Cont(lab.erase_loc()),
-            StmtData::With(expr, stmt)          => StmtData::With(expr.erase_loc(), stmt.erase_loc()),
-            StmtData::Switch(expr, cases)       => StmtData::Switch(expr.erase_loc(), cases.erase_loc()),
-            StmtData::Return(expr)              => StmtData::Return(expr.erase_loc()),
-            StmtData::Throw(expr)               => StmtData::Throw(expr.erase_loc()),
-            StmtData::Try(body, catch, finally) => StmtData::Try(body.erase_loc(), catch.erase_loc(), finally.erase_loc()),
-            StmtData::While(expr, stmt)         => StmtData::While(expr.erase_loc(), stmt.erase_loc()),
-            StmtData::DoWhile(stmt, expr)       => StmtData::DoWhile(stmt.erase_loc(), expr.erase_loc()),
-            StmtData::For(init, test, incr)     => StmtData::For(init.erase_loc(), test.erase_loc(), incr.erase_loc()),
-            StmtData::ForIn(lhs, rhs, body)     => StmtData::ForIn(lhs.erase_loc(), rhs.erase_loc(), body.erase_loc()),
-            StmtData::Debugger                  => self
+impl Untrack for StmtData {
+    fn untrack(&mut self) {
+        match *self {
+            StmtData::Empty                                             => { }
+            StmtData::Block(ref mut items)                              => { items.untrack(); }
+            StmtData::Var(ref mut dtors)                                => { dtors.untrack(); }
+            StmtData::Expr(ref mut expr)                                => { expr.untrack(); }
+            StmtData::If(ref mut test, ref mut cons, ref mut alt)       => { test.untrack(); cons.untrack(); alt.untrack(); }
+            StmtData::Label(ref mut lab, ref mut stmt)                  => { lab.untrack(); stmt.untrack(); }
+            StmtData::Break(ref mut lab)                                => { lab.untrack(); }
+            StmtData::Cont(ref mut lab)                                 => { lab.untrack(); }
+            StmtData::With(ref mut expr, ref mut stmt)                  => { expr.untrack(); stmt.untrack(); }
+            StmtData::Switch(ref mut expr, ref mut cases)               => { expr.untrack(); cases.untrack(); }
+            StmtData::Return(ref mut expr)                              => { expr.untrack(); }
+            StmtData::Throw(ref mut expr)                               => { expr.untrack(); }
+            StmtData::Try(ref mut body, ref mut catch, ref mut finally) => { body.untrack(); catch.untrack(); finally.untrack(); }
+            StmtData::While(ref mut expr, ref mut stmt)                 => { expr.untrack(); stmt.untrack(); }
+            StmtData::DoWhile(ref mut stmt, ref mut expr)               => { stmt.untrack(); expr.untrack(); }
+            StmtData::For(ref mut init, ref mut test, ref mut incr)     => { init.untrack(); test.untrack(); incr.untrack(); }
+            StmtData::ForIn(ref mut lhs, ref mut rhs, ref mut body)     => { lhs.untrack(); rhs.untrack(); body.untrack(); }
+            StmtData::Debugger                                          => { }
         }
     }
 }
 
-pub type Stmt = Loc<StmtData>;
+pub type Stmt = Tracked<StmtData>;
 
 #[derive(Debug, PartialEq)]
 pub enum ForHeadData {
@@ -128,16 +117,16 @@ pub enum ForHeadData {
     Expr(Expr)
 }
 
-impl EraseLoc for ForHeadData {
-    fn erase_loc(self) -> Self {
-        match self {
-            ForHeadData::Var(vec) => ForHeadData::Var(vec.erase_loc()),
-            ForHeadData::Expr(expr) => ForHeadData::Expr(expr.erase_loc())
+impl Untrack for ForHeadData {
+    fn untrack(&mut self) {
+        match *self {
+            ForHeadData::Var(ref mut vec)   => { vec.untrack(); }
+            ForHeadData::Expr(ref mut expr) => { expr.untrack(); }
         }
     }
 }
 
-pub type ForHead = Loc<ForHeadData>;
+pub type ForHead = Tracked<ForHeadData>;
 
 #[derive(Debug, PartialEq)]
 pub enum ForInHeadData {
@@ -145,30 +134,31 @@ pub enum ForInHeadData {
     Expr(Expr)
 }
 
-impl EraseLoc for ForInHeadData {
-    fn erase_loc(self) -> Self {
-        match self {
-            ForInHeadData::Var(dtor) => ForInHeadData::Var(dtor.erase_loc()),
-            ForInHeadData::Expr(expr) => ForInHeadData::Expr(expr.erase_loc())
+impl Untrack for ForInHeadData {
+    fn untrack(&mut self) {
+        match *self {
+            ForInHeadData::Var(ref mut dtor)  => { dtor.untrack(); }
+            ForInHeadData::Expr(ref mut expr) => { expr.untrack(); }
         }
     }
 }
 
-pub type ForInHead = Loc<ForInHeadData>;
+pub type ForInHead = Tracked<ForInHeadData>;
 
 #[derive(Debug, PartialEq)]
 pub enum DeclData {
     Fun(Fun)
 }
 
-impl EraseLoc for DeclData {
-    fn erase_loc(self) -> Self {
-        let DeclData::Fun(fun) = self;
-        DeclData::Fun(fun.erase_loc())
+impl Untrack for DeclData {
+    fn untrack(&mut self) {
+        match *self {
+            DeclData::Fun(ref mut fun) => { fun.untrack(); }
+        }
     }
 }
 
-pub type Decl = Loc<DeclData>;
+pub type Decl = Tracked<DeclData>;
 
 #[derive(Debug, PartialEq)]
 pub struct VarDtorData {
@@ -176,14 +166,14 @@ pub struct VarDtorData {
     pub init: Option<Expr>
 }
 
-impl EraseLoc for VarDtorData {
-    fn erase_loc(self) -> Self {
-        let VarDtorData { id, init } = self;
-        VarDtorData { id: id.erase_loc(), init: init.erase_loc() }
+impl Untrack for VarDtorData {
+    fn untrack(&mut self) {
+        self.id.untrack();
+        self.init.untrack();
     }
 }
 
-pub type VarDtor = Loc<VarDtorData>;
+pub type VarDtor = Tracked<VarDtorData>;
 
 #[derive(Debug, PartialEq)]
 pub struct CatchData {
@@ -191,14 +181,14 @@ pub struct CatchData {
     pub body: Vec<Stmt>
 }
 
-impl EraseLoc for CatchData {
-    fn erase_loc(self) -> Self {
-        let CatchData { param, body } = self;
-        CatchData { param: param.erase_loc(), body: body.erase_loc() }
+impl Untrack for CatchData {
+    fn untrack(&mut self) {
+        self.param.untrack();
+        self.body.untrack();
     }
 }
 
-pub type Catch = Loc<CatchData>;
+pub type Catch = Tracked<CatchData>;
 
 #[derive(Debug, PartialEq)]
 pub struct CaseData {
@@ -206,14 +196,14 @@ pub struct CaseData {
     pub body: Vec<Stmt>
 }
 
-impl EraseLoc for CaseData {
-    fn erase_loc(self) -> Self {
-        let CaseData { test, body } = self;
-        CaseData { test: test.erase_loc(), body: body.erase_loc() }
+impl Untrack for CaseData {
+    fn untrack(&mut self) {
+        self.test.untrack();
+        self.body.untrack();
     }
 }
 
-pub type Case = Loc<CaseData>;
+pub type Case = Tracked<CaseData>;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum UnopTag {
@@ -226,12 +216,11 @@ pub enum UnopTag {
     Delete
 }
 
-pub type Unop = Loc<UnopTag>;
+pub type Unop = Tracked<UnopTag>;
 
-impl EraseLoc for Unop {
-    fn erase_loc(mut self) -> Self {
-        self.span = None;
-        self
+impl Untrack for Unop {
+    fn untrack(&mut self) {
+        self.location = None;
     }
 }
 
@@ -260,12 +249,11 @@ pub enum BinopTag {
     Instanceof,
 }
 
-pub type Binop = Loc<BinopTag>;
+pub type Binop = Tracked<BinopTag>;
 
-impl EraseLoc for Binop {
-    fn erase_loc(mut self) -> Self {
-        self.span = None;
-        self
+impl Untrack for Binop {
+    fn untrack(&mut self) {
+        self.location = None;
     }
 }
 
@@ -275,12 +263,11 @@ pub enum LogopTag {
     And
 }
 
-pub type Logop = Loc<LogopTag>;
+pub type Logop = Tracked<LogopTag>;
 
-impl EraseLoc for Logop {
-    fn erase_loc(mut self) -> Self {
-        self.span = None;
-        self
+impl Untrack for Logop {
+    fn untrack(&mut self) {
+        self.location = None;
     }
 }
 
@@ -300,12 +287,11 @@ pub enum AssopTag {
     BitAndEq
 }
 
-pub type Assop = Loc<AssopTag>;
+pub type Assop = Tracked<AssopTag>;
 
-impl EraseLoc for Assop {
-    fn erase_loc(mut self) -> Self {
-        self.span = None;
-        self
+impl Untrack for Assop {
+    fn untrack(&mut self) {
+        self.location = None;
     }
 }
 
@@ -338,39 +324,39 @@ pub enum ExprData {
     String(String)
 }
 
-impl EraseLoc for ExprData {
-    fn erase_loc(self) -> Self {
-        match self {
-            ExprData::This                   => self,
-            ExprData::Id(id)                 => ExprData::Id(id.erase_loc()),
-            ExprData::Arr(exprs)             => ExprData::Arr(exprs.erase_loc()),
-            ExprData::Obj(props)             => ExprData::Obj(props.erase_loc()),
-            ExprData::Fun(fun)               => ExprData::Fun(fun.erase_loc()),
-            ExprData::Seq(exprs)             => ExprData::Seq(exprs.erase_loc()),
-            ExprData::Unop(op, expr)         => ExprData::Unop(op.erase_loc(), expr.erase_loc()),
-            ExprData::Binop(op, left, right) => ExprData::Binop(op.erase_loc(), left.erase_loc(), right.erase_loc()),
-            ExprData::Logop(op, left, right) => ExprData::Logop(op.erase_loc(), left.erase_loc(), right.erase_loc()),
-            ExprData::PreInc(expr)           => ExprData::PreInc(expr.erase_loc()),
-            ExprData::PostInc(expr)          => ExprData::PostInc(expr.erase_loc()),
-            ExprData::PreDec(expr)           => ExprData::PreDec(expr.erase_loc()),
-            ExprData::PostDec(expr)          => ExprData::PostDec(expr.erase_loc()),
-            ExprData::Assign(op, patt, expr) => ExprData::Assign(op.erase_loc(), patt.erase_loc(), expr.erase_loc()),
-            ExprData::Cond(test, cons, alt)  => ExprData::Cond(test.erase_loc(), cons.erase_loc(), alt.erase_loc()),
-            ExprData::Call(callee, args)     => ExprData::Call(callee.erase_loc(), args.erase_loc()),
-            ExprData::New(ctor, args)        => ExprData::New(ctor.erase_loc(), args.erase_loc()),
-            ExprData::Dot(obj, prop)         => ExprData::Dot(obj.erase_loc(), prop),
-            ExprData::Brack(obj, prop)       => ExprData::Brack(obj.erase_loc(), prop.erase_loc()),
-            ExprData::True                   => self,
-            ExprData::False                  => self,
-            ExprData::Null                   => self,
-            ExprData::Number(_)              => self, // FIXME: lit.erase()
-            ExprData::RegExp(_)              => self,
-            ExprData::String(_)              => self
+impl Untrack for ExprData {
+    fn untrack(&mut self) {
+        match *self {
+            ExprData::This                                           => { }
+            ExprData::Id(ref mut id)                                 => { id.untrack(); }
+            ExprData::Arr(ref mut exprs)                             => { exprs.untrack(); }
+            ExprData::Obj(ref mut props)                             => { props.untrack(); }
+            ExprData::Fun(ref mut fun)                               => { fun.untrack(); }
+            ExprData::Seq(ref mut exprs)                             => { exprs.untrack(); }
+            ExprData::Unop(ref mut op, ref mut expr)                 => { op.untrack(); expr.untrack(); }
+            ExprData::Binop(ref mut op, ref mut left, ref mut right) => { op.untrack(); left.untrack(); right.untrack(); }
+            ExprData::Logop(ref mut op, ref mut left, ref mut right) => { op.untrack(); left.untrack(); right.untrack(); }
+            ExprData::PreInc(ref mut expr)                           => { expr.untrack(); }
+            ExprData::PostInc(ref mut expr)                          => { expr.untrack(); }
+            ExprData::PreDec(ref mut expr)                           => { expr.untrack(); }
+            ExprData::PostDec(ref mut expr)                          => { expr.untrack(); }
+            ExprData::Assign(ref mut op, ref mut patt, ref mut expr) => { op.untrack(); patt.untrack(); expr.untrack(); }
+            ExprData::Cond(ref mut test, ref mut cons, ref mut alt)  => { test.untrack(); cons.untrack(); alt.untrack(); }
+            ExprData::Call(ref mut callee, ref mut args)             => { callee.untrack(); args.untrack(); }
+            ExprData::New(ref mut ctor, ref mut args)                => { ctor.untrack(); args.untrack(); }
+            ExprData::Dot(ref mut obj, ref mut prop)                 => { obj.untrack(); }
+            ExprData::Brack(ref mut obj, ref mut prop)               => { obj.untrack(); prop.untrack(); }
+            ExprData::True                                           => { }
+            ExprData::False                                          => { }
+            ExprData::Null                                           => { }
+            ExprData::Number(_)                                      => { } // FIXME: lit.untrack()
+            ExprData::RegExp(_)                                      => { }
+            ExprData::String(_)                                      => { }
         }
     }
 }
 
-pub type Expr = Loc<ExprData>;
+pub type Expr = Tracked<ExprData>;
 
 #[derive(Debug, PartialEq)]
 pub struct PropData {
@@ -378,14 +364,14 @@ pub struct PropData {
     pub val: PropVal
 }
 
-impl EraseLoc for PropData {
-    fn erase_loc(self) -> Self {
-        let PropData { key, val } = self;
-        PropData { key: key.erase_loc(), val: val.erase_loc() }
+impl Untrack for PropData {
+    fn untrack(&mut self) {
+        self.key.untrack();
+        self.val.untrack();
     }
 }
 
-pub type Prop = Loc<PropData>;
+pub type Prop = Tracked<PropData>;
 
 #[derive(Debug, PartialEq)]
 pub enum PropKeyData {
@@ -397,20 +383,20 @@ pub enum PropKeyData {
     False
 }
 
-impl EraseLoc for PropKeyData {
-    fn erase_loc(self) -> Self {
-        match self {
-            PropKeyData::Id(id)    => PropKeyData::Id(id.erase_loc()),
-            PropKeyData::String(_) => self,
-            PropKeyData::Number(_) => self,
-            PropKeyData::Null      => self,
-            PropKeyData::True      => self,
-            PropKeyData::False     => self
+impl Untrack for PropKeyData {
+    fn untrack(&mut self) {
+        match *self {
+            PropKeyData::Id(ref mut id)    => { id.untrack(); }
+            PropKeyData::String(_)         => { }
+            PropKeyData::Number(_)         => { }
+            PropKeyData::Null              => { }
+            PropKeyData::True              => { }
+            PropKeyData::False             => { }
         }
     }
 }
 
-pub type PropKey = Loc<PropKeyData>;
+pub type PropKey = Tracked<PropKeyData>;
 
 #[derive(Debug, PartialEq)]
 pub enum PropValData {
@@ -419,46 +405,45 @@ pub enum PropValData {
     Set(Patt, Vec<Stmt>)
 }
 
-impl EraseLoc for PropValData {
-    fn erase_loc(self) -> Self {
-        match self {
-            PropValData::Init(expr)       => PropValData::Init(expr.erase_loc()),
-            PropValData::Get(stmts)       => PropValData::Get(stmts.erase_loc()),
-            PropValData::Set(patt, stmts) => PropValData::Set(patt.erase_loc(), stmts.erase_loc())
+impl Untrack for PropValData {
+    fn untrack(&mut self) {
+        match *self {
+            PropValData::Init(ref mut expr)               => { expr.untrack(); }
+            PropValData::Get(ref mut stmts)               => { stmts.untrack(); }
+            PropValData::Set(ref mut patt, ref mut stmts) => { patt.untrack(); stmts.untrack(); }
         }
     }
 }
 
-pub type PropVal = Loc<PropValData>;
+pub type PropVal = Tracked<PropValData>;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum PattData {
     Id(Id)
 }
 
-impl EraseLoc for PattData {
-    fn erase_loc(self) -> Self {
-        match self {
-            PattData::Id(id) => PattData::Id(id.erase_loc())
+impl Untrack for PattData {
+    fn untrack(&mut self) {
+        match *self {
+            PattData::Id(ref mut id) => { id.untrack(); }
         }
     }
 }
 
-pub type Patt = Loc<PattData>;
+pub type Patt = Tracked<PattData>;
 
 #[derive(Debug, PartialEq)]
 pub struct ScriptData {
     pub body: Vec<StmtListItem>
 }
 
-impl EraseLoc for ScriptData {
-    fn erase_loc(self) -> Self {
-        let ScriptData { body } = self;
-        ScriptData { body: body.erase_loc() }
+impl Untrack for ScriptData {
+    fn untrack(&mut self) {
+        self.body.untrack();
     }
 }
 
-pub type Script = Loc<ScriptData>;
+pub type Script = Tracked<ScriptData>;
 
 #[derive(Debug, PartialEq)]
 pub enum StmtListItem {
@@ -466,20 +451,20 @@ pub enum StmtListItem {
     Stmt(Stmt)
 }
 
-impl EraseLoc for StmtListItem {
-    fn erase_loc(self) -> Self {
-        match self {
-            StmtListItem::Decl(decl) => StmtListItem::Decl(decl.erase_loc()),
-            StmtListItem::Stmt(stmt) => StmtListItem::Stmt(stmt.erase_loc())
+impl Untrack for StmtListItem {
+    fn untrack(&mut self) {
+        match *self {
+            StmtListItem::Decl(ref mut decl) => { decl.untrack(); }
+            StmtListItem::Stmt(ref mut stmt) => { stmt.untrack(); }
         }
     }
 }
 
-impl HasSpan for StmtListItem {
-    fn span(&self) -> Option<Span> {
-        match self {
-            &StmtListItem::Decl(ref decl) => decl.span(),
-            &StmtListItem::Stmt(ref stmt) => stmt.span()
+impl Track for StmtListItem {
+    fn location(&self) -> Option<Span> {
+        match *self {
+            StmtListItem::Decl(ref decl) => decl.location(),
+            StmtListItem::Stmt(ref stmt) => stmt.location()
         }
     }
 }
@@ -491,5 +476,5 @@ pub struct ModuleData {
     pub body: Vec<ModItem>
 }
 
-pub type Module = Loc<ModuleData>;
+pub type Module = Tracked<ModuleData>;
 */

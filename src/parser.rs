@@ -1,4 +1,4 @@
-use loc::*;
+use track::*;
 use token::{Token, TokenData, ReservedWord};
 use lexer::Lexer;
 
@@ -60,7 +60,7 @@ impl Follows for Token {
     // follow(ScriptBody) = { EOF }
     // follow(ModuleBody) = { EOF }
     fn follow_statement_list(&self) -> bool {
-        match self.data {
+        match self.value {
               TokenData::Reserved(ReservedWord::Case)
             | TokenData::Reserved(ReservedWord::Default)
             | TokenData::EOF
@@ -75,31 +75,31 @@ struct SpanTracker {
 }
 
 impl SpanTracker {
-    fn end<I, T>(&self, parser: &Parser<I>, data: T) -> Loc<T>
+    fn end<I, T>(&self, parser: &Parser<I>, value: T) -> Tracked<T>
       where I: Iterator<Item=char>
     {
-        Loc { data: data, span: Some(Span { start: self.start, end: parser.posn() }) }
+        Tracked { value: value, location: Some(Span { start: self.start, end: parser.posn() }) }
     }
 
     fn end_with_auto_semi<I, T>(&self, parser: &mut Parser<I>, node: T, require_newline: bool)
-        -> Parse<Loc<AutoSemi<T>>>
+        -> Parse<Tracked<AutoSemi<T>>>
       where I: Iterator<Item=char>
     {
         let before = parser.posn();
         let found_newline = try!(parser.skip_newlines());
         match try!(parser.peek()) {
-            &Token { data: TokenData::Semi, .. } => {
+            &Token { value: TokenData::Semi, .. } => {
                 parser.skip();
-                Ok(Loc {
-                    data: AutoSemi { inserted: false, node: node },
-                    span: Some(Span { start: self.start, end: parser.posn() })
+                Ok(Tracked {
+                    value: AutoSemi { inserted: false, node: node },
+                    location: Some(Span { start: self.start, end: parser.posn() })
                 })
             }
-            &Token { data: TokenData::RBrace, .. }
-          | &Token { data: TokenData::EOF, .. } => {
-                Ok(Loc {
-                    data: AutoSemi { inserted: true, node: node },
-                    span: Some(Span { start: self.start, end: before })
+            &Token { value: TokenData::RBrace, .. }
+          | &Token { value: TokenData::EOF, .. } => {
+                Ok(Tracked {
+                    value: AutoSemi { inserted: true, node: node },
+                    location: Some(Span { start: self.start, end: before })
                 })
             }
             _ => {
@@ -107,9 +107,9 @@ impl SpanTracker {
                     let token = try!(parser.read());
                     return Err(ParseError::FailedASI(token));
                 }
-                Ok(Loc {
-                    data: AutoSemi { inserted: true, node: node },
-                    span: Some(Span { start: self.start, end: before })
+                Ok(Tracked {
+                    value: AutoSemi { inserted: true, node: node },
+                    location: Some(Span { start: self.start, end: before })
                 })
             }
         }
@@ -121,10 +121,10 @@ impl<I> Parser<I>
 {
     pub fn script(&mut self) -> Parse<Script> {
         let items = try!(self.statement_list());
-        Ok(Script { span: self.vec_span(&items), data: ScriptData { body: items } })
+        Ok(Script { location: self.vec_span(&items), value: ScriptData { body: items } })
     }
 
-    fn vec_span<T: HasSpan>(&self, v: &Vec<T>) -> Option<Span> {
+    fn vec_span<T: Track>(&self, v: &Vec<T>) -> Option<Span> {
         let len = v.len();
         if len == 0 {
             let here = self.posn();
@@ -158,7 +158,7 @@ impl<I> Parser<I>
         let newlines = cx.newlines;
         cx.newlines = true;
         self.cx.set(cx);
-        let result = (try!(self.peek()).data == TokenData::Newline) && { try!(self.skip()); true };
+        let result = (try!(self.peek()).value == TokenData::Newline) && { try!(self.skip()); true };
         cx.newlines = newlines;
         self.cx.set(cx);
         Ok(result)
@@ -177,7 +177,7 @@ impl<I> Parser<I>
 
     fn expect(&mut self, expected: TokenData) -> Parse<()> {
         let token = try!(self.read());
-        if token.data != expected {
+        if token.value != expected {
             return Err(ParseError::UnexpectedToken(token));
         }
         Ok(())
@@ -185,7 +185,7 @@ impl<I> Parser<I>
 
     fn matches(&mut self, expected: TokenData) -> Parse<bool> {
         let token = try!(self.read());
-        if token.data != expected {
+        if token.value != expected {
             self.lexer.unread_token(token);
             return Ok(false);
         }
@@ -193,17 +193,17 @@ impl<I> Parser<I>
     }
 
     fn reread(&mut self, expected: TokenData) -> Token {
-        debug_assert!(self.peek().map(|actual| actual.data == expected).unwrap_or(false));
+        debug_assert!(self.peek().map(|actual| actual.value == expected).unwrap_or(false));
         self.read().unwrap()
     }
 
-    fn span<F, T>(&mut self, parse: &mut F) -> Parse<Loc<T>>
+    fn span<F, T>(&mut self, parse: &mut F) -> Parse<Tracked<T>>
       where F: FnMut(&mut Self) -> Parse<T>
     {
         let start = self.posn();
-        let data = try!(parse(self));
+        let value = try!(parse(self));
         let end = self.posn();
-        Ok(Loc { data: data, span: Some(Span { start: start, end: end }) })
+        Ok(Tracked { value: value, location: Some(Span { start: start, end: end }) })
     }
 
     fn statement_list(&mut self) -> Parse<Vec<StmtListItem>> {
@@ -222,7 +222,7 @@ impl<I> Parser<I>
     }
 
     pub fn statement(&mut self) -> Parse<Option<Stmt>> {
-        match try!(self.peek()).data {
+        match try!(self.peek()).value {
             TokenData::LBrace                           => self.block_statement().map(Some),
             TokenData::Reserved(ReservedWord::Var)      => self.var_statement().map(Some),
             TokenData::Semi                             => self.empty_statement().map(Some),
@@ -276,7 +276,7 @@ impl<I> Parser<I>
     fn id(&mut self) -> Parse<Id> {
         let token = try!(self.read());
         match token {
-            Token { data: TokenData::Identifier(name), span: span } => Ok(Id::new(name, span)),
+            Token { value: TokenData::Identifier(name), location: location } => Ok(Id::new(name, location)),
             _ => Err(ParseError::UnexpectedToken(token))
         }
     }
@@ -353,18 +353,18 @@ impl<I> Parser<I>
 
     fn primary_expression(&mut self) -> Parse<Expr> {
         let token = try!(self.read());
-        match token.data {
+        match token.value {
             TokenData::Identifier(name) => {
-                Ok(Id::new(name, token.span).into_expr())
+                Ok(Id::new(name, token.location).into_expr())
             }
             TokenData::Reserved(ReservedWord::Null) => {
-                Ok(ExprData::Null.into_loc(token.span))
+                Ok(ExprData::Null.tracked(token.location))
             }
             TokenData::Reserved(ReservedWord::This) => {
-                Ok(ExprData::This.into_loc(token.span))
+                Ok(ExprData::This.tracked(token.location))
             }
             TokenData::Number(literal) => {
-                Ok(ExprData::Number(literal).into_loc(token.span))
+                Ok(ExprData::Number(literal).tracked(token.location))
             }
             _ => Err(ParseError::UnexpectedToken(token))
         }
@@ -376,26 +376,26 @@ impl<I> Parser<I>
 
     pub fn expr(&mut self) -> Parse<Expr> {
         let left = match self.lexer.read_token() {
-            Ok(Token { data: TokenData::Number(literal), span }) => Expr { span: span, data: ExprData::Number(literal) },
+            Ok(Token { value: TokenData::Number(literal), location }) => Expr { location: location, value: ExprData::Number(literal) },
             Ok(t) => return Err(ParseError::UnexpectedToken(t)),
             Err(e) => return Err(ParseError::LexError(e))
         };
 
         let op = match self.lexer.read_token() {
-            Ok(Token { data: TokenData::Plus, span }) => Binop { span: span, data: BinopTag::Plus },
+            Ok(Token { value: TokenData::Plus, location }) => Binop { location: location, value: BinopTag::Plus },
             Ok(t) => return Err(ParseError::UnexpectedToken(t)),
             Err(e) => return Err(ParseError::LexError(e))
         };
 
         let right = match self.lexer.read_token() {
-            Ok(Token { data: TokenData::Number(literal), span }) => Expr { span: span, data: ExprData::Number(literal) },
+            Ok(Token { value: TokenData::Number(literal), location }) => Expr { location: location, value: ExprData::Number(literal) },
             Ok(t) => return Err(ParseError::UnexpectedToken(t)),
             Err(e) => return Err(ParseError::LexError(e))
         };
 
         Ok(Expr {
-            span: span(&left, &right),
-            data: ExprData::Binop(op, Box::new(left), Box::new(right))
+            location: span(&left, &right),
+            value: ExprData::Binop(op, Box::new(left), Box::new(right))
         })
     }
 }
@@ -412,7 +412,7 @@ mod tests {
     use std::str::Chars;
     use parser::{Parser, Parse};
     use ast::*;
-    use loc::*;
+    use track::*;
 
     fn parse(source: &String) -> Parse<Script> {
         let chars = source.chars();
@@ -436,7 +436,7 @@ mod tests {
             let result = parse(&source);
             match (result, expected) {
                 (Ok(mut actual_ast), Ok(expected_ast)) => {
-                    actual_ast = actual_ast.erase_loc();
+                    actual_ast.untrack();
                     // println!("{}", source);
                     // println!("expected AST: {:?}", expected_ast);
                     // println!("actual AST:   {:?}", actual_ast);

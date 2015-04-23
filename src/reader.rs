@@ -1,4 +1,4 @@
-use loc::Posn;
+use track::Posn;
 
 pub struct Reader<I> {
     chars: I,

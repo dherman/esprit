@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::char;
 
-use loc::*;
+use track::*;
 use token::{Token, TokenData, Exp, CharCase, Sign, NumberLiteral, Radix};
 
 use std::cell::Cell;
@@ -49,11 +49,11 @@ struct SpanTracker {
 }
 
 impl SpanTracker {
-    fn end<I>(&self, lexer: &Lexer<I>, data: TokenData) -> Token
+    fn end<I>(&self, lexer: &Lexer<I>, value: TokenData) -> Token
       where I: Iterator<Item=char>
     {
         let end = lexer.posn();
-        Token::new(&self.start, &end, data)
+        Token::new(&self.start, &end, value)
     }
 }
 
@@ -646,23 +646,23 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }
     }
 
-    fn read_punc(&mut self, data: TokenData) -> Token {
+    fn read_punc(&mut self, value: TokenData) -> Token {
         let span = self.start();
         self.skip();
-        span.end(self, data)
+        span.end(self, value)
     }
 
-    fn read_punc2(&mut self, data: TokenData) -> Token {
+    fn read_punc2(&mut self, value: TokenData) -> Token {
         let span = self.start();
         self.skip2();
-        span.end(self, data)
+        span.end(self, value)
     }
 
-    fn read_punc2_3(&mut self, ch: char, data2: TokenData, data3: TokenData) -> Token {
+    fn read_punc2_3(&mut self, ch: char, value2: TokenData, value3: TokenData) -> Token {
         let span = self.start();
         self.skip2();
-        let data = if self.matches(ch) { data3 } else { data2 };
-        span.end(self, data)
+        let value = if self.matches(ch) { value3 } else { value2 };
+        span.end(self, value)
     }
 
     fn read_next_token(&mut self) -> Result<Token, LexError> {
@@ -703,13 +703,13 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 (Some('>'), Some('>')) => return Ok({
                     let span = self.start();
                     self.skip2();
-                    let data = match self.peek2() {
+                    let value = match self.peek2() {
                         (Some('>'), Some('=')) => { self.skip2(); TokenData::URShiftAssign }
                         (Some('>'), _) => { self.skip(); TokenData::URShift }
                         (Some('='), _) => { self.skip(); TokenData::RShiftAssign }
                         _ => TokenData::RShift
                     };
-                    span.end(self, data)
+                    span.end(self, value)
                 }),
                 (Some('>'), Some('=')) => return Ok(self.read_punc2(TokenData::GEq)),
                 (Some('>'), _) => return Ok(self.read_punc(TokenData::RAngle)),
@@ -763,7 +763,7 @@ impl<I> Iterator for Lexer<I> where I: Iterator<Item=char> {
 
     fn next(&mut self) -> Option<Token> {
         match self.read_token() {
-            Ok(Token { data: TokenData::EOF, .. }) => None,
+            Ok(Token { value: TokenData::EOF, .. }) => None,
             Ok(t) => Some(t),
             Err(_) => None
         }
@@ -790,7 +790,7 @@ mod tests {
 
     fn assert_test2(expected: &Result<TokenData, String>, expected_next: TokenData, actual: Result<(Token, Token), LexError>) {
         match (expected, &actual) {
-            (&Ok(ref expected), &Ok((Token { data: ref actual, .. }, Token { data: ref actual_next, .. }))) => {
+            (&Ok(ref expected), &Ok((Token { value: ref actual, .. }, Token { value: ref actual_next, .. }))) => {
                 assert_eq!(expected, actual);
                 assert_eq!(&expected_next, actual_next);
             }
