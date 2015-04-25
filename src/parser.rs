@@ -1,5 +1,5 @@
 use track::*;
-use token::{Token, TokenData, ReservedWord};
+use token::{Token, TokenData, Word};
 use lexer::Lexer;
 
 use std::cell::Cell;
@@ -61,8 +61,8 @@ impl Follows for Token {
     // follow(ModuleBody) = { EOF }
     fn follow_statement_list(&self) -> bool {
         match self.value {
-              TokenData::Reserved(ReservedWord::Case)
-            | TokenData::Reserved(ReservedWord::Default)
+              TokenData::Reserved(Word::Case)
+            | TokenData::Reserved(Word::Default)
             | TokenData::EOF
             | TokenData::RBrace => true,
             _ => false
@@ -206,6 +206,16 @@ impl<I> Parser<I>
         Ok(Tracked { value: value, location: Some(Span { start: start, end: end }) })
     }
 
+    fn try_token_at<T, F>(&mut self, op: &mut F) -> Parse<Tracked<T>>
+      where F: FnMut(TokenData, Option<Span>) -> Result<T, TokenData>
+    {
+        let Tracked { location, value: token } = try!(self.read());
+        match op(token, location) {
+            Ok(node) => Ok(Tracked { location: location, value: node }),
+            Err(token) => Err(ParseError::UnexpectedToken(Token { location: location, value: token }))
+        }
+    }
+
     fn statement_list(&mut self) -> Parse<Vec<StmtListItem>> {
         let mut items = Vec::new();
         while !try!(self.peek()).follow_statement_list() {
@@ -224,20 +234,20 @@ impl<I> Parser<I>
     pub fn statement(&mut self) -> Parse<Option<Stmt>> {
         match try!(self.peek()).value {
             TokenData::LBrace                           => self.block_statement().map(Some),
-            TokenData::Reserved(ReservedWord::Var)      => self.var_statement().map(Some),
+            TokenData::Reserved(Word::Var)      => self.var_statement().map(Some),
             TokenData::Semi                             => self.empty_statement().map(Some),
-            TokenData::Reserved(ReservedWord::If)       => self.if_statement().map(Some),
-            TokenData::Reserved(ReservedWord::Do)       => self.do_statement().map(Some),
-            TokenData::Reserved(ReservedWord::While)    => self.while_statement().map(Some),
-            TokenData::Reserved(ReservedWord::For)      => self.for_statement().map(Some),
-            TokenData::Reserved(ReservedWord::Switch)   => self.switch_statement().map(Some),
-            TokenData::Reserved(ReservedWord::Continue) => self.continue_statement().map(Some),
-            TokenData::Reserved(ReservedWord::Break)    => self.break_statement().map(Some),
-            TokenData::Reserved(ReservedWord::Return)   => self.return_statement().map(Some),
-            TokenData::Reserved(ReservedWord::With)     => self.with_statement().map(Some),
-            TokenData::Reserved(ReservedWord::Throw)    => self.throw_statement().map(Some),
-            TokenData::Reserved(ReservedWord::Try)      => self.try_statement().map(Some),
-            TokenData::Reserved(ReservedWord::Debugger) => self.debugger_statement().map(Some),
+            TokenData::Reserved(Word::If)       => self.if_statement().map(Some),
+            TokenData::Reserved(Word::Do)       => self.do_statement().map(Some),
+            TokenData::Reserved(Word::While)    => self.while_statement().map(Some),
+            TokenData::Reserved(Word::For)      => self.for_statement().map(Some),
+            TokenData::Reserved(Word::Switch)   => self.switch_statement().map(Some),
+            TokenData::Reserved(Word::Continue) => self.continue_statement().map(Some),
+            TokenData::Reserved(Word::Break)    => self.break_statement().map(Some),
+            TokenData::Reserved(Word::Return)   => self.return_statement().map(Some),
+            TokenData::Reserved(Word::With)     => self.with_statement().map(Some),
+            TokenData::Reserved(Word::Throw)    => self.throw_statement().map(Some),
+            TokenData::Reserved(Word::Try)      => self.try_statement().map(Some),
+            TokenData::Reserved(Word::Debugger) => self.debugger_statement().map(Some),
             _ => Ok(None)
         }
     }
@@ -253,7 +263,7 @@ impl<I> Parser<I>
 
     fn var_statement(&mut self) -> Parse<Stmt> {
         let span = self.start();
-        self.reread(TokenData::Reserved(ReservedWord::Var));
+        self.reread(TokenData::Reserved(Word::Var));
         let dtors = try!(self.var_declaration_list());
         Ok(try!(span.end_with_auto_semi(self, dtors, true)).map(StmtData::Var))
     }
@@ -274,11 +284,12 @@ impl<I> Parser<I>
     }
 
     fn id(&mut self) -> Parse<Id> {
-        let token = try!(self.read());
-        match token {
-            Token { value: TokenData::Identifier(name), location: location } => Ok(Id::new(name, location)),
-            _ => Err(ParseError::UnexpectedToken(token))
-        }
+        self.try_token_at(&mut |data, location| {
+            match data {
+                TokenData::Identifier(name) => Ok(IdData { name: name }),
+                _ => Err(data)
+            }
+        })
     }
 
     fn var_declaration(&mut self) -> Parse<VarDtor> {
@@ -352,22 +363,15 @@ impl<I> Parser<I>
 */
 
     fn primary_expression(&mut self) -> Parse<Expr> {
-        let token = try!(self.read());
-        match token.value {
-            TokenData::Identifier(name) => {
-                Ok(Id::new(name, token.location).into_expr())
+        self.try_token_at(&mut |data, location| {
+            match data {
+                TokenData::Identifier(name)     => Ok(ExprData::Id(Id::new(name, location))),
+                TokenData::Reserved(Word::Null) => Ok(ExprData::Null),
+                TokenData::Reserved(Word::This) => Ok(ExprData::This),
+                TokenData::Number(literal)      => Ok(ExprData::Number(literal)),
+                _                               => Err(data)
             }
-            TokenData::Reserved(ReservedWord::Null) => {
-                Ok(ExprData::Null.tracked(token.location))
-            }
-            TokenData::Reserved(ReservedWord::This) => {
-                Ok(ExprData::This.tracked(token.location))
-            }
-            TokenData::Number(literal) => {
-                Ok(ExprData::Number(literal).tracked(token.location))
-            }
-            _ => Err(ParseError::UnexpectedToken(token))
-        }
+        })
     }
 
     fn assignment_expression(&mut self) -> Parse<Expr> {

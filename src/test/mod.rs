@@ -6,7 +6,7 @@ use rustc_serialize::json::{Json, Object, Array};
 use rustc_serialize::{Decoder, Decodable};
 use std::io::prelude::*;
 use std::fs::File;
-use token::{TokenData, ReservedWord, Exp, CharCase, Sign, NumberLiteral, Radix};
+use token::{TokenData, Word, Exp, CharCase, Sign, NumberLiteral, Radix};
 use context::{Context, Mode};
 use ast::*;
 use track::*;
@@ -151,56 +151,56 @@ impl JsonExt for Json {
     }
 }
 
-fn deserialize_reserved(word: &str) -> ReservedWord {
+fn deserialize_word(word: &str) -> Word {
     match word {
-        "Null"       => ReservedWord::Null,
-        "True"       => ReservedWord::True,
-        "False"      => ReservedWord::False,
-        "Arguments"  => ReservedWord::Arguments,
-        "Eval"       => ReservedWord::Eval,
-        "Break"      => ReservedWord::Break,
-        "Case"       => ReservedWord::Case,
-        "Catch"      => ReservedWord::Catch,
-        "Class"      => ReservedWord::Class,
-        "Const"      => ReservedWord::Const,
-        "Continue"   => ReservedWord::Continue,
-        "Debugger"   => ReservedWord::Debugger,
-        "Default"    => ReservedWord::Default,
-        "Delete"     => ReservedWord::Delete,
-        "Do"         => ReservedWord::Do,
-        "Else"       => ReservedWord::Else,
-        "Export"     => ReservedWord::Export,
-        "Extends"    => ReservedWord::Extends,
-        "Finally"    => ReservedWord::Finally,
-        "For"        => ReservedWord::For,
-        "Function"   => ReservedWord::Function,
-        "If"         => ReservedWord::If,
-        "Import"     => ReservedWord::Import,
-        "In"         => ReservedWord::In,
-        "Instanceof" => ReservedWord::Instanceof,
-        "Let"        => ReservedWord::Let,
-        "New"        => ReservedWord::New,
-        "Return"     => ReservedWord::Return,
-        "Static"     => ReservedWord::Static,
-        "Super"      => ReservedWord::Super,
-        "Switch"     => ReservedWord::Switch,
-        "This"       => ReservedWord::This,
-        "Throw"      => ReservedWord::Throw,
-        "Try"        => ReservedWord::Try,
-        "Typeof"     => ReservedWord::Typeof,
-        "Var"        => ReservedWord::Var,
-        "Void"       => ReservedWord::Void,
-        "While"      => ReservedWord::While,
-        "With"       => ReservedWord::With,
-        "Yield"      => ReservedWord::Yield,
-        "Enum"       => ReservedWord::Enum,
-        "Await"      => ReservedWord::Await,
-        "Implements" => ReservedWord::Implements,
-        "Interface"  => ReservedWord::Interface,
-        "Package"    => ReservedWord::Package,
-        "Private"    => ReservedWord::Private,
-        "Protected"  => ReservedWord::Protected,
-        "Public"     => ReservedWord::Public,
+        "Null"       => Word::Null,
+        "True"       => Word::True,
+        "False"      => Word::False,
+        "Arguments"  => Word::Arguments,
+        "Eval"       => Word::Eval,
+        "Break"      => Word::Break,
+        "Case"       => Word::Case,
+        "Catch"      => Word::Catch,
+        "Class"      => Word::Class,
+        "Const"      => Word::Const,
+        "Continue"   => Word::Continue,
+        "Debugger"   => Word::Debugger,
+        "Default"    => Word::Default,
+        "Delete"     => Word::Delete,
+        "Do"         => Word::Do,
+        "Else"       => Word::Else,
+        "Export"     => Word::Export,
+        "Extends"    => Word::Extends,
+        "Finally"    => Word::Finally,
+        "For"        => Word::For,
+        "Function"   => Word::Function,
+        "If"         => Word::If,
+        "Import"     => Word::Import,
+        "In"         => Word::In,
+        "Instanceof" => Word::Instanceof,
+        "Let"        => Word::Let,
+        "New"        => Word::New,
+        "Return"     => Word::Return,
+        "Static"     => Word::Static,
+        "Super"      => Word::Super,
+        "Switch"     => Word::Switch,
+        "This"       => Word::This,
+        "Throw"      => Word::Throw,
+        "Try"        => Word::Try,
+        "Typeof"     => Word::Typeof,
+        "Var"        => Word::Var,
+        "Void"       => Word::Void,
+        "While"      => Word::While,
+        "With"       => Word::With,
+        "Yield"      => Word::Yield,
+        "Enum"       => Word::Enum,
+        "Await"      => Word::Await,
+        "Implements" => Word::Implements,
+        "Interface"  => Word::Interface,
+        "Package"    => Word::Package,
+        "Private"    => Word::Private,
+        "Protected"  => Word::Protected,
+        "Public"     => Word::Public,
         _            => panic!("invalid reserved word")
     }
 }
@@ -272,7 +272,7 @@ fn deserialize_token(mut data: Json) -> TokenData {
     match &ty[..] {
         "Reserved"      => {
             let s = arr.remove(0).into_string();
-            TokenData::Reserved(deserialize_reserved(&s[..]))
+            TokenData::Reserved(deserialize_word(&s[..]))
         }
         "LBrace"        => TokenData::LBrace,
         "RBrace"        => TokenData::RBrace,

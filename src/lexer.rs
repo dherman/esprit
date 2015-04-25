@@ -8,7 +8,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 use context::Context;
 use context::Mode::*;
-use token::ReservedWord;
+use token::Word;
 use eschar::ESCharExt;
 use reader::Reader;
 use tokbuf::TokenBuffer;
@@ -27,7 +27,7 @@ macro_rules! reserved_words {
         {
             let mut temp_map = HashMap::new();
             $(
-                temp_map.insert($key, ReservedWord::$val);
+                temp_map.insert($key, Word::$val);
             )*
             temp_map
         }
@@ -61,8 +61,8 @@ pub struct Lexer<I> {
     reader: Reader<I>,
     cx: Rc<Cell<Context>>,
     lookahead: TokenBuffer,
-    reserved: HashMap<&'static str, ReservedWord>,
-    strict_reserved: HashMap<&'static str, ReservedWord>
+    reserved: HashMap<&'static str, Word>,
+    strict_reserved: HashMap<&'static str, Word>
 }
 
 impl<I> Lexer<I> where I: Iterator<Item=char> {
@@ -621,11 +621,11 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         Ok(span.end(self, match (self.reserved.get(&s[..]), self.cx.get()) {
             (Some(word), _) => TokenData::Reserved(*word),
             (None, Context { mode: Sloppy, generator: true, .. }) if s == "yield" => {
-                TokenData::Reserved(ReservedWord::Yield)
+                TokenData::Reserved(Word::Yield)
             }
             (None, Context { mode: Sloppy, .. }) => TokenData::Identifier(s),
             (None, Context { mode: Module, .. }) if s == "await" => {
-                TokenData::Reserved(ReservedWord::Await)
+                TokenData::Reserved(Word::Await)
             }
             (None, Context { mode: Strict, .. }) | (None, Context { mode: Module, .. }) => {
                 match self.strict_reserved.get(&s[..]) {

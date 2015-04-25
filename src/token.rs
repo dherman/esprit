@@ -1,7 +1,7 @@
 use track::*;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub enum ReservedWord {
+pub enum Word {
     Null,
     True,
     False,
@@ -71,7 +71,7 @@ impl Token {
 #[derive(Debug, PartialEq)]
 #[allow(dead_code)]
 pub enum TokenData {
-    Reserved(ReservedWord),
+    Reserved(Word),
 
     // 11.7 Punctuators
     LBrace,
