@@ -57,12 +57,24 @@ pub enum Word {
     Public
 }
 
-pub type Token = Tracked<TokenData>;
+#[derive(Debug, PartialEq)]
+pub struct Token {
+    pub location: Span,
+    pub newline: bool,    // was there a newline between the preceding token and this one?
+    pub value: TokenData
+}
+
+impl Track for Token {
+    fn location(&self) -> Option<Span> {
+        Some(self.location)
+    }
+}
 
 impl Token {
-    pub fn new<T: Track>(start: &T, end: &T, value: TokenData) -> Token {
+    pub fn new(start: Posn, end: Posn, value: TokenData) -> Token {
         Token {
-            location: span(start, end),
+            location: Span { start: start, end: end },
+            newline: false,
             value: value
         }
     }
@@ -132,9 +144,6 @@ pub enum TokenData {
 
     Identifier(String),
 
-    LineComment(String),
-    BlockComment(String),
-    Newline,
     EOF
 }
 

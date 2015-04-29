@@ -15,11 +15,7 @@ impl<I> Reader<I> where I: Iterator<Item=char> {
             chars: chars,
             curr_char: curr_char,
             next_char: next_char,
-            curr_posn: Posn {
-                offset: 0,
-                line: 0,
-                column: 0
-            }
+            curr_posn: Posn::origin()
         }
     }
 

@@ -53,7 +53,7 @@ impl SpanTracker {
       where I: Iterator<Item=char>
     {
         let end = lexer.posn();
-        Token::new(&self.start, &end, value)
+        Token::new(self.start, end, value)
     }
 }
 
@@ -196,18 +196,6 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }
     }
 
-    fn skip_until2<F>(&mut self, pred: &F)
-      where F: Fn(char, char) -> bool
-    {
-        loop {
-            match self.peek2() {
-                (None, _) | (_, None) => return,
-                (Some(curr), Some(next)) if pred(curr, next) => return,
-                _ => { self.skip(); }
-            }
-        }
-    }
-
     fn read_into_until<F>(&mut self, s: &mut String, pred: &F)
       where F: Fn(char) -> bool
     {
@@ -216,18 +204,6 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 Some(ch) if pred(ch) => return,
                 Some(ch) => { s.push(self.reread(ch)); }
                 None => return,
-            }
-        }
-    }
-
-    fn read_into_until2<F>(&mut self, s: &mut String, pred: &F)
-      where F: Fn(char, char) -> bool
-    {
-        loop {
-            match self.peek2() {
-                (None, _) | (_, None) => return,
-                (Some(curr), Some(next)) if pred(curr, next) => return,
-                _ => { s.push(self.read()); }
             }
         }
     }
@@ -291,35 +267,26 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         self.skip_while(&|ch| ch.is_es_whitespace());
     }
 
-    fn read_line_comment(&mut self) -> Token {
-        let span = self.start();
-        self.skip2();
-        let mut s = String::new();
-        self.read_into_until(&mut s, &|ch| ch.is_es_newline());
-        span.end(self, TokenData::LineComment(s))
-    }
-
     fn skip_line_comment(&mut self) {
         self.skip2();
         self.skip_until(&|ch| ch.is_es_newline());
     }
 
-    fn read_block_comment(&mut self) -> Result<Token, LexError> {
-        let span = self.start();
-        let mut s = String::new();
-        self.reread('/');
-        self.reread('*');
-        self.read_into_until2(&mut s, &|curr, next| curr == '*' && next == '/');
-        try!(self.expect('*'));
-        try!(self.expect('/'));
-        Ok(span.end(self, TokenData::BlockComment(s)))
-    }
-
-    fn skip_block_comment(&mut self) -> Result<(), LexError> {
-        self.skip_until2(&|curr, next| curr == '*' && next == '/');
-        try!(self.expect('*'));
-        try!(self.expect('/'));
-        Ok(())
+    fn skip_block_comment(&mut self) -> Result<bool, LexError> {
+        let mut found_newline = false;
+        loop {
+            match self.peek2() {
+                (None, _) | (_, None)  => { return Err(LexError::UnexpectedEOF); }
+                (Some('*'), Some('/')) => { self.skip2(); break; }
+                (Some(ch), _) => {
+                    if ch.is_es_newline() {
+                        found_newline = true;
+                    }
+                    self.skip();
+                }
+            }
+        }
+        Ok(found_newline)
     }
 
     fn read_regexp(&mut self) -> Result<Token, LexError> {
@@ -666,95 +633,119 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn read_next_token(&mut self) -> Result<Token, LexError> {
+        let mut pair;
+        let mut found_newline = false;
+
+        // Skip whitespace and comments.
         loop {
-            match self.peek2() {
-                (Some(ch), _) if ch.is_es_whitespace() => { self.skip_whitespace() }
-                (Some('/'), Some('/')) => {
-                    if self.cx.get().comments {
-                        return Ok(self.read_line_comment());
-                    } else {
-                        self.skip_line_comment();
-                    }
-                }
-                (Some('/'), Some('*')) => {
-                    if self.cx.get().comments {
-                        return self.read_block_comment();
-                    } else {
-                        try!(self.skip_block_comment());
-                    }
-                }
-                (Some('/'), _) if !self.cx.get().operator => return self.read_regexp(),
-                (Some('/'), Some('=')) => return Ok(self.read_punc2(TokenData::SlashAssign)),
-                (Some('/'), _) => return Ok(self.read_punc(TokenData::Slash)),
-                (Some('.'), Some(ch)) if ch.is_digit(10) => return self.read_number(),
-                (Some('.'), _) => return Ok(self.read_punc(TokenData::Dot)),
-                (Some('{'), _) => return Ok(self.read_punc(TokenData::LBrace)),
-                (Some('}'), _) => return Ok(self.read_punc(TokenData::RBrace)),
-                (Some('['), _) => return Ok(self.read_punc(TokenData::LBrack)),
-                (Some(']'), _) => return Ok(self.read_punc(TokenData::RBrack)),
-                (Some('('), _) => return Ok(self.read_punc(TokenData::LParen)),
-                (Some(')'), _) => return Ok(self.read_punc(TokenData::RParen)),
-                (Some(';'), _) => return Ok(self.read_punc(TokenData::Semi)),
-                (Some(':'), _) => return Ok(self.read_punc(TokenData::Colon)),
-                (Some(','), _) => return Ok(self.read_punc(TokenData::Comma)),
-                (Some('<'), Some('<')) => return Ok(self.read_punc2_3('=', TokenData::LShift, TokenData::LShiftAssign)),
-                (Some('<'), Some('=')) => return Ok(self.read_punc2(TokenData::LEq)),
-                (Some('<'), _) => return Ok(self.read_punc(TokenData::LAngle)),
-                (Some('>'), Some('>')) => return Ok({
-                    let span = self.start();
-                    self.skip2();
-                    let value = match self.peek2() {
-                        (Some('>'), Some('=')) => { self.skip2(); TokenData::URShiftAssign }
-                        (Some('>'), _) => { self.skip(); TokenData::URShift }
-                        (Some('='), _) => { self.skip(); TokenData::RShiftAssign }
-                        _ => TokenData::RShift
-                    };
-                    span.end(self, value)
-                }),
-                (Some('>'), Some('=')) => return Ok(self.read_punc2(TokenData::GEq)),
-                (Some('>'), _) => return Ok(self.read_punc(TokenData::RAngle)),
-                (Some('='), Some('=')) => return Ok(self.read_punc2_3('=', TokenData::Eq, TokenData::StrictEq)),
-                (Some('='), _) => return Ok(self.read_punc(TokenData::Assign)),
-                (Some('+'), Some('+')) => return Ok(self.read_punc2(TokenData::Inc)),
-                (Some('+'), Some('=')) => return Ok(self.read_punc2(TokenData::PlusAssign)),
-                (Some('+'), _) => return Ok(self.read_punc(TokenData::Plus)),
-                (Some('-'), Some('-')) => return Ok(self.read_punc2(TokenData::Dec)),
-                (Some('-'), Some('=')) => return Ok(self.read_punc2(TokenData::MinusAssign)),
-                (Some('-'), _) => return Ok(self.read_punc(TokenData::Minus)),
-                (Some('*'), Some('=')) => return Ok(self.read_punc2(TokenData::StarAssign)),
-                (Some('*'), _) => return Ok(self.read_punc(TokenData::Star)),
-                (Some('%'), Some('=')) => return Ok(self.read_punc2(TokenData::ModAssign)),
-                (Some('%'), _) => return Ok(self.read_punc(TokenData::Mod)),
-                (Some('^'), Some('=')) => return Ok(self.read_punc2(TokenData::BitXorAssign)),
-                (Some('^'), _) => return Ok(self.read_punc(TokenData::BitXor)),
-                (Some('&'), Some('&')) => return Ok(self.read_punc2(TokenData::LogicalAnd)),
-                (Some('&'), Some('=')) => return Ok(self.read_punc2(TokenData::BitAndAssign)),
-                (Some('&'), _) => return Ok(self.read_punc(TokenData::BitAnd)),
-                (Some('|'), Some('|')) => return Ok(self.read_punc2(TokenData::LogicalOr)),
-                (Some('|'), Some('=')) => return Ok(self.read_punc2(TokenData::BitOrAssign)),
-                (Some('|'), _) => return Ok(self.read_punc(TokenData::BitOr)),
-                (Some('~'), _) => return Ok(self.read_punc(TokenData::Tilde)),
-                (Some('!'), Some('=')) => return Ok(self.read_punc2_3('=', TokenData::NEq, TokenData::StrictNEq)),
-                (Some('!'), _) => return Ok(self.read_punc(TokenData::Bang)),
-                (Some('?'), _) => return Ok(self.read_punc(TokenData::Question)),
-                (Some('"'), _) | (Some('\''), _) => return self.read_string(),
+            pair = self.peek2();
+            match pair {
+                (Some(ch), _) if ch.is_es_whitespace() => { self.skip_whitespace(); }
                 (Some(ch), _) if ch.is_es_newline() => {
-                    let span = self.start();
                     self.skip_newlines();
-                    if self.cx.get().newlines {
-                        return Ok(span.end(self, TokenData::Newline));
-                    }
+                    found_newline = true;
                 }
-                (Some(ch), _) if ch.is_digit(10) => return self.read_number(),
-                (Some(ch), _) if ch.is_es_identifier_start() => return self.read_word(),
-                (Some('\\'), _) => return self.read_word(),
-                (Some(ch), _) => return Err(LexError::UnexpectedChar(ch)),
-                (None, _) => {
-                    let here = self.posn();
-                    return Ok(Token::new(&here, &here, TokenData::EOF))
+                (Some('/'), Some('/')) => { self.skip_line_comment(); }
+                (Some('/'), Some('*')) => {
+                    found_newline = found_newline || try!(self.skip_block_comment());
                 }
+                _ => { break; }
             }
         }
+
+        let mut result = try!(match pair {
+            (Some('/'), _) if !self.cx.get().operator    => self.read_regexp(),
+            (Some('/'), Some('='))                       => {
+                Ok(self.read_punc2(TokenData::SlashAssign))
+            }
+            (Some('/'), _)                               => Ok(self.read_punc(TokenData::Slash)),
+            (Some('.'), Some(ch)) if ch.is_digit(10)     => self.read_number(),
+            (Some('.'), _)                               => Ok(self.read_punc(TokenData::Dot)),
+            (Some('{'), _)                               => Ok(self.read_punc(TokenData::LBrace)),
+            (Some('}'), _)                               => Ok(self.read_punc(TokenData::RBrace)),
+            (Some('['), _)                               => Ok(self.read_punc(TokenData::LBrack)),
+            (Some(']'), _)                               => Ok(self.read_punc(TokenData::RBrack)),
+            (Some('('), _)                               => Ok(self.read_punc(TokenData::LParen)),
+            (Some(')'), _)                               => Ok(self.read_punc(TokenData::RParen)),
+            (Some(';'), _)                               => Ok(self.read_punc(TokenData::Semi)),
+            (Some(':'), _)                               => Ok(self.read_punc(TokenData::Colon)),
+            (Some(','), _)                               => Ok(self.read_punc(TokenData::Comma)),
+            (Some('<'), Some('<'))                       => {
+                Ok(self.read_punc2_3('=', TokenData::LShift, TokenData::LShiftAssign))
+            }
+            (Some('<'), Some('='))                       => Ok(self.read_punc2(TokenData::LEq)),
+            (Some('<'), _)                               => Ok(self.read_punc(TokenData::LAngle)),
+            (Some('>'), Some('>'))                       => Ok({
+                let span = self.start();
+                self.skip2();
+                let value = match self.peek2() {
+                    (Some('>'), Some('=')) => { self.skip2(); TokenData::URShiftAssign }
+                    (Some('>'), _) => { self.skip(); TokenData::URShift }
+                    (Some('='), _) => { self.skip(); TokenData::RShiftAssign }
+                    _ => TokenData::RShift
+                };
+                span.end(self, value)
+            }),
+            (Some('>'), Some('='))                       => Ok(self.read_punc2(TokenData::GEq)),
+            (Some('>'), _)                               => Ok(self.read_punc(TokenData::RAngle)),
+            (Some('='), Some('='))                       => {
+                Ok(self.read_punc2_3('=', TokenData::Eq, TokenData::StrictEq))
+            }
+            (Some('='), _)                               => Ok(self.read_punc(TokenData::Assign)),
+            (Some('+'), Some('+'))                       => Ok(self.read_punc2(TokenData::Inc)),
+            (Some('+'), Some('='))                       => {
+                Ok(self.read_punc2(TokenData::PlusAssign))
+            }
+            (Some('+'), _)                               => Ok(self.read_punc(TokenData::Plus)),
+            (Some('-'), Some('-'))                       => Ok(self.read_punc2(TokenData::Dec)),
+            (Some('-'), Some('='))                       => {
+                Ok(self.read_punc2(TokenData::MinusAssign))
+            }
+            (Some('-'), _)                               => Ok(self.read_punc(TokenData::Minus)),
+            (Some('*'), Some('='))                       => {
+                Ok(self.read_punc2(TokenData::StarAssign))
+            }
+            (Some('*'), _)                               => Ok(self.read_punc(TokenData::Star)),
+            (Some('%'), Some('='))                       => {
+                Ok(self.read_punc2(TokenData::ModAssign))
+            }
+            (Some('%'), _)                               => Ok(self.read_punc(TokenData::Mod)),
+            (Some('^'), Some('='))                       => {
+                Ok(self.read_punc2(TokenData::BitXorAssign))
+            }
+            (Some('^'), _)                               => Ok(self.read_punc(TokenData::BitXor)),
+            (Some('&'), Some('&'))                       => {
+                Ok(self.read_punc2(TokenData::LogicalAnd))
+            }
+            (Some('&'), Some('='))                       => {
+                Ok(self.read_punc2(TokenData::BitAndAssign))
+            }
+            (Some('&'), _)                               => Ok(self.read_punc(TokenData::BitAnd)),
+            (Some('|'), Some('|'))                       => {
+                Ok(self.read_punc2(TokenData::LogicalOr))
+            }
+            (Some('|'), Some('='))                       => {
+                Ok(self.read_punc2(TokenData::BitOrAssign))
+            }
+            (Some('|'), _)                               => Ok(self.read_punc(TokenData::BitOr)),
+            (Some('~'), _)                               => Ok(self.read_punc(TokenData::Tilde)),
+            (Some('!'), Some('='))                       => {
+                Ok(self.read_punc2_3('=', TokenData::NEq, TokenData::StrictNEq))
+            }
+            (Some('!'), _)                               => Ok(self.read_punc(TokenData::Bang)),
+            (Some('?'), _)                               => Ok(self.read_punc(TokenData::Question)),
+            (Some('"'), _) | (Some('\''), _)             => self.read_string(),
+            (Some(ch), _) if ch.is_digit(10)             => self.read_number(),
+            (Some(ch), _) if ch.is_es_identifier_start() => self.read_word(),
+            (Some('\\'), _)                              => self.read_word(),
+            (Some(ch), _)                                => Err(LexError::UnexpectedChar(ch)),
+            (None, _)                                    => {
+                let here = self.posn();
+                Ok(Token::new(here, here, TokenData::EOF))
+            }
+        });
+        result.newline = found_newline;
+        Ok(result)
     }
 }
 

@@ -3,9 +3,9 @@
 {"source": "/=",                      "context": ["operator"], "expected": ["SlashAssign"]},
 {"source": "/x/g",                    "context": [],           "expected": ["RegExp", "x", "g"]},
 {"source": "/=x/g",                   "context": [],           "expected": ["RegExp", "=x", "g"]},
-{"source": "// stuff\n",              "context": ["comments"], "expected": ["LineComment", " stuff"]},
-{"source": "/* stuff */\n",           "context": ["comments"], "expected": ["BlockComment", " stuff "]},
-{"source": "/* stuff\nthings */\n",   "context": ["comments"], "expected": ["BlockComment", " stuff\nthings "]},
+{"source": "// stuff\nx",             "context": [],           "expected": ["Identifier", "x"]},
+{"source": "/* stuff */\nx",          "context": [],           "expected": ["Identifier", "x"]},
+{"source": "/* stuff\nthings */\nx",  "context": [],           "expected": ["Identifier", "x"]},
 
 {"source": "12in",   "context": [], "error": "unexpected char"},
 {"source": "0xG",    "context": [], "error": "unexpected char"},

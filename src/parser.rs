@@ -86,7 +86,6 @@ impl SpanTracker {
       where I: Iterator<Item=char>
     {
         let before = parser.posn();
-        let found_newline = try!(parser.skip_newlines());
         match try!(parser.peek()) {
             &Token { value: TokenData::Semi, .. } => {
                 parser.skip();
@@ -102,8 +101,8 @@ impl SpanTracker {
                     location: Some(Span { start: self.start, end: before })
                 })
             }
-            _ => {
-                if require_newline && !found_newline {
+            &Token { newline, .. } => {
+                if require_newline && !newline {
                     let token = try!(parser.read());
                     return Err(ParseError::FailedASI(token));
                 }
@@ -153,17 +152,6 @@ impl<I> Parser<I>
         self.lexer.peek_token().map_err(ParseError::LexError)
     }
 
-    fn skip_newlines(&mut self) -> Parse<bool> {
-        let mut cx = self.cx.get();
-        let newlines = cx.newlines;
-        cx.newlines = true;
-        self.cx.set(cx);
-        let result = (try!(self.peek()).value == TokenData::Newline) && { try!(self.skip()); true };
-        cx.newlines = newlines;
-        self.cx.set(cx);
-        Ok(result)
-    }
-
     fn peek_same_line(&mut self) -> Parse<&Token> {
         let mut cx = self.cx.get();
         let newlines = cx.newlines;
@@ -207,12 +195,16 @@ impl<I> Parser<I>
     }
 
     fn try_token_at<T, F>(&mut self, op: &mut F) -> Parse<Tracked<T>>
-      where F: FnMut(TokenData, Option<Span>) -> Result<T, TokenData>
+      where F: FnMut(TokenData, Span) -> Result<T, TokenData>
     {
-        let Tracked { location, value: token } = try!(self.read());
+        let Token { location, newline, value: token } = try!(self.read());
         match op(token, location) {
-            Ok(node) => Ok(Tracked { location: location, value: node }),
-            Err(token) => Err(ParseError::UnexpectedToken(Token { location: location, value: token }))
+            Ok(node) => Ok(Tracked { location: Some(location), value: node }),
+            Err(token) => Err(ParseError::UnexpectedToken(Token {
+                location: location,
+                newline: newline,
+                value: token
+            }))
         }
     }
 
@@ -233,9 +225,9 @@ impl<I> Parser<I>
 
     pub fn statement(&mut self) -> Parse<Option<Stmt>> {
         match try!(self.peek()).value {
-            TokenData::LBrace                           => self.block_statement().map(Some),
+            TokenData::LBrace                   => self.block_statement().map(Some),
             TokenData::Reserved(Word::Var)      => self.var_statement().map(Some),
-            TokenData::Semi                             => self.empty_statement().map(Some),
+            TokenData::Semi                     => self.empty_statement().map(Some),
             TokenData::Reserved(Word::If)       => self.if_statement().map(Some),
             TokenData::Reserved(Word::Do)       => self.do_statement().map(Some),
             TokenData::Reserved(Word::While)    => self.while_statement().map(Some),
@@ -248,7 +240,7 @@ impl<I> Parser<I>
             TokenData::Reserved(Word::Throw)    => self.throw_statement().map(Some),
             TokenData::Reserved(Word::Try)      => self.try_statement().map(Some),
             TokenData::Reserved(Word::Debugger) => self.debugger_statement().map(Some),
-            _ => Ok(None)
+            _                                   => Ok(None)
         }
     }
 
@@ -275,8 +267,6 @@ impl<I> Parser<I>
     fn var_declaration_list(&mut self) -> Parse<Vec<VarDtor>> {
         let mut items = Vec::new();
         items.push(try!(self.var_declaration()));
-        // FIXME: this is going to skip newlines in lookahead and break ASI at the end.
-        //        should I always store Newline tokens in the lookahead buffer?
         while try!(self.matches(TokenData::Comma)) {
             items.push(try!(self.var_declaration()));
         }
@@ -365,7 +355,7 @@ impl<I> Parser<I>
     fn primary_expression(&mut self) -> Parse<Expr> {
         self.try_token_at(&mut |data, location| {
             match data {
-                TokenData::Identifier(name)     => Ok(ExprData::Id(Id::new(name, location))),
+                TokenData::Identifier(name)     => Ok(ExprData::Id(Id::new(name, Some(location)))),
                 TokenData::Reserved(Word::Null) => Ok(ExprData::Null),
                 TokenData::Reserved(Word::This) => Ok(ExprData::This),
                 TokenData::Number(literal)      => Ok(ExprData::Number(literal)),
@@ -380,19 +370,19 @@ impl<I> Parser<I>
 
     pub fn expr(&mut self) -> Parse<Expr> {
         let left = match self.lexer.read_token() {
-            Ok(Token { value: TokenData::Number(literal), location }) => Expr { location: location, value: ExprData::Number(literal) },
+            Ok(Token { value: TokenData::Number(literal), location, .. }) => Expr { location: Some(location), value: ExprData::Number(literal) },
             Ok(t) => return Err(ParseError::UnexpectedToken(t)),
             Err(e) => return Err(ParseError::LexError(e))
         };
 
         let op = match self.lexer.read_token() {
-            Ok(Token { value: TokenData::Plus, location }) => Binop { location: location, value: BinopTag::Plus },
+            Ok(Token { value: TokenData::Plus, location, .. }) => Binop { location: Some(location), value: BinopTag::Plus },
             Ok(t) => return Err(ParseError::UnexpectedToken(t)),
             Err(e) => return Err(ParseError::LexError(e))
         };
 
         let right = match self.lexer.read_token() {
-            Ok(Token { value: TokenData::Number(literal), location }) => Expr { location: location, value: ExprData::Number(literal) },
+            Ok(Token { value: TokenData::Number(literal), location, .. }) => Expr { location: Some(location), value: ExprData::Number(literal) },
             Ok(t) => return Err(ParseError::UnexpectedToken(t)),
             Err(e) => return Err(ParseError::LexError(e))
         };
@@ -423,7 +413,6 @@ mod tests {
         let context = Context {
             newlines: false,
             operator: false,
-            comments: false,
             generator: false,
             mode: Mode::Sloppy
         };
@@ -437,6 +426,7 @@ mod tests {
     pub fn go() {
         let tests = deserialize_parser_tests(include_str!("../tests/parser/tests.json"));
         for ParserTest { source, expected, .. } in tests {
+            //println!("expected: {:?}", expected);
             let result = parse(&source);
             match (result, expected) {
                 (Ok(mut actual_ast), Ok(expected_ast)) => {

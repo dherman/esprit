@@ -13,6 +13,7 @@ impl<T> Untrack for AutoSemi<T>
   where T: Untrack
 {
     fn untrack(&mut self) {
+        self.inserted = false;
         self.node.untrack();
     }
 }

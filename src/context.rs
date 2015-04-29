@@ -9,7 +9,6 @@ pub enum Mode {
 pub struct Context {
     pub newlines: bool,
     pub operator: bool,
-    pub comments: bool,
     pub generator: bool,
     pub mode: Mode
 }

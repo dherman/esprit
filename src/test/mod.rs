@@ -10,6 +10,7 @@ use token::{TokenData, Word, Exp, CharCase, Sign, NumberLiteral, Radix};
 use context::{Context, Mode};
 use ast::*;
 use track::*;
+use eschar::*;
 
 pub struct ParserTest {
     pub source: String,
@@ -50,7 +51,6 @@ fn deserialize_lexer_context(data: &mut Object) -> Context {
     Context {
         newlines: set.contains("newlines"),
         operator: set.contains("operator"),
-        comments: set.contains("comments"),
         generator: set.contains("generator"),
         mode: Mode::Sloppy
     }
@@ -324,7 +324,6 @@ fn deserialize_token(mut data: Json) -> TokenData {
         "BitOrAssign"   => TokenData::BitOrAssign,
         "BitXorAssign"  => TokenData::BitXorAssign,
         "Arrow"         => TokenData::Arrow,
-        "Newline"       => TokenData::Newline,
         "EOF"           => TokenData::EOF,
         "DecimalInt"    => {
             let (value, exp) = tuplify!(arr, ((), ()));
@@ -352,8 +351,6 @@ fn deserialize_token(mut data: Json) -> TokenData {
             TokenData::RegExp(pattern.into_string(), flags.into_string().chars().collect())
         }
         "Identifier"    => TokenData::Identifier(arr.remove(0).into_string()),
-        "LineComment"   => TokenData::LineComment(arr.remove(0).into_string()),
-        "BlockComment"  => TokenData::BlockComment(arr.remove(0).into_string()),
         _               => panic!("invalid token")
     }
 }

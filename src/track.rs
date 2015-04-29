@@ -5,6 +5,16 @@ pub struct Posn {
     pub column: u32
 }
 
+impl Posn {
+    pub fn origin() -> Posn {
+        Posn {
+            offset: 0,
+            line: 0,
+            column: 0
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct Span {
     pub start: Posn,
