@@ -240,18 +240,28 @@ fn deserialize_stmt_list_item(mut data: Json) -> StmtListItem {
     let mut obj = data.as_object_mut().unwrap();
     let ty = obj.remove("type").unwrap().into_string();
     match &ty[..] {
+        "FunctionDeclaration" => unimplemented!(),
+        _ => StmtListItem::Stmt(deserialize_stmt(ty, obj))
+    }
+}
+
+fn deserialize_stmt(ty: String, obj: &mut Object) -> Stmt {
+    match &ty[..] {
         "VariableDeclaration" => {
             let dtors = obj.remove("declarations").unwrap()
                            .into_array()
                            .into_iter()
                            .map(deserialize_var_declarator)
                            .collect();
-            (StmtListItem::Stmt(StmtData::Var(AutoSemi {
+            StmtData::Var(AutoSemi {
                 inserted: false,
                 node: dtors
-            }).tracked(None)))
+            }).tracked(None)
         }
-        _ => panic!("unrecognized statement list item")
+        "EmptyStatement" => {
+            StmtData::Empty.tracked(None)
+        }
+        _ => panic!("unrecognized statement")
     }
 }
 

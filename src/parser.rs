@@ -295,7 +295,10 @@ impl<I> Parser<I>
     }
 
     fn empty_statement(&mut self) -> Parse<Stmt> {
-        unimplemented!()
+        self.span(&mut |this| {
+            try!(this.expect(TokenData::Semi));
+            Ok(StmtData::Empty)
+        })
     }
 
     fn if_statement(&mut self) -> Parse<Stmt> {
