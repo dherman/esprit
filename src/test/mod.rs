@@ -91,6 +91,7 @@ trait JsonExt {
     fn into_exp_opt(self) -> Option<Exp>;
     fn into_char_case(self) -> CharCase;
     fn into_char_case_opt(self) -> Option<CharCase>;
+    fn into_object_opt(self) -> Option<Object>;
 }
 
 impl JsonExt for Json {
@@ -111,6 +112,13 @@ impl JsonExt for Json {
             Json::Null => None,
             Json::String(string) => Some(string),
             _ => panic!("expected string or null")
+        }
+    }
+    fn into_object_opt(self) -> Option<Object> {
+        match self {
+            Json::Object(object) => Some(object),
+            Json::Null => None,
+            _ => panic!("expected object or null")
         }
     }
     fn into_char_case(self) -> CharCase {
@@ -241,11 +249,16 @@ fn deserialize_stmt_list_item(mut data: Json) -> StmtListItem {
     let ty = obj.remove("type").unwrap().into_string();
     match &ty[..] {
         "FunctionDeclaration" => unimplemented!(),
-        _ => StmtListItem::Stmt(deserialize_stmt(ty, obj))
+        _ => StmtListItem::Stmt(deserialize_stmt_with_type(ty, obj))
     }
 }
 
-fn deserialize_stmt(ty: String, obj: &mut Object) -> Stmt {
+fn deserialize_stmt(obj: &mut Object) -> Stmt {
+    let ty = obj.remove("type").unwrap().into_string();
+    deserialize_stmt_with_type(ty, obj)
+}
+
+fn deserialize_stmt_with_type(ty: String, obj: &mut Object) -> Stmt {
     match &ty[..] {
         "VariableDeclaration" => {
             let dtors = obj.remove("declarations").unwrap()
@@ -260,6 +273,14 @@ fn deserialize_stmt(ty: String, obj: &mut Object) -> Stmt {
         }
         "EmptyStatement" => {
             StmtData::Empty.tracked(None)
+        }
+        "IfStatement" => {
+            let test = deserialize_expression(obj.remove("test").unwrap().as_object_mut().unwrap());
+            let cons = deserialize_stmt(obj.remove("consequent").unwrap().as_object_mut().unwrap());
+            let alt = obj.remove("alternate").unwrap().into_object_opt().map(|mut obj| {
+                Box::new(deserialize_stmt(&mut obj))
+            });
+            StmtData::If(test, Box::new(cons), alt).tracked(None)
         }
         _ => panic!("unrecognized statement")
     }

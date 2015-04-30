@@ -211,7 +211,7 @@ impl<I> Parser<I>
     fn statement_list(&mut self) -> Parse<Vec<StmtListItem>> {
         let mut items = Vec::new();
         while !try!(self.peek()).follow_statement_list() {
-            match try!(self.statement()) {
+            match try!(self.statement_opt()) {
                 Some(stmt) => { items.push(StmtListItem::Stmt(stmt)); }
                 None => { items.push(StmtListItem::Decl(try!(self.declaration()))); }
             }
@@ -223,7 +223,14 @@ impl<I> Parser<I>
         unimplemented!()
     }
 
-    pub fn statement(&mut self) -> Parse<Option<Stmt>> {
+    pub fn statement(&mut self) -> Parse<Stmt> {
+        match try!(self.statement_opt()) {
+            Some(stmt) => Ok(stmt),
+            None => Err(ParseError::UnexpectedToken(try!(self.read())))
+        }
+    }
+
+    fn statement_opt(&mut self) -> Parse<Option<Stmt>> {
         match try!(self.peek()).value {
             TokenData::LBrace                   => self.block_statement().map(Some),
             TokenData::Reserved(Word::Var)      => self.var_statement().map(Some),
@@ -302,7 +309,18 @@ impl<I> Parser<I>
     }
 
     fn if_statement(&mut self) -> Parse<Stmt> {
-        unimplemented!()
+        self.span(&mut |this| {
+            try!(this.expect(TokenData::Reserved(Word::If)));
+            let test = try!(this.paren_expression());
+            let cons = Box::new(try!(this.statement()));
+            let alt = if try!(this.peek()).value == TokenData::Reserved(Word::Else) {
+                this.reread(TokenData::Reserved(Word::Else));
+                Some(Box::new(try!(this.statement())))
+            } else {
+                None
+            };
+            Ok(StmtData::If(test, cons, alt))
+        })
     }
 
     fn do_statement(&mut self) -> Parse<Stmt> {
@@ -355,6 +373,13 @@ impl<I> Parser<I>
     }
 */
 
+    fn paren_expression(&mut self) -> Parse<Expr> {
+        try!(self.expect(TokenData::LParen));
+        let result = try!(self.expression());
+        try!(self.expect(TokenData::RParen));
+        Ok(result)
+    }
+
     fn primary_expression(&mut self) -> Parse<Expr> {
         self.try_token_at(&mut |data, location| {
             match data {
@@ -369,6 +394,11 @@ impl<I> Parser<I>
 
     fn assignment_expression(&mut self) -> Parse<Expr> {
         self.primary_expression()
+    }
+
+    fn expression(&mut self) -> Parse<Expr> {
+        // FIXME: implement for real
+        self.assignment_expression()
     }
 
     pub fn expr(&mut self) -> Parse<Expr> {
