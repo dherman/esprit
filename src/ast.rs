@@ -3,18 +3,15 @@
 use track::*;
 use token::{NumberLiteral};
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct AutoSemi<T> {
-    pub inserted: bool,
-    pub node: T
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum Semi {
+    Inserted,
+    Explicit(Option<Posn>)
 }
 
-impl<T> Untrack for AutoSemi<T>
-  where T: Untrack
-{
+impl Untrack for Semi {
     fn untrack(&mut self) {
-        self.inserted = false;
-        self.node.untrack();
+        *self = Semi::Explicit(None);
     }
 }
 
@@ -67,7 +64,7 @@ pub type Fun = Tracked<FunData>;
 pub enum StmtData {
     Empty,
     Block(Vec<StmtListItem>),
-    Var(AutoSemi<Vec<VarDtor>>),
+    Var(Vec<VarDtor>, Semi),
     Expr(Expr),
     If(Expr, Box<Stmt>, Option<Box<Stmt>>),
     Label(Id, Box<Stmt>),
@@ -79,7 +76,7 @@ pub enum StmtData {
     Throw(Expr),
     Try(Vec<Stmt>, Option<Box<Catch>>, Option<Vec<Stmt>>),
     While(Expr, Box<Stmt>),
-    DoWhile(Box<Stmt>, Expr),
+    DoWhile(Box<Stmt>, Expr, Semi),
     For(Option<Box<ForHead>>, Option<Expr>, Option<Expr>),
     ForIn(Box<ForInHead>, Expr, Box<Stmt>),
     Debugger
@@ -90,7 +87,7 @@ impl Untrack for StmtData {
         match *self {
             StmtData::Empty                                             => { }
             StmtData::Block(ref mut items)                              => { items.untrack(); }
-            StmtData::Var(ref mut dtors)                                => { dtors.untrack(); }
+            StmtData::Var(ref mut dtors, ref mut semi)                  => { dtors.untrack(); semi.untrack(); }
             StmtData::Expr(ref mut expr)                                => { expr.untrack(); }
             StmtData::If(ref mut test, ref mut cons, ref mut alt)       => { test.untrack(); cons.untrack(); alt.untrack(); }
             StmtData::Label(ref mut lab, ref mut stmt)                  => { lab.untrack(); stmt.untrack(); }
@@ -102,7 +99,7 @@ impl Untrack for StmtData {
             StmtData::Throw(ref mut expr)                               => { expr.untrack(); }
             StmtData::Try(ref mut body, ref mut catch, ref mut finally) => { body.untrack(); catch.untrack(); finally.untrack(); }
             StmtData::While(ref mut expr, ref mut stmt)                 => { expr.untrack(); stmt.untrack(); }
-            StmtData::DoWhile(ref mut stmt, ref mut expr)               => { stmt.untrack(); expr.untrack(); }
+            StmtData::DoWhile(ref mut stmt, ref mut expr, ref mut semi) => { stmt.untrack(); expr.untrack(); semi.untrack(); }
             StmtData::For(ref mut init, ref mut test, ref mut incr)     => { init.untrack(); test.untrack(); incr.untrack(); }
             StmtData::ForIn(ref mut lhs, ref mut rhs, ref mut body)     => { lhs.untrack(); rhs.untrack(); body.untrack(); }
             StmtData::Debugger                                          => { }

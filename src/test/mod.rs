@@ -266,10 +266,7 @@ fn deserialize_stmt_with_type(ty: String, obj: &mut Object) -> Stmt {
                            .into_iter()
                            .map(deserialize_var_declarator)
                            .collect();
-            StmtData::Var(AutoSemi {
-                inserted: false,
-                node: dtors
-            }).tracked(None)
+            StmtData::Var(dtors, Semi::Explicit(None)).tracked(None)
         }
         "EmptyStatement" => {
             StmtData::Empty.tracked(None)
@@ -281,6 +278,19 @@ fn deserialize_stmt_with_type(ty: String, obj: &mut Object) -> Stmt {
                 Box::new(deserialize_stmt(&mut obj))
             });
             StmtData::If(test, Box::new(cons), alt).tracked(None)
+        }
+        "DoWhileStatement" => {
+            let body = Box::new(deserialize_stmt(obj.remove("body").unwrap().as_object_mut().unwrap()));
+            let test = deserialize_expression(obj.remove("test").unwrap().as_object_mut().unwrap());
+            StmtData::DoWhile(body, test, Semi::Explicit(None)).tracked(None)
+        }
+        "BlockStatement" => {
+            let body = obj.remove("body").unwrap()
+                          .into_array()
+                          .into_iter()
+                          .map(deserialize_stmt_list_item)
+                          .collect();
+            StmtData::Block(body).tracked(None)
         }
         _ => panic!("unrecognized statement")
     }

@@ -4,7 +4,7 @@ use lexer::Lexer;
 
 use std::cell::Cell;
 use std::rc::Rc;
-use ast::{Expr, ExprData, Binop, BinopTag, Script, ScriptData, Stmt, StmtData, Decl, StmtListItem, VarDtor, VarDtorData, Patt, PattData, AutoSemi, Id, IdData};
+use ast::{Expr, ExprData, Binop, BinopTag, Script, ScriptData, Stmt, StmtData, Decl, StmtListItem, VarDtor, VarDtorData, Patt, PattData, Semi, Id, IdData};
 use lexer::LexError;
 use context::Context;
 
@@ -81,23 +81,24 @@ impl SpanTracker {
         Tracked { value: value, location: Some(Span { start: self.start, end: parser.posn() }) }
     }
 
-    fn end_with_auto_semi<I, T>(&self, parser: &mut Parser<I>, node: T, require_newline: bool)
-        -> Parse<Tracked<AutoSemi<T>>>
-      where I: Iterator<Item=char>
+    fn end_with_auto_semi<I, T, F>(&self, parser: &mut Parser<I>, require_newline: bool, cons: F)
+        -> Parse<Tracked<T>>
+      where I: Iterator<Item=char>,
+            F: FnOnce(Semi) -> T
     {
         let before = parser.posn();
         match try!(parser.peek()) {
-            &Token { value: TokenData::Semi, .. } => {
+            &Token { value: TokenData::Semi, location, .. } => {
                 parser.skip();
                 Ok(Tracked {
-                    value: AutoSemi { inserted: false, node: node },
+                    value: cons(Semi::Explicit(Some(location.start))),
                     location: Some(Span { start: self.start, end: parser.posn() })
                 })
             }
             &Token { value: TokenData::RBrace, .. }
           | &Token { value: TokenData::EOF, .. } => {
                 Ok(Tracked {
-                    value: AutoSemi { inserted: true, node: node },
+                    value: cons(Semi::Inserted),
                     location: Some(Span { start: self.start, end: before })
                 })
             }
@@ -107,7 +108,7 @@ impl SpanTracker {
                     return Err(ParseError::FailedASI(token));
                 }
                 Ok(Tracked {
-                    value: AutoSemi { inserted: true, node: node },
+                    value: cons(Semi::Inserted),
                     location: Some(Span { start: self.start, end: before })
                 })
             }
@@ -264,11 +265,7 @@ impl<I> Parser<I>
         let span = self.start();
         self.reread(TokenData::Reserved(Word::Var));
         let dtors = try!(self.var_declaration_list());
-        Ok(try!(span.end_with_auto_semi(self, dtors, true)).map(StmtData::Var))
-    }
-
-    fn auto_semi<T>(&mut self, node: T) -> Parse<AutoSemi<T>> {
-        unimplemented!()
+        Ok(try!(span.end_with_auto_semi(self, true, move |semi| StmtData::Var(dtors, semi))))
     }
 
     fn var_declaration_list(&mut self) -> Parse<Vec<VarDtor>> {
@@ -324,7 +321,14 @@ impl<I> Parser<I>
     }
 
     fn do_statement(&mut self) -> Parse<Stmt> {
-        unimplemented!()
+        let span = self.start();
+        self.reread(TokenData::Reserved(Word::Do));
+        let body = Box::new(try!(self.statement()));
+        try!(self.expect(TokenData::Reserved(Word::While)));
+        let test = try!(self.paren_expression());
+        Ok(try!(span.end_with_auto_semi(self, false, move |semi| {
+            StmtData::DoWhile(body, test, semi)
+        })))
     }
 
     fn while_statement(&mut self) -> Parse<Stmt> {
@@ -459,22 +463,29 @@ mod tests {
     pub fn go() {
         let tests = deserialize_parser_tests(include_str!("../tests/parser/tests.json"));
         for ParserTest { source, expected, .. } in tests {
-            //println!("expected: {:?}", expected);
             let result = parse(&source);
             match (result, expected) {
                 (Ok(mut actual_ast), Ok(expected_ast)) => {
                     actual_ast.untrack();
-                    // println!("{}", source);
-                    // println!("expected AST: {:?}", expected_ast);
-                    // println!("actual AST:   {:?}", actual_ast);
-                    // println!("{:?}", actual_ast == expected_ast);
+                    if (actual_ast != expected_ast) {
+                        println!("");
+                        println!("test:         {}", source);
+                        println!("expected AST: {:?}", expected_ast);
+                        println!("actual AST:   {:?}", actual_ast);
+                    }
                     assert!(actual_ast == expected_ast);
                 }
                 (Err(_), Err(_)) => { }
-                (Ok(_), Err(_)) => {
+                (Ok(mut actual_ast), Err(_)) => {
+                    actual_ast.untrack();
+                    println!("");
+                    println!("expected error, got: {:?}", actual_ast);
                     panic!("expected error");
                 }
-                (Err(_), Ok(_)) => {
+                (Err(actual_err), Ok(expected_ast)) => {
+                    println!("");
+                    println!("expected AST: {:?}", expected_ast);
+                    println!("actual error: {:?}", actual_err);
                     panic!("unexpected error")
                 }
             }
