@@ -1,16 +1,11 @@
 #![cfg(test)]
 
-use std::collections::{HashMap, HashSet};
-use rustc_serialize::json;
+use std::collections::HashSet;
 use rustc_serialize::json::{Json, Object, Array};
-use rustc_serialize::{Decoder, Decodable};
-use std::io::prelude::*;
-use std::fs::File;
-use token::{TokenData, Word, Exp, CharCase, Sign, NumberLiteral, Radix};
+use token::TokenData;
 use context::{Context, Mode};
 use ast::*;
-use track::*;
-use eschar::*;
+use estree::deserialize::{Deserialize, ExtractField, IntoNode, IntoToken, MatchJson};
 
 pub struct ParserTest {
     pub source: String,
@@ -24,390 +19,108 @@ pub struct LexerTest {
     pub expected: Result<TokenData, String>
 }
 
-fn deserialize_parser_test(mut test: Json) -> ParserTest {
-    let mut obj = test.as_object_mut().unwrap();
-    ParserTest {
-        source: obj.remove("source").unwrap().into_string(),
-        expected: if obj.contains_key("error") {
-            Err(obj.remove("error").unwrap().into_string())
+pub trait IntoTest {
+    fn into_parser_test(self) -> Deserialize<ParserTest>;
+    fn into_lexer_test(self) -> Deserialize<LexerTest>;
+}
+
+pub trait IntoTestSuite {
+    fn into_parser_test_suite(self) -> Deserialize<Vec<ParserTest>>;
+    fn into_lexer_test_suite(self) -> Deserialize<Vec<LexerTest>>;
+}
+
+impl IntoTestSuite for Array {
+    fn into_parser_test_suite(self) -> Deserialize<Vec<ParserTest>> {
+        let mut result = Vec::with_capacity(self.len());
+        for data in self {
+            result.push(try!(data.into_parser_test()));
+        }
+        Ok(result)
+    }
+
+    fn into_lexer_test_suite(self) -> Deserialize<Vec<LexerTest>> {
+        let mut result = Vec::with_capacity(self.len());
+        for data in self {
+            result.push(try!(data.into_lexer_test()));
+        }
+        Ok(result)
+    }
+}
+
+impl IntoTestSuite for Json {
+    fn into_parser_test_suite(self) -> Deserialize<Vec<ParserTest>> {
+        self.into_array().and_then(|arr| arr.into_parser_test_suite())
+    }
+
+    fn into_lexer_test_suite(self) -> Deserialize<Vec<LexerTest>> {
+        self.into_array().and_then(|arr| arr.into_lexer_test_suite())
+    }
+}
+
+impl IntoTest for Object {
+    fn into_parser_test(mut self) -> Deserialize<ParserTest> {
+        Ok(ParserTest {
+            source: try!(self.extract_string("source")),
+            expected: if self.contains_key("error") {
+                Err(try!(self.extract_string("error")))
+            } else {
+                Ok(try!(self.extract_object("expected").and_then(|obj| obj.into_program())))
+            },
+            options: None
+        })
+    }
+
+    fn into_lexer_test(mut self) -> Deserialize<LexerTest> {
+        let source = try!(self.extract_string("source"));
+        let set = try!(self.extract_array("context").and_then(|arr| arr.into_string_set()));
+        let expected = if self.contains_key("error") {
+            Err(try!(self.extract_string("error")))
         } else {
-            Ok(deserialize_program(obj.remove("expected").unwrap()))
-        },
-        options: None
+            Ok(try!(self.extract("expected").and_then(|data| data.into_token())))
+        };
+        Ok(LexerTest {
+            source: source,
+            context: Context {
+                newlines: set.contains("newlines"),
+                operator: set.contains("operator"),
+                generator: set.contains("generator"),
+                mode: Mode::Sloppy
+            },
+            expected: expected
+        })
     }
 }
 
-fn deserialize_string_set(data: Array) -> HashSet<String> {
-    let mut set = HashSet::new();
-    for s in data.into_iter() {
-        set.insert(s.into_string());
+impl IntoTest for Json {
+    fn into_parser_test(self) -> Deserialize<ParserTest> {
+        self.into_object().and_then(|obj| obj.into_parser_test())
     }
-    set
-}
 
-fn deserialize_lexer_context(data: &mut Object) -> Context {
-    let mut cx = data.remove("context").unwrap();
-    let set = deserialize_string_set(cx.into_array());
-    Context {
-        newlines: set.contains("newlines"),
-        operator: set.contains("operator"),
-        generator: set.contains("generator"),
-        mode: Mode::Sloppy
+    fn into_lexer_test(self) -> Deserialize<LexerTest> {
+        self.into_object().and_then(|obj| obj.into_lexer_test())
     }
 }
 
-fn deserialize_lexer_test(mut test: Json) -> LexerTest {
-    let mut obj = test.as_object_mut().unwrap();
-    LexerTest {
-        source: obj.remove("source").unwrap().into_string(),
-        context: deserialize_lexer_context(obj),
-        expected: if obj.contains_key("error") {
-            Err(obj.remove("error").unwrap().into_string())
-        } else {
-            Ok(deserialize_token(obj.remove("expected").unwrap()))
-        }
-    }
+trait IntoStringSet {
+    fn into_string_set(self) -> Deserialize<HashSet<String>>;
 }
 
-macro_rules! right {
-    ( $l:expr, $r:expr ) => { $r }
-}
-
-macro_rules! tuplify {
-    ( $v:expr, ( $($dummy:tt),* ) ) => {
-        {
-            let mut t = $v.into_iter();
-            ($(
-                right!($dummy, t.next().unwrap())
-            ),*)
+impl IntoStringSet for Array {
+    fn into_string_set(self) -> Deserialize<HashSet<String>> {
+        let mut set = HashSet::new();
+        for data in self {
+            set.insert(try!(data.into_string()));
         }
-    };
-}
-
-trait JsonExt {
-    fn into_array(self) -> json::Array;
-    fn into_string(self) -> String;
-    fn into_string_opt(self) -> Option<String>;
-    fn into_exp_opt(self) -> Option<Exp>;
-    fn into_char_case(self) -> CharCase;
-    fn into_char_case_opt(self) -> Option<CharCase>;
-    fn into_object_opt(self) -> Option<Object>;
-}
-
-impl JsonExt for Json {
-    fn into_array(self) -> json::Array {
-        match self {
-            Json::Array(array) => array,
-            _ => panic!("expected array")
-        }
-    }
-    fn into_string(self) -> String {
-        match self {
-            Json::String(string) => string,
-            _ => panic!("expected string")
-        }
-    }
-    fn into_string_opt(self) -> Option<String> {
-        match self {
-            Json::Null => None,
-            Json::String(string) => Some(string),
-            _ => panic!("expected string or null")
-        }
-    }
-    fn into_object_opt(self) -> Option<Object> {
-        match self {
-            Json::Object(object) => Some(object),
-            Json::Null => None,
-            _ => panic!("expected object or null")
-        }
-    }
-    fn into_char_case(self) -> CharCase {
-        let ch = self.into_string().remove(0);
-        if ch.is_lowercase() {
-            CharCase::LowerCase
-        } else if ch.is_uppercase() {
-            CharCase::UpperCase
-        } else {
-            panic!("expected lowercase or uppercase letter")
-        }
-    }
-    fn into_char_case_opt(self) -> Option<CharCase> {
-        match self {
-            Json::Null => None,
-            _ => Some(self.into_char_case())
-        }
-    }
-    fn into_exp_opt(self) -> Option<Exp> {
-        match self {
-            Json::Null => None,
-            _ => {
-                let mut arr = self.into_array();
-                let (e, sign, value) = tuplify!(arr, ((), (), ()));
-                Some(Exp {
-                    e: e.into_char_case(),
-                    sign: sign.into_string_opt().map(|mut s| {
-                        if s.remove(0) == '+' {
-                            Sign::Plus
-                        } else {
-                            Sign::Minus
-                        }
-                    }),
-                    value: value.into_string()
-                })
-            }
-        }
-    }
-}
-
-fn deserialize_word(word: &str) -> Word {
-    match word {
-        "Null"       => Word::Null,
-        "True"       => Word::True,
-        "False"      => Word::False,
-        "Arguments"  => Word::Arguments,
-        "Eval"       => Word::Eval,
-        "Break"      => Word::Break,
-        "Case"       => Word::Case,
-        "Catch"      => Word::Catch,
-        "Class"      => Word::Class,
-        "Const"      => Word::Const,
-        "Continue"   => Word::Continue,
-        "Debugger"   => Word::Debugger,
-        "Default"    => Word::Default,
-        "Delete"     => Word::Delete,
-        "Do"         => Word::Do,
-        "Else"       => Word::Else,
-        "Export"     => Word::Export,
-        "Extends"    => Word::Extends,
-        "Finally"    => Word::Finally,
-        "For"        => Word::For,
-        "Function"   => Word::Function,
-        "If"         => Word::If,
-        "Import"     => Word::Import,
-        "In"         => Word::In,
-        "Instanceof" => Word::Instanceof,
-        "Let"        => Word::Let,
-        "New"        => Word::New,
-        "Return"     => Word::Return,
-        "Static"     => Word::Static,
-        "Super"      => Word::Super,
-        "Switch"     => Word::Switch,
-        "This"       => Word::This,
-        "Throw"      => Word::Throw,
-        "Try"        => Word::Try,
-        "Typeof"     => Word::Typeof,
-        "Var"        => Word::Var,
-        "Void"       => Word::Void,
-        "While"      => Word::While,
-        "With"       => Word::With,
-        "Yield"      => Word::Yield,
-        "Enum"       => Word::Enum,
-        "Await"      => Word::Await,
-        "Implements" => Word::Implements,
-        "Interface"  => Word::Interface,
-        "Package"    => Word::Package,
-        "Private"    => Word::Private,
-        "Protected"  => Word::Protected,
-        "Public"     => Word::Public,
-        _            => panic!("invalid reserved word")
-    }
-}
-
-fn deserialize_identifier(data: &mut Object) -> Id {
-    (IdData { name: data.remove("name").unwrap().into_string() }).tracked(None)
-}
-
-fn deserialize_literal(data: &mut Object) -> Expr {
-    let val = data.remove("value").unwrap();
-    match val {
-        Json::Null => ExprData::Null.tracked(None),
-        _ => panic!("unrecognized literal")
-    }
-}
-
-fn deserialize_expression(data: &mut Object) -> Expr {
-    let ty = data.remove("type").unwrap().into_string();
-    match &ty[..] {
-        "Identifier" => deserialize_identifier(data).into_expr(),
-        "Literal" => deserialize_literal(data),
-        _ => panic!("unrecognized expression")
-    }
-}
-
-fn deserialize_var_declarator(mut data: Json) -> VarDtor {
-    let mut obj = data.as_object_mut().unwrap();
-    let mut id = deserialize_identifier(obj.remove("id").unwrap().as_object_mut().unwrap());
-    let mut init = deserialize_expression(obj.remove("init").unwrap().as_object_mut().unwrap());
-    (VarDtorData {
-        id: (PattData::Id(id)).tracked(None),
-        init: Some(init)
-    }).tracked(None)
-}
-
-fn deserialize_stmt_list_item(mut data: Json) -> StmtListItem {
-    let mut obj = data.as_object_mut().unwrap();
-    let ty = obj.remove("type").unwrap().into_string();
-    match &ty[..] {
-        "FunctionDeclaration" => unimplemented!(),
-        _ => StmtListItem::Stmt(deserialize_stmt_with_type(ty, obj))
-    }
-}
-
-fn deserialize_stmt(obj: &mut Object) -> Stmt {
-    let ty = obj.remove("type").unwrap().into_string();
-    deserialize_stmt_with_type(ty, obj)
-}
-
-fn deserialize_stmt_with_type(ty: String, obj: &mut Object) -> Stmt {
-    match &ty[..] {
-        "VariableDeclaration" => {
-            let dtors = obj.remove("declarations").unwrap()
-                           .into_array()
-                           .into_iter()
-                           .map(deserialize_var_declarator)
-                           .collect();
-            StmtData::Var(dtors, Semi::Explicit(None)).tracked(None)
-        }
-        "EmptyStatement" => {
-            StmtData::Empty.tracked(None)
-        }
-        "IfStatement" => {
-            let test = deserialize_expression(obj.remove("test").unwrap().as_object_mut().unwrap());
-            let cons = deserialize_stmt(obj.remove("consequent").unwrap().as_object_mut().unwrap());
-            let alt = obj.remove("alternate").unwrap().into_object_opt().map(|mut obj| {
-                Box::new(deserialize_stmt(&mut obj))
-            });
-            StmtData::If(test, Box::new(cons), alt).tracked(None)
-        }
-        "DoWhileStatement" => {
-            let body = Box::new(deserialize_stmt(obj.remove("body").unwrap().as_object_mut().unwrap()));
-            let test = deserialize_expression(obj.remove("test").unwrap().as_object_mut().unwrap());
-            StmtData::DoWhile(body, test, Semi::Explicit(None)).tracked(None)
-        }
-        "BlockStatement" => {
-            let body = obj.remove("body").unwrap()
-                          .into_array()
-                          .into_iter()
-                          .map(deserialize_stmt_list_item)
-                          .collect();
-            StmtData::Block(body).tracked(None)
-        }
-        _ => panic!("unrecognized statement")
-    }
-}
-
-fn deserialize_program(mut data: Json) -> Script {
-    let mut obj = data.as_object_mut().unwrap();
-    let mut body = obj.remove("body").unwrap()
-                      .into_array()
-                      .into_iter()
-                      .map(deserialize_stmt_list_item)
-                      .collect();
-    (ScriptData { body: body }).tracked(None)
-}
-
-fn deserialize_token(mut data: Json) -> TokenData {
-    let mut arr = data.into_array();
-    let ty = arr.remove(0).into_string();
-
-    match &ty[..] {
-        "Reserved"      => {
-            let s = arr.remove(0).into_string();
-            TokenData::Reserved(deserialize_word(&s[..]))
-        }
-        "LBrace"        => TokenData::LBrace,
-        "RBrace"        => TokenData::RBrace,
-        "LParen"        => TokenData::LParen,
-        "RParen"        => TokenData::RParen,
-        "LBrack"        => TokenData::LBrack,
-        "RBrack"        => TokenData::RBrack,
-        "Dot"           => TokenData::Dot,
-        //"Ellipsis"    => TokenData::Ellipsis,
-        "Semi"          => TokenData::Semi,
-        "Comma"         => TokenData::Comma,
-        "LAngle"        => TokenData::LAngle,
-        "RAngle"        => TokenData::RAngle,
-        "LEq"           => TokenData::LEq,
-        "GEq"           => TokenData::GEq,
-        "Eq"            => TokenData::Eq,
-        "NEq"           => TokenData::NEq,
-        "StrictEq"      => TokenData::StrictEq,
-        "StrictNEq"     => TokenData::StrictNEq,
-        "Plus"          => TokenData::Plus,
-        "Minus"         => TokenData::Minus,
-        "Star"          => TokenData::Star,
-        "Mod"           => TokenData::Mod,
-        "Slash"         => TokenData::Slash,
-        "Inc"           => TokenData::Inc,
-        "Dec"           => TokenData::Dec,
-        "LShift"        => TokenData::LShift,
-        "RShift"        => TokenData::RShift,
-        "URShift"       => TokenData::URShift,
-        "BitAnd"        => TokenData::BitAnd,
-        "BitOr"         => TokenData::BitOr,
-        "BitXor"        => TokenData::BitXor,
-        "Bang"          => TokenData::Bang,
-        "Tilde"         => TokenData::Tilde,
-        "LogicalAnd"    => TokenData::LogicalAnd,
-        "LogicalOr"     => TokenData::LogicalOr,
-        "Question"      => TokenData::Question,
-        "Colon"         => TokenData::Colon,
-        "Assign"        => TokenData::Assign,
-        "PlusAssign"    => TokenData::PlusAssign,
-        "MinusAssign"   => TokenData::MinusAssign,
-        "StarAssign"    => TokenData::StarAssign,
-        "SlashAssign"   => TokenData::SlashAssign,
-        "ModAssign"     => TokenData::ModAssign,
-        "LShiftAssign"  => TokenData::LShiftAssign,
-        "RShiftAssign"  => TokenData::RShiftAssign,
-        "URShiftAssign" => TokenData::URShiftAssign,
-        "BitAndAssign"  => TokenData::BitAndAssign,
-        "BitOrAssign"   => TokenData::BitOrAssign,
-        "BitXorAssign"  => TokenData::BitXorAssign,
-        "Arrow"         => TokenData::Arrow,
-        "EOF"           => TokenData::EOF,
-        "DecimalInt"    => {
-            let (value, exp) = tuplify!(arr, ((), ()));
-            TokenData::Number(NumberLiteral::DecimalInt(value.into_string(), exp.into_exp_opt()))
-        }
-        "BinaryInt"     => {
-            let (flag, value) = tuplify!(arr, ((), ()));
-            TokenData::Number(NumberLiteral::RadixInt(Radix::Bin(flag.into_char_case()), value.into_string()))
-        }
-        "OctalInt"      => {
-            let (flag, value) = tuplify!(arr, ((), ()));
-            TokenData::Number(NumberLiteral::RadixInt(Radix::Oct(flag.into_char_case_opt()), value.into_string()))
-        }
-        "HexInt"        => {
-            let (flag, value) = tuplify!(arr, ((), ()));
-            TokenData::Number(NumberLiteral::RadixInt(Radix::Hex(flag.into_char_case()), value.into_string()))
-        }
-        "Float"         => {
-            let (int, frac, exp) = tuplify!(arr, ((), (), ()));
-            TokenData::Number(NumberLiteral::Float(int.into_string_opt(), frac.into_string_opt(), exp.into_exp_opt()))
-        }
-        "String"        => TokenData::String(arr.remove(0).into_string()),
-        "RegExp"        => {
-            let (pattern, flags) = tuplify!(arr, ((), ()));
-            TokenData::RegExp(pattern.into_string(), flags.into_string().chars().collect())
-        }
-        "Identifier"    => TokenData::Identifier(arr.remove(0).into_string()),
-        _               => panic!("invalid token")
+        Ok(set)
     }
 }
 
 pub fn deserialize_lexer_tests(src: &str) -> Vec<LexerTest> {
     let data: Json = src.parse().unwrap();
-    data.into_array()
-        .into_iter()
-        .map(deserialize_lexer_test)
-        .collect()
+    data.into_lexer_test_suite().ok().unwrap()
 }
 
 pub fn deserialize_parser_tests(src: &str) -> Vec<ParserTest> {
     let data: Json = src.parse().unwrap();
-    data.into_array()
-        .into_iter()
-        .map(deserialize_parser_test)
-        .collect()
+    data.into_parser_test_suite().ok().unwrap()
 }
