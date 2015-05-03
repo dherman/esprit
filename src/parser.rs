@@ -70,6 +70,12 @@ impl Follows for Token {
     }
 }
 
+#[derive(Eq, PartialEq)]
+enum Newline {
+    Required,
+    Optional
+}
+
 struct SpanTracker {
     start: Posn
 }
@@ -81,7 +87,7 @@ impl SpanTracker {
         Tracked { value: value, location: Some(Span { start: self.start, end: parser.posn() }) }
     }
 
-    fn end_with_auto_semi<I, T, F>(&self, parser: &mut Parser<I>, require_newline: bool, cons: F)
+    fn end_with_auto_semi<I, T, F>(&self, parser: &mut Parser<I>, newline: Newline, cons: F)
         -> Parse<Tracked<T>>
       where I: Iterator<Item=char>,
             F: FnOnce(Semi) -> T
@@ -102,8 +108,8 @@ impl SpanTracker {
                     location: Some(Span { start: self.start, end: before })
                 })
             }
-            &Token { newline, .. } => {
-                if require_newline && !newline {
+            &Token { newline: found_newline, .. } => {
+                if newline == Newline::Required && !found_newline {
                     let token = try!(parser.read());
                     return Err(ParseError::FailedASI(token));
                 }
@@ -265,7 +271,7 @@ impl<I> Parser<I>
         let span = self.start();
         self.reread(TokenData::Reserved(Word::Var));
         let dtors = try!(self.var_declaration_list());
-        Ok(try!(span.end_with_auto_semi(self, true, move |semi| StmtData::Var(dtors, semi))))
+        Ok(try!(span.end_with_auto_semi(self, Newline::Required, move |semi| StmtData::Var(dtors, semi))))
     }
 
     fn var_declaration_list(&mut self) -> Parse<Vec<VarDtor>> {
@@ -326,7 +332,7 @@ impl<I> Parser<I>
         let body = Box::new(try!(self.statement()));
         try!(self.expect(TokenData::Reserved(Word::While)));
         let test = try!(self.paren_expression());
-        Ok(try!(span.end_with_auto_semi(self, false, move |semi| {
+        Ok(try!(span.end_with_auto_semi(self, Newline::Optional, move |semi| {
             StmtData::DoWhile(body, test, semi)
         })))
     }
