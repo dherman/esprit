@@ -13,5 +13,11 @@
 
 {"source": "do {} while (null);",    "expected": {"type":"Program", "body":[{"type":"DoWhileStatement", "body":{"type":"BlockStatement", "body":[]}, "test": {"type":"Literal","value":null}}]}},
 {"source": "do {} while (null)\n{}", "expected": {"type":"Program", "body":[{"type":"DoWhileStatement", "body":{"type":"BlockStatement", "body":[]}, "test": {"type":"Literal","value":null}}, {"type":"BlockStatement", "body":[]}]}},
-{"source": "do {} while (null) {}",  "expected": {"type":"Program", "body":[{"type":"DoWhileStatement", "body":{"type":"BlockStatement", "body":[]}, "test": {"type":"Literal","value":null}}, {"type":"BlockStatement", "body":[]}]}}
+{"source": "do {} while (null) {}",  "expected": {"type":"Program", "body":[{"type":"DoWhileStatement", "body":{"type":"BlockStatement", "body":[]}, "test": {"type":"Literal","value":null}}, {"type":"BlockStatement", "body":[]}]}},
+
+{"source": "function foo() { return null; }", "expected": {"type":"Program", "body":[{"type":"FunctionDeclaration", "id":{"type":"Identifier", "name":"foo"}, "params":[], "body":{"type":"BlockStatement", "body":[{"type":"ReturnStatement", "argument":{"type":"Literal","value":null}}]}}]}},
+{"source": "function foo() { return null }", "expected": {"type":"Program", "body":[{"type":"FunctionDeclaration", "id":{"type":"Identifier", "name":"foo"}, "params":[], "body":{"type":"BlockStatement", "body":[{"type":"ReturnStatement", "argument":{"type":"Literal","value":null}}]}}]}},
+{"source": "function foo() { return null\n}", "expected": {"type":"Program", "body":[{"type":"FunctionDeclaration", "id":{"type":"Identifier", "name":"foo"}, "params":[], "body":{"type":"BlockStatement", "body":[{"type":"ReturnStatement", "argument":{"type":"Literal","value":null}}]}}]}},
+{"source": "function foo() { return }", "expected": {"type":"Program", "body":[{"type":"FunctionDeclaration", "id":{"type":"Identifier", "name":"foo"}, "params":[], "body":{"type":"BlockStatement", "body":[{"type":"ReturnStatement", "argument":null}]}}]}},
+{"source": "function foo() { return\n}", "expected": {"type":"Program", "body":[{"type":"FunctionDeclaration", "id":{"type":"Identifier", "name":"foo"}, "params":[], "body":{"type":"BlockStatement", "body":[{"type":"ReturnStatement", "argument":null}]}}]}}
 ]

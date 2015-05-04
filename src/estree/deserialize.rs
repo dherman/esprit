@@ -22,14 +22,19 @@ macro_rules! tuplify {
 #[derive(Debug)]
 pub enum DeserializeError {
     WrongJsonType(&'static str, JsonType),
+    WrongNodeType(&'static str, String),
     MissingField(&'static str),
     InvalidString(&'static str, String),
     InvalidArray(&'static str, json::Array),
-    InvalidObject(&'static str, json::Object)
+    InvalidObject(&'static str, json::Object),
 }
 
 fn type_error<T>(expected: &'static str, actual: JsonType) -> Deserialize<T> {
     Err(DeserializeError::WrongJsonType(expected, actual))
+}
+
+fn node_error<T>(expected: &'static str, actual: String) -> Deserialize<T> {
+    Err(DeserializeError::WrongNodeType(expected, actual))
 }
 
 fn string_error<T>(expected: &'static str, actual: String) -> Deserialize<T> {
@@ -390,6 +395,8 @@ pub trait IntoNode {
     fn into_expression(self) -> Deserialize<Expr>;
     fn into_identifier(self) -> Deserialize<Id>;
     fn into_literal(self) -> Deserialize<Expr>;
+    fn into_function(self) -> Deserialize<Fun>;
+    fn into_pattern(self) -> Deserialize<Patt>;
 }
 
 impl IntoNode for Json {
@@ -420,6 +427,14 @@ impl IntoNode for Json {
     fn into_literal(self) -> Deserialize<Expr> {
         self.into_object().and_then(|obj| obj.into_literal())
     }
+
+    fn into_function(self) -> Deserialize<Fun> {
+        self.into_object().and_then(|obj| obj.into_function())
+    }
+
+    fn into_pattern(self) -> Deserialize<Patt> {
+        self.into_object().and_then(|obj| obj.into_pattern())
+    }
 }
 
 impl IntoNode for Object {
@@ -435,9 +450,10 @@ impl IntoNode for Object {
             _                     => false
         };
         if is_fun {
-            return unimplemented!();
+            Ok(StmtListItem::Decl(DeclData::Fun(try!(self.into_function())).tracked(None)))
+        } else {
+            Ok(StmtListItem::Stmt(try!(self.into_statement())))
         }
-        Ok(StmtListItem::Stmt(try!(self.into_statement())))
     }
 
     fn into_var_declarator(mut self) -> Deserialize<VarDtor> {
@@ -474,6 +490,21 @@ impl IntoNode for Object {
         }
     }
 
+    fn into_function(mut self) -> Deserialize<Fun> {
+        let id = match try!(self.extract_object_opt("id")) {
+            None      => None,
+            Some(obj) => Some(try!(obj.into_identifier()))
+        };
+        let params = (ParamsData {
+            list: try!(self.extract("params").and_then(|data| data.into_pattern_list()))
+        }).tracked(None);
+        let body = match try!(self.extract_object("body").and_then(|obj| obj.into_statement())).value {
+            StmtData::Block(items) => items,
+            node                   => { return node_error("BlockStatement", format!("{:?}", node)); }
+        };
+        Ok((FunData { id: id, params: params, body: body }).tracked(None))
+    }
+
     fn into_statement(mut self) -> Deserialize<Stmt> {
         let ty = try!(self.extract("type").and_then(|data| data.into_string()));
         match &ty[..] {
@@ -502,15 +533,27 @@ impl IntoNode for Object {
                 let body = try!(self.extract("body").and_then(|data| data.into_statement_list()));
                 Ok(StmtData::Block(body).tracked(None))
             }
+            "ReturnStatement" => {
+                let arg = match try!(self.extract_object_opt("argument")) {
+                    None      => None,
+                    Some(obj) => Some(try!(obj.into_expression()))
+                };
+                Ok(StmtData::Return(arg, Semi::Explicit(None)).tracked(None))
+            }
             // FIXME: remaining statement cases
             _ => string_error("statement type", ty)
         }
+    }
+
+    fn into_pattern(self) -> Deserialize<Patt> {
+        self.into_identifier().map(|id| PattData::Id(id).tracked(None))
     }
 }
 
 trait IntoNodeList {
     fn into_statement_list(self) -> Deserialize<Vec<StmtListItem>>;
     fn into_var_declarator_list(self) -> Deserialize<Vec<VarDtor>>;
+    fn into_pattern_list(self) -> Deserialize<Vec<Patt>>;
 }
 
 impl IntoNodeList for json::Array {
@@ -529,6 +572,14 @@ impl IntoNodeList for json::Array {
         }
         Ok(list)
     }
+
+    fn into_pattern_list(self) -> Deserialize<Vec<Patt>> {
+        let mut list = Vec::with_capacity(self.len());
+        for data in self {
+            list.push(try!(data.into_pattern()));
+        }
+        Ok(list)
+    }
 }
 
 impl IntoNodeList for Json {
@@ -538,6 +589,10 @@ impl IntoNodeList for Json {
 
     fn into_var_declarator_list(self) -> Deserialize<Vec<VarDtor>> {
         self.into_array().and_then(|arr| arr.into_var_declarator_list())
+    }
+
+    fn into_pattern_list(self) -> Deserialize<Vec<Patt>> {
+        self.into_array().and_then(|arr| arr.into_pattern_list())
     }
 }
 

@@ -44,10 +44,23 @@ impl Id {
 }
 
 #[derive(Debug, PartialEq)]
+pub struct ParamsData {
+    pub list: Vec<Patt>
+}
+
+pub type Params = Tracked<ParamsData>;
+
+impl Untrack for ParamsData {
+    fn untrack(&mut self) {
+        self.list.untrack();
+    }
+}
+
+#[derive(Debug, PartialEq)]
 pub struct FunData {
     pub id: Option<Id>,
-    pub params: Vec<Patt>,
-    pub body: Vec<Stmt>
+    pub params: Params,
+    pub body: Vec<StmtListItem>
 }
 
 impl Untrack for FunData {
@@ -72,7 +85,7 @@ pub enum StmtData {
     Cont(Option<Id>),
     With(Expr, Box<Stmt>),
     Switch(Expr, Vec<Case>),
-    Return(Option<Expr>),
+    Return(Option<Expr>, Semi),
     Throw(Expr),
     Try(Vec<Stmt>, Option<Box<Catch>>, Option<Vec<Stmt>>),
     While(Expr, Box<Stmt>),
@@ -95,7 +108,7 @@ impl Untrack for StmtData {
             StmtData::Cont(ref mut lab)                                 => { lab.untrack(); }
             StmtData::With(ref mut expr, ref mut stmt)                  => { expr.untrack(); stmt.untrack(); }
             StmtData::Switch(ref mut expr, ref mut cases)               => { expr.untrack(); cases.untrack(); }
-            StmtData::Return(ref mut expr)                              => { expr.untrack(); }
+            StmtData::Return(ref mut expr, ref mut semi)                => { expr.untrack(); semi.untrack(); }
             StmtData::Throw(ref mut expr)                               => { expr.untrack(); }
             StmtData::Try(ref mut body, ref mut catch, ref mut finally) => { body.untrack(); catch.untrack(); finally.untrack(); }
             StmtData::While(ref mut expr, ref mut stmt)                 => { expr.untrack(); stmt.untrack(); }

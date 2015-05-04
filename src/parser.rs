@@ -4,7 +4,7 @@ use lexer::Lexer;
 
 use std::cell::Cell;
 use std::rc::Rc;
-use ast::{Expr, ExprData, Binop, BinopTag, Script, ScriptData, Stmt, StmtData, Decl, StmtListItem, VarDtor, VarDtorData, Patt, PattData, Semi, Id, IdData};
+use ast::*;
 use lexer::LexError;
 use context::Context;
 
@@ -227,7 +227,53 @@ impl<I> Parser<I>
     }
 
     pub fn declaration(&mut self) -> Parse<Decl> {
-        unimplemented!()
+        match try!(self.peek()).value {
+            TokenData::Reserved(Word::Function) => self.function_declaration(),
+            _                                   => Err(ParseError::UnexpectedToken(try!(self.read())))
+        }
+    }
+
+    fn function_declaration(&mut self) -> Parse<Decl> {
+        self.span(&mut |this| {
+            Ok(DeclData::Fun(try!(this.function())))
+        })
+    }
+
+    fn formal_parameters(&mut self) -> Parse<Params> {
+        self.span(&mut |this| {
+            try!(this.expect(TokenData::LParen));
+            let list = try!(this.pattern_list());
+            try!(this.expect(TokenData::RParen));
+            Ok(ParamsData { list: list })
+        })
+    }
+
+    fn pattern_list(&mut self) -> Parse<Vec<Patt>> {
+        let mut patts = Vec::new();
+        if try!(self.peek()).value == TokenData::RParen {
+            return Ok(patts);
+        }
+        patts.push(try!(self.pattern()));
+        while try!(self.matches(TokenData::Comma)) {
+            patts.push(try!(self.pattern()));
+        }
+        Ok(patts)
+    }
+
+    fn pattern(&mut self) -> Parse<Patt> {
+        Ok(try!(self.id()).into_patt())
+    }
+
+    fn function(&mut self) -> Parse<Fun> {
+        self.span(&mut |this| {
+            this.reread(TokenData::Reserved(Word::Function));
+            let id = try!(this.id_opt());
+            let params = try!(this.formal_parameters());
+            try!(this.expect(TokenData::LBrace));
+            let body = try!(this.statement_list());
+            try!(this.expect(TokenData::RBrace));
+            Ok(FunData { id: id, params: params, body: body })
+        })
     }
 
     pub fn statement(&mut self) -> Parse<Stmt> {
@@ -292,9 +338,19 @@ impl<I> Parser<I>
         })
     }
 
+    fn id_opt(&mut self) -> Parse<Option<Id>> {
+        let next = try!(self.read());
+        match next.value {
+            TokenData::Identifier(name) => {
+                Ok(Some((IdData { name: name }).tracked(Some(next.location))))
+            }
+            _                           => { self.lexer.unread_token(next); Ok(None) }
+        }
+    }
+
     fn var_declaration(&mut self) -> Parse<VarDtor> {
         self.span(&mut |this| {
-            let lhs = try!(this.id()).into_patt();
+            let lhs = try!(this.pattern());
             let rhs = if try!(this.matches(TokenData::Assign)) {
                 Some(try!(this.assignment_expression()))
             } else {
@@ -358,7 +414,16 @@ impl<I> Parser<I>
     }
 
     fn return_statement(&mut self) -> Parse<Stmt> {
-        unimplemented!()
+        let span = self.start();
+        self.reread(TokenData::Reserved(Word::Return));
+        let has_arg = {
+            let next = try!(self.peek());
+            !next.newline && next.value != TokenData::Semi && next.value != TokenData::RBrace
+        };
+        let arg = if has_arg { Some(try!(self.expression())) } else { None };
+        Ok(try!(span.end_with_auto_semi(self, Newline::Required, move |semi| {
+            StmtData::Return(arg, semi)
+        })))
     }
 
     fn with_statement(&mut self) -> Parse<Stmt> {
