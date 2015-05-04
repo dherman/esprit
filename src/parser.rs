@@ -402,7 +402,12 @@ impl<I> Parser<I>
     }
 
     fn while_statement(&mut self) -> Parse<Stmt> {
-        unimplemented!()
+        self.span(&mut |this| {
+            this.reread(TokenData::Reserved(Word::While));
+            let test = try!(this.paren_expression());
+            let body = Box::new(try!(this.statement()));
+            Ok(StmtData::While(test, body))
+        })
     }
 
     fn for_statement(&mut self) -> Parse<Stmt> {

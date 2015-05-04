@@ -533,6 +533,11 @@ impl IntoNode for Object {
                 let test = try!(self.extract_object("test").and_then(|obj| obj.into_expression()));
                 Ok(StmtData::DoWhile(body, test, Semi::Explicit(None)).tracked(None))
             }
+            "WhileStatement" => {
+                let test = try!(self.extract_object("test").and_then(|obj| obj.into_expression()));
+                let body = Box::new(try!(self.extract_object("body").and_then(|obj| obj.into_statement())));
+                Ok(StmtData::While(test, body).tracked(None))
+            }
             "BlockStatement" => {
                 let body = try!(self.extract("body").and_then(|data| data.into_statement_list()));
                 Ok(StmtData::Block(body).tracked(None))

@@ -23,5 +23,8 @@
 
 {"source": "null;", "expected": {"type":"Program", "body":[{"type":"ExpressionStatement", "expression":{"type":"Literal","value":null}}]}},
 {"source": "null\n", "expected": {"type":"Program", "body":[{"type":"ExpressionStatement", "expression":{"type":"Literal","value":null}}]}},
-{"source": "null", "expected": {"type":"Program", "body":[{"type":"ExpressionStatement", "expression":{"type":"Literal","value":null}}]}}
+{"source": "null", "expected": {"type":"Program", "body":[{"type":"ExpressionStatement", "expression":{"type":"Literal","value":null}}]}},
+
+{"source": "while (null);", "expected": {"type":"Program", "body":[{"type":"WhileStatement", "test": {"type":"Literal","value":null}, "body":{"type":"EmptyStatement"}}]}},
+{"source": "while (null) { }", "expected": {"type":"Program", "body":[{"type":"WhileStatement", "test": {"type":"Literal","value":null}, "body":{"type":"BlockStatement","body":[]}}]}}
 ]
