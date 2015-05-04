@@ -515,6 +515,10 @@ impl IntoNode for Object {
             "EmptyStatement" => {
                 Ok(StmtData::Empty.tracked(None))
             }
+            "ExpressionStatement" => {
+                let expr = try!(self.extract_object("expression").and_then(|obj| obj.into_expression()));
+                Ok(StmtData::Expr(expr, Semi::Explicit(None)).tracked(None))
+            }
             "IfStatement" => {
                 let test = try!(self.extract_object("test").and_then(|obj| obj.into_expression()));
                 let cons = Box::new(try!(self.extract_object("consequent").and_then(|obj| obj.into_statement())));

@@ -218,18 +218,27 @@ impl<I> Parser<I>
     fn statement_list(&mut self) -> Parse<Vec<StmtListItem>> {
         let mut items = Vec::new();
         while !try!(self.peek()).follow_statement_list() {
-            match try!(self.statement_opt()) {
-                Some(stmt) => { items.push(StmtListItem::Stmt(stmt)); }
-                None => { items.push(StmtListItem::Decl(try!(self.declaration()))); }
+            match try!(self.declaration_opt()) {
+                Some(decl) => { items.push(StmtListItem::Decl(decl)); }
+                None       => { items.push(StmtListItem::Stmt(try!(self.statement()))); }
             }
         }
         Ok(items)
     }
 
+/*
     pub fn declaration(&mut self) -> Parse<Decl> {
+        match try!(self.declaration_opt()) {
+            Some(decl) => Ok(decl),
+            None       => Err(ParseError::UnexpectedToken(try!(self.read())))
+        }
+    }
+*/
+
+    fn declaration_opt(&mut self) -> Parse<Option<Decl>> {
         match try!(self.peek()).value {
-            TokenData::Reserved(Word::Function) => self.function_declaration(),
-            _                                   => Err(ParseError::UnexpectedToken(try!(self.read())))
+            TokenData::Reserved(Word::Function) => Ok(Some(try!(self.function_declaration()))),
+            _                                   => Ok(None)
         }
     }
 
@@ -276,32 +285,31 @@ impl<I> Parser<I>
         })
     }
 
-    pub fn statement(&mut self) -> Parse<Stmt> {
-        match try!(self.statement_opt()) {
-            Some(stmt) => Ok(stmt),
-            None => Err(ParseError::UnexpectedToken(try!(self.read())))
+    fn statement(&mut self) -> Parse<Stmt> {
+        match try!(self.peek()).value {
+            TokenData::LBrace                   => self.block_statement(),
+            TokenData::Reserved(Word::Var)      => self.var_statement(),
+            TokenData::Semi                     => self.empty_statement(),
+            TokenData::Reserved(Word::If)       => self.if_statement(),
+            TokenData::Reserved(Word::Do)       => self.do_statement(),
+            TokenData::Reserved(Word::While)    => self.while_statement(),
+            TokenData::Reserved(Word::For)      => self.for_statement(),
+            TokenData::Reserved(Word::Switch)   => self.switch_statement(),
+            TokenData::Reserved(Word::Continue) => self.continue_statement(),
+            TokenData::Reserved(Word::Break)    => self.break_statement(),
+            TokenData::Reserved(Word::Return)   => self.return_statement(),
+            TokenData::Reserved(Word::With)     => self.with_statement(),
+            TokenData::Reserved(Word::Throw)    => self.throw_statement(),
+            TokenData::Reserved(Word::Try)      => self.try_statement(),
+            TokenData::Reserved(Word::Debugger) => self.debugger_statement(),
+            _                                   => self.expression_statement()
         }
     }
 
-    fn statement_opt(&mut self) -> Parse<Option<Stmt>> {
-        match try!(self.peek()).value {
-            TokenData::LBrace                   => self.block_statement().map(Some),
-            TokenData::Reserved(Word::Var)      => self.var_statement().map(Some),
-            TokenData::Semi                     => self.empty_statement().map(Some),
-            TokenData::Reserved(Word::If)       => self.if_statement().map(Some),
-            TokenData::Reserved(Word::Do)       => self.do_statement().map(Some),
-            TokenData::Reserved(Word::While)    => self.while_statement().map(Some),
-            TokenData::Reserved(Word::For)      => self.for_statement().map(Some),
-            TokenData::Reserved(Word::Switch)   => self.switch_statement().map(Some),
-            TokenData::Reserved(Word::Continue) => self.continue_statement().map(Some),
-            TokenData::Reserved(Word::Break)    => self.break_statement().map(Some),
-            TokenData::Reserved(Word::Return)   => self.return_statement().map(Some),
-            TokenData::Reserved(Word::With)     => self.with_statement().map(Some),
-            TokenData::Reserved(Word::Throw)    => self.throw_statement().map(Some),
-            TokenData::Reserved(Word::Try)      => self.try_statement().map(Some),
-            TokenData::Reserved(Word::Debugger) => self.debugger_statement().map(Some),
-            _                                   => Ok(None)
-        }
+    fn expression_statement(&mut self) -> Parse<Stmt> {
+        let span = self.start();
+        let expr = try!(self.expression());
+        Ok(try!(span.end_with_auto_semi(self, Newline::Required, move |semi| StmtData::Expr(expr, semi))))
     }
 
     fn block_statement(&mut self) -> Parse<Stmt> {

@@ -78,7 +78,7 @@ pub enum StmtData {
     Empty,
     Block(Vec<StmtListItem>),
     Var(Vec<VarDtor>, Semi),
-    Expr(Expr),
+    Expr(Expr, Semi),
     If(Expr, Box<Stmt>, Option<Box<Stmt>>),
     Label(Id, Box<Stmt>),
     Break(Option<Id>),
@@ -101,7 +101,7 @@ impl Untrack for StmtData {
             StmtData::Empty                                             => { }
             StmtData::Block(ref mut items)                              => { items.untrack(); }
             StmtData::Var(ref mut dtors, ref mut semi)                  => { dtors.untrack(); semi.untrack(); }
-            StmtData::Expr(ref mut expr)                                => { expr.untrack(); }
+            StmtData::Expr(ref mut expr, ref mut semi)                  => { expr.untrack(); semi.untrack(); }
             StmtData::If(ref mut test, ref mut cons, ref mut alt)       => { test.untrack(); cons.untrack(); alt.untrack(); }
             StmtData::Label(ref mut lab, ref mut stmt)                  => { lab.untrack(); stmt.untrack(); }
             StmtData::Break(ref mut lab)                                => { lab.untrack(); }
