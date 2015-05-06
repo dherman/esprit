@@ -26,5 +26,7 @@
 {"source": "null", "expected": {"type":"Program", "body":[{"type":"ExpressionStatement", "expression":{"type":"Literal","value":null}}]}},
 
 {"source": "while (null);", "expected": {"type":"Program", "body":[{"type":"WhileStatement", "test": {"type":"Literal","value":null}, "body":{"type":"EmptyStatement"}}]}},
-{"source": "while (null) { }", "expected": {"type":"Program", "body":[{"type":"WhileStatement", "test": {"type":"Literal","value":null}, "body":{"type":"BlockStatement","body":[]}}]}}
+{"source": "while (null) { }", "expected": {"type":"Program", "body":[{"type":"WhileStatement", "test": {"type":"Literal","value":null}, "body":{"type":"BlockStatement","body":[]}}]}},
+
+{"source": "return null;", "error": "top-level return"}
 ]

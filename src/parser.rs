@@ -4,9 +4,10 @@ use lexer::Lexer;
 
 use std::cell::Cell;
 use std::rc::Rc;
+use std::mem::replace;
 use ast::*;
 use lexer::LexError;
-use context::Context;
+use context::{SharedContext, ParserContext};
 
 pub type Parse<T> = Result<T, ParseError>;
 
@@ -14,18 +15,20 @@ pub type Parse<T> = Result<T, ParseError>;
 pub enum ParseError {
     UnexpectedToken(Token),
     FailedASI(Token),
-    LexError(LexError)
+    LexError(LexError),
+    TopLevelReturn(Span)
 }
 
 pub struct Parser<I> {
     lexer: Lexer<I>,
-    cx: Rc<Cell<Context>>
+    shared_cx: Rc<Cell<SharedContext>>,
+    parser_cx: ParserContext
 }
 
 impl<I> Parser<I> where I: Iterator<Item=char> {
     // FIXME: various from_<type> constructors (Iterator, Lexer, String, str)
-    pub fn new(lexer: Lexer<I>, cx: Rc<Cell<Context>>) -> Parser<I> {
-        Parser { lexer: lexer, cx: cx }
+    pub fn new(lexer: Lexer<I>, cx: Rc<Cell<SharedContext>>) -> Parser<I> {
+        Parser { lexer: lexer, shared_cx: cx, parser_cx: ParserContext::new() }
     }
 }
 
@@ -159,17 +162,6 @@ impl<I> Parser<I>
         self.lexer.peek_token().map_err(ParseError::LexError)
     }
 
-    fn peek_same_line(&mut self) -> Parse<&Token> {
-        let mut cx = self.cx.get();
-        let newlines = cx.newlines;
-        cx.newlines = true;
-        self.cx.set(cx);
-        let result = self.lexer.peek_token().map_err(ParseError::LexError);
-        cx.newlines = newlines;
-        self.cx.set(cx);
-        result
-    }
-
     fn expect(&mut self, expected: TokenData) -> Parse<()> {
         let token = try!(self.read());
         if token.value != expected {
@@ -274,7 +266,8 @@ impl<I> Parser<I>
     }
 
     fn function(&mut self) -> Parse<Fun> {
-        self.span(&mut |this| {
+        let outer_cx = replace(&mut self.parser_cx, ParserContext::new_function());
+        let result = self.span(&mut |this| {
             this.reread(TokenData::Reserved(Word::Function));
             let id = try!(this.id_opt());
             let params = try!(this.formal_parameters());
@@ -282,7 +275,9 @@ impl<I> Parser<I>
             let body = try!(this.statement_list());
             try!(this.expect(TokenData::RBrace));
             Ok(FunData { id: id, params: params, body: body })
-        })
+        });
+        replace(&mut self.parser_cx, outer_cx);
+        result
     }
 
     fn statement(&mut self) -> Parse<Stmt> {
@@ -434,9 +429,14 @@ impl<I> Parser<I>
             !next.newline && next.value != TokenData::Semi && next.value != TokenData::RBrace
         };
         let arg = if has_arg { Some(try!(self.expression())) } else { None };
-        Ok(try!(span.end_with_auto_semi(self, Newline::Required, move |semi| {
+        let result = try!(span.end_with_auto_semi(self, Newline::Required, move |semi| {
             StmtData::Return(arg, semi)
-        })))
+        }));
+        if !self.parser_cx.function {
+            Err(ParseError::TopLevelReturn(result.location.unwrap()))
+        } else {
+            Ok(result)
+        }
     }
 
     fn with_statement(&mut self) -> Parse<Stmt> {
@@ -520,7 +520,7 @@ mod tests {
 
     use test::{deserialize_parser_tests, ParserTest};
     use lexer::{Lexer, LexError};
-    use context::{Context, Mode};
+    use context::{SharedContext, Mode};
     use token::{Token, TokenData};
     use std::cell::Cell;
     use std::rc::Rc;
@@ -531,13 +531,7 @@ mod tests {
 
     fn parse(source: &String) -> Parse<Script> {
         let chars = source.chars();
-        let context = Context {
-            newlines: false,
-            operator: false,
-            generator: false,
-            mode: Mode::Sloppy
-        };
-        let cx = Rc::new(Cell::new(context));
+        let cx = Rc::new(Cell::new(SharedContext::new(Mode::Sloppy)));
         let lexer = Lexer::new(chars, cx.clone());
         let mut parser = Parser::new(lexer, cx.clone());
         parser.script()

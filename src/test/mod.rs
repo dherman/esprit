@@ -3,7 +3,7 @@
 use std::collections::HashSet;
 use rustc_serialize::json::{Json, Object, Array};
 use token::TokenData;
-use context::{Context, Mode};
+use context::{SharedContext, Mode};
 use ast::*;
 use estree::deserialize::{Deserialize, ExtractField, IntoNode, IntoToken, MatchJson};
 
@@ -15,7 +15,7 @@ pub struct ParserTest {
 
 pub struct LexerTest {
     pub source: String,
-    pub context: Context,
+    pub context: SharedContext,
     pub expected: Result<TokenData, String>
 }
 
@@ -78,14 +78,11 @@ impl IntoTest for Object {
         } else {
             Ok(try!(self.extract("expected").and_then(|data| data.into_token())))
         };
+        let mut context = SharedContext::new(Mode::Sloppy);
+        context.operator = set.contains("operator");
         Ok(LexerTest {
             source: source,
-            context: Context {
-                newlines: set.contains("newlines"),
-                operator: set.contains("operator"),
-                generator: set.contains("generator"),
-                mode: Mode::Sloppy
-            },
+            context: context,
             expected: expected
         })
     }

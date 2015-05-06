@@ -6,7 +6,7 @@ use token::{Token, TokenData, Exp, CharCase, Sign, NumberLiteral, Radix};
 
 use std::cell::Cell;
 use std::rc::Rc;
-use context::Context;
+use context::SharedContext;
 use context::Mode::*;
 use token::Word;
 use eschar::ESCharExt;
@@ -61,7 +61,7 @@ impl SpanTracker {
 
 pub struct Lexer<I> {
     reader: Reader<I>,
-    cx: Rc<Cell<Context>>,
+    cx: Rc<Cell<SharedContext>>,
     lookahead: TokenBuffer,
     reserved: HashMap<&'static str, Word>,
     strict_reserved: HashMap<&'static str, Word>
@@ -70,7 +70,7 @@ pub struct Lexer<I> {
 impl<I> Lexer<I> where I: Iterator<Item=char> {
     // constructor
 
-    pub fn new(chars: I, cx: Rc<Cell<Context>>) -> Lexer<I> {
+    pub fn new(chars: I, cx: Rc<Cell<SharedContext>>) -> Lexer<I> {
         Lexer {
             reader: Reader::new(chars),
             cx: cx,
@@ -589,14 +589,15 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }
         Ok(span.end(self, match (self.reserved.get(&s[..]), self.cx.get()) {
             (Some(word), _) => TokenData::Reserved(*word),
-            (None, Context { mode: Sloppy, generator: true, .. }) if s == "yield" => {
+            (None, SharedContext { mode: Sloppy, generator: true, .. }) if s == "yield" => {
                 TokenData::Reserved(Word::Yield)
             }
-            (None, Context { mode: Sloppy, .. }) => TokenData::Identifier(s),
-            (None, Context { mode: Module, .. }) if s == "await" => {
+            (None, SharedContext { mode: Sloppy, .. }) => TokenData::Identifier(s),
+            (None, SharedContext { mode: Module, .. }) if s == "await" => {
                 TokenData::Reserved(Word::Await)
             }
-            (None, Context { mode: Strict, .. }) | (None, Context { mode: Module, .. }) => {
+            (None, SharedContext { mode: Strict, .. })
+          | (None, SharedContext { mode: Module, .. }) => {
                 match self.strict_reserved.get(&s[..]) {
                     Some(word) => TokenData::Reserved(*word),
                     None => TokenData::Identifier(s)
@@ -768,13 +769,13 @@ mod tests {
 
     use test::{deserialize_lexer_tests, LexerTest};
     use lexer::{Lexer, LexError, Lex};
-    use context::Context;
+    use context::SharedContext;
     use token::{Token, TokenData};
     use std::cell::Cell;
     use std::rc::Rc;
     use std::str::Chars;
 
-    fn lex2(source: &String, context: Context) -> Lex<(Token, Token)> {
+    fn lex2(source: &String, context: SharedContext) -> Lex<(Token, Token)> {
         let chars = source.chars();
         let cx = Rc::new(Cell::new(context));
         let mut lexer = Lexer::new(chars, cx.clone());
