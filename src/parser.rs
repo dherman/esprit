@@ -201,6 +201,11 @@ impl<I> Parser<I>
         self.read().unwrap()
     }
 
+    fn has_arg_same_line(&mut self) -> Parse<bool> {
+        let next = try!(self.peek());
+        Ok(!next.newline && next.value != TokenData::Semi && next.value != TokenData::RBrace)
+    }
+
     fn span<F, T>(&mut self, parse: &mut F) -> Parse<Tracked<T>>
       where F: FnMut(&mut Self) -> Parse<T>
     {
@@ -493,11 +498,7 @@ impl<I> Parser<I>
     fn break_statement(&mut self) -> Parse<Stmt> {
         let span = self.start();
         let break_token = self.reread(TokenData::Reserved(Word::Break));
-        let has_arg = {
-            let next = try!(self.peek());
-            !next.newline && next.value != TokenData::Semi && next.value != TokenData::RBrace
-        };
-        let arg = if has_arg {
+        let arg = if try!(self.has_arg_same_line()) {
             let id = try!(self.id());
             if !self.parser_cx.labels.contains_key(&Rc::new(id.value.name.clone())) {
                 return Err(ParseError::InvalidLabel(id));
@@ -521,11 +522,7 @@ impl<I> Parser<I>
     fn return_statement(&mut self) -> Parse<Stmt> {
         let span = self.start();
         self.reread(TokenData::Reserved(Word::Return));
-        let has_arg = {
-            let next = try!(self.peek());
-            !next.newline && next.value != TokenData::Semi && next.value != TokenData::RBrace
-        };
-        let arg = if has_arg { Some(try!(self.expression())) } else { None };
+        let arg = if try!(self.has_arg_same_line()) { Some(try!(self.expression())) } else { None };
         let result = try!(span.end_with_auto_semi(self, Newline::Required, |semi| {
             StmtData::Return(arg, semi)
         }));
