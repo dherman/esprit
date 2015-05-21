@@ -7,7 +7,7 @@ use std::rc::Rc;
 use std::mem::replace;
 use ast::*;
 use lexer::LexError;
-use context::{SharedContext, ParserContext};
+use context::{SharedContext, ParserContext, LabelType};
 
 pub type Parse<T> = Result<T, ParseError>;
 
@@ -16,7 +16,9 @@ pub enum ParseError {
     UnexpectedToken(Token),
     FailedASI(Token),
     LexError(LexError),
-    TopLevelReturn(Span)
+    TopLevelReturn(Span),
+    IllegalBreak(Token),
+    InvalidLabel(Id)
 }
 
 pub struct Parser<I> {
@@ -77,6 +79,21 @@ impl Follows for Token {
 enum Newline {
     Required,
     Optional
+}
+
+trait HasLabelType {
+    fn label_type(&self) -> LabelType;
+}
+
+impl HasLabelType for Token {
+    fn label_type(&self) -> LabelType {
+        match self.value {
+            TokenData::Reserved(Word::Do)
+          | TokenData::Reserved(Word::While)
+          | TokenData::Reserved(Word::For) => LabelType::Iteration,
+            _                              => LabelType::Statement
+        }
+    }
 }
 
 struct SpanTracker {
@@ -286,25 +303,82 @@ impl<I> Parser<I>
             TokenData::Reserved(Word::Var)      => self.var_statement(),
             TokenData::Semi                     => self.empty_statement(),
             TokenData::Reserved(Word::If)       => self.if_statement(),
-            TokenData::Reserved(Word::Do)       => self.do_statement(),
-            TokenData::Reserved(Word::While)    => self.while_statement(),
-            TokenData::Reserved(Word::For)      => self.for_statement(),
-            TokenData::Reserved(Word::Switch)   => self.switch_statement(),
             TokenData::Reserved(Word::Continue) => self.continue_statement(),
             TokenData::Reserved(Word::Break)    => self.break_statement(),
             TokenData::Reserved(Word::Return)   => self.return_statement(),
             TokenData::Reserved(Word::With)     => self.with_statement(),
+            TokenData::Reserved(Word::Switch)   => self.switch_statement(),
             TokenData::Reserved(Word::Throw)    => self.throw_statement(),
             TokenData::Reserved(Word::Try)      => self.try_statement(),
+            TokenData::Reserved(Word::While)    => self.while_statement(),
+            TokenData::Reserved(Word::Do)       => self.do_statement(),
+            TokenData::Reserved(Word::For)      => self.for_statement(),
             TokenData::Reserved(Word::Debugger) => self.debugger_statement(),
+            TokenData::Identifier(_)            => { let id = self.id().ok().unwrap(); self.id_statement(id) }
             _                                   => self.expression_statement()
         }
+    }
+
+    fn id_statement(&mut self, id: Id) -> Parse<Stmt> {
+        //let id = self.id().ok().unwrap();
+        match try!(self.peek()).value {
+            TokenData::Colon => self.labelled_statement(id),
+            _                => unimplemented!()
+        }
+    }
+
+    fn labelled_statement(&mut self, id: Id) -> Parse<Stmt> {
+        self.reread(TokenData::Colon);
+
+        let mut labels = vec![id]; // vector of consecutive labels
+        let mut expr_id = None;    // id that starts the statement following the labels, if any
+
+        while let TokenData::Identifier(_) = try!(self.peek()).value {
+            let id = self.id().ok().unwrap();
+            if !try!(self.matches(TokenData::Colon)) {
+                expr_id = Some(id);
+                break;
+            }
+            labels.push(id);
+        }
+
+        match expr_id {
+            Some(id) => {
+                self.with_labels(labels, LabelType::Statement, |this| this.id_statement(id))
+            }
+            None     => {
+                let label_type = try!(self.peek()).label_type();
+                self.with_labels(labels, label_type, |this| this.statement())
+            }
+        }
+    }
+
+    fn with_labels<F>(&mut self, mut labels: Vec<Id>, label_type: LabelType, op: F) -> Parse<Stmt>
+      where F: FnOnce(&mut Self) -> Parse<Stmt>
+    {
+        let mut label_strings = Vec::new();
+        for id in labels.iter() {
+            let label = Rc::new(id.value.name.clone());
+            self.parser_cx.labels.insert(label.clone(), label_type);
+            label_strings.push(label);
+        }
+        let result = op(self);
+        for label in label_strings {
+            self.parser_cx.labels.remove(&label);
+        }
+        let mut body = try!(result);
+        labels.reverse();
+        for id in labels {
+            let location = span(&id, &body);
+            body = StmtData::Label(id, Box::new(body)).tracked(location);
+        }
+        Ok(body)
     }
 
     fn expression_statement(&mut self) -> Parse<Stmt> {
         let span = self.start();
         let expr = try!(self.expression());
-        Ok(try!(span.end_with_auto_semi(self, Newline::Required, move |semi| StmtData::Expr(expr, semi))))
+        Ok(try!(span.end_with_auto_semi(self, Newline::Required, |semi| StmtData::Expr(expr, semi))))
     }
 
     fn block_statement(&mut self) -> Parse<Stmt> {
@@ -320,7 +394,7 @@ impl<I> Parser<I>
         let span = self.start();
         self.reread(TokenData::Reserved(Word::Var));
         let dtors = try!(self.var_declaration_list());
-        Ok(try!(span.end_with_auto_semi(self, Newline::Required, move |semi| StmtData::Var(dtors, semi))))
+        Ok(try!(span.end_with_auto_semi(self, Newline::Required, |semi| StmtData::Var(dtors, semi))))
     }
 
     fn var_declaration_list(&mut self) -> Parse<Vec<VarDtor>> {
@@ -391,18 +465,21 @@ impl<I> Parser<I>
         let body = Box::new(try!(self.statement()));
         try!(self.expect(TokenData::Reserved(Word::While)));
         let test = try!(self.paren_expression());
-        Ok(try!(span.end_with_auto_semi(self, Newline::Optional, move |semi| {
+        Ok(try!(span.end_with_auto_semi(self, Newline::Optional, |semi| {
             StmtData::DoWhile(body, test, semi)
         })))
     }
 
     fn while_statement(&mut self) -> Parse<Stmt> {
-        self.span(&mut |this| {
+        let outer_iteration = replace(&mut self.parser_cx.iteration, true);
+        let result = self.span(&mut |this| {
             this.reread(TokenData::Reserved(Word::While));
             let test = try!(this.paren_expression());
             let body = Box::new(try!(this.statement()));
             Ok(StmtData::While(test, body))
-        })
+        });
+        replace(&mut self.parser_cx.iteration, outer_iteration);
+        result
     }
 
     fn for_statement(&mut self) -> Parse<Stmt> {
@@ -414,7 +491,27 @@ impl<I> Parser<I>
     }
 
     fn break_statement(&mut self) -> Parse<Stmt> {
-        unimplemented!()
+        let span = self.start();
+        let break_token = self.reread(TokenData::Reserved(Word::Break));
+        let has_arg = {
+            let next = try!(self.peek());
+            !next.newline && next.value != TokenData::Semi && next.value != TokenData::RBrace
+        };
+        let arg = if has_arg {
+            let id = try!(self.id());
+            if !self.parser_cx.labels.contains_key(&Rc::new(id.value.name.clone())) {
+                return Err(ParseError::InvalidLabel(id));
+            }
+            Some(id)
+        } else {
+            if !self.parser_cx.iteration && !self.parser_cx.switch {
+                return Err(ParseError::IllegalBreak(break_token));
+            }
+            None
+        };
+        span.end_with_auto_semi(self, Newline::Required, |semi| {
+            StmtData::Break(arg, semi)
+        })
     }
 
     fn continue_statement(&mut self) -> Parse<Stmt> {
@@ -429,7 +526,7 @@ impl<I> Parser<I>
             !next.newline && next.value != TokenData::Semi && next.value != TokenData::RBrace
         };
         let arg = if has_arg { Some(try!(self.expression())) } else { None };
-        let result = try!(span.end_with_auto_semi(self, Newline::Required, move |semi| {
+        let result = try!(span.end_with_auto_semi(self, Newline::Required, |semi| {
             StmtData::Return(arg, semi)
         }));
         if !self.parser_cx.function {

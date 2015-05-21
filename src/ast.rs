@@ -81,7 +81,7 @@ pub enum StmtData {
     Expr(Expr, Semi),
     If(Expr, Box<Stmt>, Option<Box<Stmt>>),
     Label(Id, Box<Stmt>),
-    Break(Option<Id>),
+    Break(Option<Id>, Semi),
     Cont(Option<Id>),
     With(Expr, Box<Stmt>),
     Switch(Expr, Vec<Case>),
@@ -104,7 +104,7 @@ impl Untrack for StmtData {
             StmtData::Expr(ref mut expr, ref mut semi)                  => { expr.untrack(); semi.untrack(); }
             StmtData::If(ref mut test, ref mut cons, ref mut alt)       => { test.untrack(); cons.untrack(); alt.untrack(); }
             StmtData::Label(ref mut lab, ref mut stmt)                  => { lab.untrack(); stmt.untrack(); }
-            StmtData::Break(ref mut lab)                                => { lab.untrack(); }
+            StmtData::Break(ref mut lab, ref mut semi)                  => { lab.untrack(); semi.untrack(); }
             StmtData::Cont(ref mut lab)                                 => { lab.untrack(); }
             StmtData::With(ref mut expr, ref mut stmt)                  => { expr.untrack(); stmt.untrack(); }
             StmtData::Switch(ref mut expr, ref mut cases)               => { expr.untrack(); cases.untrack(); }

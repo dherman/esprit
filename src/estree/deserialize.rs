@@ -457,7 +457,7 @@ impl IntoNode for Object {
     }
 
     fn into_var_declarator(mut self) -> Deserialize<VarDtor> {
-        let id = try!(self.extract_object("id").and_then(|obj| obj.into_identifier()));
+        let id = try!(self.extract_id("id"));
         let init = match try!(self.extract_object_opt("init")) {
             None      => None,
             Some(obj) => Some(try!(obj.into_expression()))
@@ -491,10 +491,7 @@ impl IntoNode for Object {
     }
 
     fn into_function(mut self) -> Deserialize<Fun> {
-        let id = match try!(self.extract_object_opt("id")) {
-            None      => None,
-            Some(obj) => Some(try!(obj.into_identifier()))
-        };
+        let id = try!(self.extract_id_opt("id"));
         let params = (ParamsData {
             list: try!(self.extract("params").and_then(|data| data.into_pattern_list()))
         }).tracked(None);
@@ -548,6 +545,15 @@ impl IntoNode for Object {
                     Some(obj) => Some(try!(obj.into_expression()))
                 };
                 Ok(StmtData::Return(arg, Semi::Explicit(None)).tracked(None))
+            }
+            "LabeledStatement" => {
+                let label = try!(self.extract_id("label"));
+                let body = Box::new(try!(self.extract_object("body").and_then(|obj| obj.into_statement())));
+                Ok(StmtData::Label(label, body).tracked(None))
+            }
+            "BreakStatement" => {
+                let label = try!(self.extract_id_opt("label"));
+                Ok(StmtData::Break(label, Semi::Explicit(None)).tracked(None))
             }
             // FIXME: remaining statement cases
             _ => string_error("statement type", ty)
@@ -611,6 +617,8 @@ pub trait ExtractField {
     fn extract_array(&mut self, &'static str) -> Deserialize<json::Array>;
     fn extract_object(&mut self, &'static str) -> Deserialize<Object>;
     fn extract_object_opt(&mut self, &'static str) -> Deserialize<Option<Object>>;
+    fn extract_id(&mut self, &'static str) -> Deserialize<Id>;
+    fn extract_id_opt(&mut self, &'static str) -> Deserialize<Option<Id>>;
     fn peek_type(&self) -> Deserialize<&String>;
 }
 
@@ -636,6 +644,17 @@ impl ExtractField for json::Object {
 
     fn extract_object_opt(&mut self, name: &'static str) -> Deserialize<Option<Object>> {
         self.extract(name).and_then(|data| data.into_object_opt())
+    }
+
+    fn extract_id(&mut self, name: &'static str) -> Deserialize<Id> {
+        self.extract_object(name).and_then(|data| data.into_identifier())
+    }
+
+    fn extract_id_opt(&mut self, name: &'static str) -> Deserialize<Option<Id>> {
+        Ok(match try!(self.extract_object_opt(name)) {
+            None      => None,
+            Some(obj) => Some(try!(obj.into_identifier()))
+        })
     }
 
     fn peek_type(&self) -> Deserialize<&String> {

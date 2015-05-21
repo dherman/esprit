@@ -1,4 +1,5 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
+use std::rc::Rc;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Mode {
@@ -24,12 +25,18 @@ impl SharedContext {
     }
 }
 
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+pub enum LabelType {
+    Statement,
+    Iteration
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ParserContext {
     pub function: bool,
     pub iteration: bool,
     pub switch: bool,
-    pub label_set: HashSet<String>
+    pub labels: HashMap<Rc<String>, LabelType>
 }
 
 impl ParserContext {
@@ -38,7 +45,7 @@ impl ParserContext {
             function: false,
             iteration: false,
             switch: false,
-            label_set: HashSet::new()
+            labels: HashMap::new()
         }
     }
 
@@ -47,7 +54,7 @@ impl ParserContext {
             function: true,
             iteration: false,
             switch: false,
-            label_set: HashSet::new()
+            labels: HashMap::new()
         }
     }
 }
