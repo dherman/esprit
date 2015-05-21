@@ -31,8 +31,13 @@
 {"source": "return null;", "error": "top-level return"},
 
 {"source": "foo:;", "expected": {"type":"Program", "body":[{"type":"LabeledStatement", "label": {"type":"Identifier", "name":"foo"}, "body": {"type":"EmptyStatement"}}]}},
-{"source": "foo: break foo;", "expected": {"type":"Program", "body":[{"type":"LabeledStatement", "label": {"type":"Identifier", "name":"foo"}, "body": {"type":"BreakStatement", "label": {"type":"Identifier", "name":"foo"}}}]}},
+
 {"source": "break;", "error": "illegal break"},
+{"source": "foo: break foo;", "expected": {"type":"Program", "body":[{"type":"LabeledStatement", "label": {"type":"Identifier", "name":"foo"}, "body": {"type":"BreakStatement", "label": {"type":"Identifier", "name":"foo"}}}]}},
 {"source": "foo: break bar;", "error": "invalid break label"},
-{"source": "break bar;", "error": "invalid break label"}
+{"source": "break bar;", "error": "invalid break label"},
+
+{"source": "continue;", "error": "illegal continue"},
+{"source": "foo: continue foo;", "error": "illegal label type"},
+{"source": "foo: continue bar;", "error": "invalid continue label"}
 ]

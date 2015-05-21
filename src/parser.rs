@@ -18,7 +18,9 @@ pub enum ParseError {
     LexError(LexError),
     TopLevelReturn(Span),
     IllegalBreak(Token),
-    InvalidLabel(Id)
+    IllegalContinue(Token),
+    InvalidLabel(Id),
+    InvalidLabelType(Id)
 }
 
 pub struct Parser<I> {
@@ -516,7 +518,25 @@ impl<I> Parser<I>
     }
 
     fn continue_statement(&mut self) -> Parse<Stmt> {
-        unimplemented!()
+        let span = self.start();
+        let continue_token = self.reread(TokenData::Reserved(Word::Continue));
+        let arg = if try!(self.has_arg_same_line()) {
+            let id = try!(self.id());
+            match self.parser_cx.labels.get(&Rc::new(id.value.name.clone())) {
+                None                        => { return Err(ParseError::InvalidLabel(id)); }
+                Some(&LabelType::Statement) => { return Err(ParseError::InvalidLabelType(id)); }
+                _                           => { }
+            }
+            Some(id)
+        } else {
+            if !self.parser_cx.iteration {
+                return Err(ParseError::IllegalContinue(continue_token));
+            }
+            None
+        };
+        span.end_with_auto_semi(self, Newline::Required, |semi| {
+            StmtData::Cont(arg, semi)
+        })
     }
 
     fn return_statement(&mut self) -> Parse<Stmt> {
