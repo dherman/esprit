@@ -466,10 +466,17 @@ impl<I> Parser<I>
         })
     }
 
+    fn iteration_body(&mut self) -> Parse<Stmt> {
+        let iteration = replace(&mut self.parser_cx.iteration, true);
+        let result = self.statement();
+        replace(&mut self.parser_cx.iteration, iteration);
+        result
+    }
+
     fn do_statement(&mut self) -> Parse<Stmt> {
         let span = self.start();
         self.reread(TokenData::Reserved(Word::Do));
-        let body = Box::new(try!(self.statement()));
+        let body = Box::new(try!(self.iteration_body()));
         try!(self.expect(TokenData::Reserved(Word::While)));
         let test = try!(self.paren_expression());
         Ok(try!(span.end_with_auto_semi(self, Newline::Optional, |semi| {
@@ -478,15 +485,12 @@ impl<I> Parser<I>
     }
 
     fn while_statement(&mut self) -> Parse<Stmt> {
-        let outer_iteration = replace(&mut self.parser_cx.iteration, true);
-        let result = self.span(&mut |this| {
+        self.span(&mut |this| {
             this.reread(TokenData::Reserved(Word::While));
             let test = try!(this.paren_expression());
-            let body = Box::new(try!(this.statement()));
+            let body = Box::new(try!(this.iteration_body()));
             Ok(StmtData::While(test, body))
-        });
-        replace(&mut self.parser_cx.iteration, outer_iteration);
-        result
+        })
     }
 
     fn for_statement(&mut self) -> Parse<Stmt> {
@@ -671,11 +675,13 @@ mod tests {
                 (Ok(mut actual_ast), Err(_)) => {
                     actual_ast.untrack();
                     println!("");
+                    println!("test:                {}", source);
                     println!("expected error, got: {:?}", actual_ast);
                     panic!("expected error");
                 }
                 (Err(actual_err), Ok(expected_ast)) => {
                     println!("");
+                    println!("test:         {}", source);
                     println!("expected AST: {:?}", expected_ast);
                     println!("actual error: {:?}", actual_err);
                     panic!("unexpected error")

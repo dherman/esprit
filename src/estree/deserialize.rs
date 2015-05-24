@@ -555,6 +555,10 @@ impl IntoNode for Object {
                 let label = try!(self.extract_id_opt("label"));
                 Ok(StmtData::Break(label, Semi::Explicit(None)).tracked(None))
             }
+            "ContinueStatement" => {
+                let label = try!(self.extract_id_opt("label"));
+                Ok(StmtData::Cont(label, Semi::Explicit(None)).tracked(None))
+            }
             // FIXME: remaining statement cases
             _ => string_error("statement type", ty)
         }

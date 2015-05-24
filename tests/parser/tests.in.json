@@ -1,0 +1,52 @@
+[
+"",
+"var q = null;",
+"var a = null;\nvar b = null;",
+"var a = null\nvar b = null;",
+"var a = null\n  , b = null;",
+";",
+"if (null);",
+"if (null) if (null); else;",
+"do {} while (null);",
+"do {} while (null)\n{}",
+"do {} while (null) {}",
+
+"function foo() { return null; }",
+"function foo() { return null }",
+"function foo() { return null\n}",
+"function foo() { return }",
+"function foo() { return\n}",
+
+"null;",
+"null\n",
+"null",
+
+"while (null);",
+"while (null) { }",
+
+"return null;",
+
+"foo:;",
+
+"break;",
+"foo: break foo;",
+"foo: break bar;",
+"break bar;",
+
+"do { break; } while (null);",
+"foo: bar: do { break foo; } while (null);",
+"foo: bar: do { break bar; } while (null);",
+"do { continue; } while (null);",
+"foo: do { continue foo; } while (null);",
+"foo: bar: do { continue foo; } while (null);",
+"foo: bar: do { continue bar; } while (null);",
+
+"while (null) { break; }",
+"foo: while (null) { break foo; }",
+"while (null) { continue; }",
+"foo: while (null) { continue foo; }",
+
+"continue;",
+"foo: continue foo;",
+"foo: continue bar;"
+]

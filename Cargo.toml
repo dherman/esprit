@@ -3,6 +3,7 @@
 name = "kora"
 version = "0.0.1"
 authors = ["Dave Herman <dherman@mozilla.com>"]
+build = "build.rs"
 
 [dependencies]
 rustc-serialize = "0.3.7"
