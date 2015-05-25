@@ -661,7 +661,7 @@ mod tests {
         for ParserTest { source, expected, .. } in tests {
             let result = parse(&source);
             match (result, expected) {
-                (Ok(mut actual_ast), Ok(expected_ast)) => {
+                (Ok(mut actual_ast), Some(expected_ast)) => {
                     actual_ast.untrack();
                     if (actual_ast != expected_ast) {
                         println!("");
@@ -671,15 +671,15 @@ mod tests {
                     }
                     assert!(actual_ast == expected_ast);
                 }
-                (Err(_), Err(_)) => { }
-                (Ok(mut actual_ast), Err(_)) => {
+                (Err(_), None) => { }
+                (Ok(mut actual_ast), None) => {
                     actual_ast.untrack();
                     println!("");
                     println!("test:                {}", source);
                     println!("expected error, got: {:?}", actual_ast);
                     panic!("expected error");
                 }
-                (Err(actual_err), Ok(expected_ast)) => {
+                (Err(actual_err), Some(expected_ast)) => {
                     println!("");
                     println!("test:         {}", source);
                     println!("expected AST: {:?}", expected_ast);

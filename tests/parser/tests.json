@@ -440,7 +440,7 @@
   }
 }, {
   "source": "return null;",
-  "error": "Illegal return statement"
+  "expected": null
 }, {
   "source": "foo:;",
   "expected": {
@@ -458,7 +458,7 @@
   }
 }, {
   "source": "break;",
-  "error": "Illegal break statement"
+  "expected": null
 }, {
   "source": "foo: break foo;",
   "expected": {
@@ -480,10 +480,10 @@
   }
 }, {
   "source": "foo: break bar;",
-  "error": "Undefined label 'bar'"
+  "expected": null
 }, {
   "source": "break bar;",
-  "error": "Undefined label 'bar'"
+  "expected": null
 }, {
   "source": "do { break; } while (null);",
   "expected": {
@@ -804,11 +804,11 @@
   }
 }, {
   "source": "continue;",
-  "error": "Illegal continue statement"
+  "expected": null
 }, {
   "source": "foo: continue foo;",
-  "error": "Undefined label 'foo'"
+  "expected": null
 }, {
   "source": "foo: continue bar;",
-  "error": "Undefined label 'bar'"
+  "expected": null
 }]

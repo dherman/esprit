@@ -9,7 +9,7 @@ use estree::deserialize::{Deserialize, ExtractField, IntoNode, IntoToken, MatchJ
 
 pub struct ParserTest {
     pub source: String,
-    pub expected: Result<Script, String>,
+    pub expected: Option<Script>,
     pub options: Option<Json>
 }
 
@@ -61,10 +61,9 @@ impl IntoTest for Object {
     fn into_parser_test(mut self) -> Deserialize<ParserTest> {
         Ok(ParserTest {
             source: try!(self.extract_string("source")),
-            expected: if self.contains_key("error") {
-                Err(try!(self.extract_string("error")))
-            } else {
-                Ok(try!(self.extract_object("expected").and_then(|obj| obj.into_program())))
+            expected: match try!(self.extract_object_opt("expected")) {
+                None => None,
+                Some(obj) => Some(try!(obj.into_program()))
             },
             options: None
         })
