@@ -1,6 +1,6 @@
 use rustc_serialize::json;
 use rustc_serialize::json::{Json, Object, Array};
-use token::{TokenData, Word, Exp, CharCase, Sign, NumberLiteral, Radix};
+use token::{TokenData, Reserved, Exp, CharCase, Sign, NumberLiteral, Radix, Name};
 use ast::*;
 use track::*;
 
@@ -55,6 +55,7 @@ pub trait MatchJson {
     fn into_array(self) -> Deserialize<json::Array>;
     fn into_string(self) -> Deserialize<String>;
     fn into_string_opt(self) -> Deserialize<Option<String>>;
+    fn into_name(self) -> Deserialize<Name>;
     fn into_object(self) -> Deserialize<Object>;
     fn into_object_opt(self) -> Deserialize<Option<Object>>;
 }
@@ -110,6 +111,10 @@ impl MatchJson for Json {
             Json::String(string) => Ok(Some(string)),
             _                    => type_error("string or null", json_typeof(&self))
         }
+    }
+
+    fn into_name(self) -> Deserialize<Name> {
+        Ok(Name::new(try!(self.into_string())))
     }
 
     fn into_object(self) -> Deserialize<json::Object> {
@@ -229,7 +234,7 @@ impl IntoToken for Json {
         let ty = try!(arr.remove(0).into_string());
         Ok(match &ty[..] {
             "Reserved"      => {
-                let word = try!(arr.remove(0).into_string().and_then(|str| str.into_word()));
+                let word = try!(arr.remove(0).into_string().and_then(|str| str.into_reserved()));
                 TokenData::Reserved(word)
             }
             "LBrace"        => TokenData::LBrace,
@@ -321,67 +326,55 @@ impl IntoToken for Json {
                 let flags = try!(flags.into_string()).chars().collect();
                 TokenData::RegExp(pattern, flags)
             }
-            "Identifier"    => TokenData::Identifier(try!(arr.remove(0).into_string())),
+            "Identifier"    => TokenData::Identifier(try!(arr.remove(0).into_name())),
             _               => { return array_error("token", arr); }
         })
     }
 }
 
-pub trait IntoWord {
-    fn into_word(self) -> Deserialize<Word>;
+pub trait IntoReserved {
+    fn into_reserved(self) -> Deserialize<Reserved>;
 }
 
-impl IntoWord for String {
-    fn into_word(self) -> Deserialize<Word> {
+impl IntoReserved for String {
+    fn into_reserved(self) -> Deserialize<Reserved> {
         Ok(match &self[..] {
-            "Null"       => Word::Null,
-            "True"       => Word::True,
-            "False"      => Word::False,
-            "Arguments"  => Word::Arguments,
-            "Eval"       => Word::Eval,
-            "Break"      => Word::Break,
-            "Case"       => Word::Case,
-            "Catch"      => Word::Catch,
-            "Class"      => Word::Class,
-            "Const"      => Word::Const,
-            "Continue"   => Word::Continue,
-            "Debugger"   => Word::Debugger,
-            "Default"    => Word::Default,
-            "Delete"     => Word::Delete,
-            "Do"         => Word::Do,
-            "Else"       => Word::Else,
-            "Export"     => Word::Export,
-            "Extends"    => Word::Extends,
-            "Finally"    => Word::Finally,
-            "For"        => Word::For,
-            "Function"   => Word::Function,
-            "If"         => Word::If,
-            "Import"     => Word::Import,
-            "In"         => Word::In,
-            "Instanceof" => Word::Instanceof,
-            "Let"        => Word::Let,
-            "New"        => Word::New,
-            "Return"     => Word::Return,
-            "Static"     => Word::Static,
-            "Super"      => Word::Super,
-            "Switch"     => Word::Switch,
-            "This"       => Word::This,
-            "Throw"      => Word::Throw,
-            "Try"        => Word::Try,
-            "Typeof"     => Word::Typeof,
-            "Var"        => Word::Var,
-            "Void"       => Word::Void,
-            "While"      => Word::While,
-            "With"       => Word::With,
-            "Yield"      => Word::Yield,
-            "Enum"       => Word::Enum,
-            "Await"      => Word::Await,
-            "Implements" => Word::Implements,
-            "Interface"  => Word::Interface,
-            "Package"    => Word::Package,
-            "Private"    => Word::Private,
-            "Protected"  => Word::Protected,
-            "Public"     => Word::Public,
+            "Null"       => Reserved::Null,
+            "True"       => Reserved::True,
+            "False"      => Reserved::False,
+            "Break"      => Reserved::Break,
+            "Case"       => Reserved::Case,
+            "Catch"      => Reserved::Catch,
+            "Class"      => Reserved::Class,
+            "Const"      => Reserved::Const,
+            "Continue"   => Reserved::Continue,
+            "Debugger"   => Reserved::Debugger,
+            "Default"    => Reserved::Default,
+            "Delete"     => Reserved::Delete,
+            "Do"         => Reserved::Do,
+            "Else"       => Reserved::Else,
+            "Export"     => Reserved::Export,
+            "Extends"    => Reserved::Extends,
+            "Finally"    => Reserved::Finally,
+            "For"        => Reserved::For,
+            "Function"   => Reserved::Function,
+            "If"         => Reserved::If,
+            "Import"     => Reserved::Import,
+            "In"         => Reserved::In,
+            "Instanceof" => Reserved::Instanceof,
+            "New"        => Reserved::New,
+            "Return"     => Reserved::Return,
+            "Super"      => Reserved::Super,
+            "Switch"     => Reserved::Switch,
+            "This"       => Reserved::This,
+            "Throw"      => Reserved::Throw,
+            "Try"        => Reserved::Try,
+            "Typeof"     => Reserved::Typeof,
+            "Var"        => Reserved::Var,
+            "Void"       => Reserved::Void,
+            "While"      => Reserved::While,
+            "With"       => Reserved::With,
+            "Enum"       => Reserved::Enum,
             _            => { return string_error("keyword", self); }
         })
     }
@@ -478,7 +471,7 @@ impl IntoNode for Object {
     }
 
     fn into_identifier(mut self) -> Deserialize<Id> {
-        Ok((IdData { name: try!(self.extract_string("name")) }).tracked(None))
+        Ok((IdData { name: Name::new(try!(self.extract_string("name"))) }).tracked(None))
     }
 
     fn into_literal(mut self) -> Deserialize<Expr> {

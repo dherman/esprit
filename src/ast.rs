@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use track::*;
-use token::{NumberLiteral};
+use token::{NumberLiteral, Name};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Semi {
@@ -17,7 +17,7 @@ impl Untrack for Semi {
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct IdData {
-    pub name: String
+    pub name: Name
 }
 
 impl Untrack for IdData {
@@ -27,7 +27,7 @@ impl Untrack for IdData {
 pub type Id = Tracked<IdData>;
 
 impl Id {
-    pub fn new(name: String, location: Option<Span>) -> Id {
+    pub fn new(name: Name, location: Option<Span>) -> Id {
         Id {
             value: IdData { name: name },
             location: location

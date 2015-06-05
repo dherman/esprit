@@ -8,7 +8,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 use context::SharedContext;
 use context::Mode::*;
-use token::Word;
+use token::{Reserved, Atom, Name};
 use eschar::ESCharExt;
 use reader::Reader;
 use tokbuf::TokenBuffer;
@@ -24,17 +24,18 @@ pub enum LexError {
     IllegalUnicode(u32)
 }
 
-macro_rules! reserved_words {
-    [ $( ( $key:expr, $val:ident ) ),* ] => {
+macro_rules! wordmap {
+    ($ns:ident, [ $( ( $key:expr, $val:ident ) ),* ]) => {
         {
             let mut temp_map = HashMap::new();
             $(
-                temp_map.insert($key, Word::$val);
+                temp_map.insert($key, $ns::$val);
             )*
             temp_map
         }
     };
 }
+
 
 fn add_digits(digits: Vec<u32>, radix: u32) -> u32 {
     let mut place = 1;
@@ -63,8 +64,8 @@ pub struct Lexer<I> {
     reader: Reader<I>,
     cx: Rc<Cell<SharedContext>>,
     lookahead: TokenBuffer,
-    reserved: HashMap<&'static str, Word>,
-    strict_reserved: HashMap<&'static str, Word>
+    reserved: HashMap<&'static str, Reserved>,
+    contextual: HashMap<&'static str, Atom>
 }
 
 impl<I> Lexer<I> where I: Iterator<Item=char> {
@@ -75,35 +76,44 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             reader: Reader::new(chars),
             cx: cx,
             lookahead: TokenBuffer::new(),
-            reserved: reserved_words![
-                // Pseudo-reserved words
-                ("arguments",  Arguments),  ("eval",       Eval),
+            reserved: wordmap!(Reserved, [
+                // ReservedWord
+                ("null",       Null),       ("true",       True),       ("false",     False),
 
                 // Keyword
-                ("null",       Null),       ("true",       True),       ("false",    False),
-                ("break",      Break),      ("case",       Case),       ("catch",    Catch),
-                ("class",      Class),      ("const",      Const),      ("continue", Continue),
-                ("debugger",   Debugger),   ("default",    Default),    ("delete",   Delete),
-                ("do",         Do),         ("else",       Else),       ("export",   Export),
-                ("extends",    Extends),    ("finally",    Finally),    ("for",      For),
-                ("function",   Function),   ("if",         If),         ("import",   Import),
-                ("in",         In),         ("instanceof", Instanceof), ("new",      New),
-                ("return",     Return),     ("super",      Super),      ("switch",   Switch),
-                ("this",       This),       ("throw",      Throw),      ("try",      Try),
-                ("typeof",     Typeof),     ("var",        Var),        ("void",     Void),
+                ("break",      Break),      ("case",       Case),       ("catch",     Catch),
+                ("class",      Class),      ("const",      Const),      ("continue",  Continue),
+                ("debugger",   Debugger),   ("default",    Default),    ("delete",    Delete),
+                ("do",         Do),         ("else",       Else),       ("export",    Export),
+                ("extends",    Extends),    ("finally",    Finally),    ("for",       For),
+                ("function",   Function),   ("if",         If),         ("import",    Import),
+                ("in",         In),         ("instanceof", Instanceof), ("new",       New),
+                ("return",     Return),     ("super",      Super),      ("switch",    Switch),
+                ("this",       This),       ("throw",      Throw),      ("try",       Try),
+                ("typeof",     Typeof),     ("var",        Var),        ("void",      Void),
                 ("while",      While),      ("with",       With),
 
                 // FutureReservedWord
                 ("enum",       Enum)
-            ],
-            strict_reserved: reserved_words![
-                // FutureReservedWord (strict mode)
-                ("implements", Implements), ("interface",  Interface),  ("package",  Package),
-                ("private",    Private),    ("protected",  Protected),  ("public",   Public),
+            ]),
+            contextual: wordmap!(Atom, [
+                // Restricted words in strict code
+                ("arguments",  Arguments),  ("eval",       Eval),
 
-                // Pseudo-reserved words (strict mode)
-                ("let",        Let),        ("static",     Static),     ("yield",    Yield)
-            ]
+                // Reserved in some contexts
+                ("yield",      Yield),
+
+                // Reserved words in module code
+                ("await",      Await),
+
+                // Reserved words in strict code
+                ("implements", Implements), ("interface",  Interface),  ("let",       Let),
+                ("package",    Package),    ("private",    Private),    ("protected", Protected),
+                ("public",     Public),     ("static",     Static),
+
+                // Purely contextual identifier names
+                ("async",      Async),      ("from",       From),       ("of",       Of)
+            ])
         }
     }
 
@@ -587,21 +597,11 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 None => { return Err(LexError::UnexpectedEOF); }
             }
         }
-        Ok(span.end(self, match (self.reserved.get(&s[..]), self.cx.get()) {
-            (Some(word), _) => TokenData::Reserved(*word),
-            (None, SharedContext { mode: Sloppy, generator: true, .. }) if s == "yield" => {
-                TokenData::Reserved(Word::Yield)
-            }
-            (None, SharedContext { mode: Sloppy, .. }) => TokenData::Identifier(s),
-            (None, SharedContext { mode: Module, .. }) if s == "await" => {
-                TokenData::Reserved(Word::Await)
-            }
-            (None, SharedContext { mode: Strict, .. })
-          | (None, SharedContext { mode: Module, .. }) => {
-                match self.strict_reserved.get(&s[..]) {
-                    Some(word) => TokenData::Reserved(*word),
-                    None => TokenData::Identifier(s)
-                }
+        Ok(span.end(self, match self.reserved.get(&s[..]) {
+            Some(&word) => TokenData::Reserved(word),
+            None        => match self.contextual.get(&s[..]) {
+                Some(&atom) => TokenData::Identifier(Name::Atom(atom)),
+                None        => TokenData::Identifier(Name::String(s))
             }
         }))
     }

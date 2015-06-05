@@ -1,13 +1,12 @@
 use track::*;
 
+// Unconditionally reserved words.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub enum Word {
+pub enum Reserved {
+    // 11.6.2 Reserved Words
     Null,
     True,
     False,
-
-    Arguments,
-    Eval,
 
     // 11.6.2.1 Keywords
     Break,
@@ -30,10 +29,8 @@ pub enum Word {
     Import,
     In,
     Instanceof,
-    Let,
     New,
     Return,
-    Static,
     Super,
     Switch,
     This,
@@ -44,17 +41,80 @@ pub enum Word {
     Void,
     While,
     With,
-    Yield,
 
     // 11.6.2.2 Future Reserved Words
-    Enum,
+    Enum
+}
+
+// Contextually reserved words and special identifier names.
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum Atom {
+    Arguments,
+    Async,
     Await,
+    Eval,
+    From,
     Implements,
     Interface,
+    Let,
+    Of,
     Package,
     Private,
     Protected,
-    Public
+    Public,
+    Static,
+    Yield
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum Name {
+    Atom(Atom),
+    String(String)
+}
+
+impl Name {
+    pub fn new(from: String) -> Name {
+        match &from[..] {
+            "arguments"  => Name::Atom(Atom::Arguments),
+            "await"      => Name::Atom(Atom::Await),
+            "eval"       => Name::Atom(Atom::Eval),
+            "async"      => Name::Atom(Atom::Async),
+            "from"       => Name::Atom(Atom::From),
+            "implements" => Name::Atom(Atom::Implements),
+            "interface"  => Name::Atom(Atom::Interface),
+            "let"        => Name::Atom(Atom::Let),
+            "of"         => Name::Atom(Atom::Of),
+            "package"    => Name::Atom(Atom::Package),
+            "private"    => Name::Atom(Atom::Private),
+            "protected"  => Name::Atom(Atom::Protected),
+            "public"     => Name::Atom(Atom::Public),
+            "static"     => Name::Atom(Atom::Static),
+            "yield"      => Name::Atom(Atom::Yield),
+            _            => Name::String(from)
+        }
+    }
+}
+
+impl Atom {
+    pub fn name(self) -> &'static str {
+        match self {
+            Atom::Arguments  => "arguments",
+            Atom::Await      => "await",
+            Atom::Eval       => "eval",
+            Atom::Async      => "async",
+            Atom::From       => "from",
+            Atom::Implements => "implements",
+            Atom::Interface  => "interface",
+            Atom::Let        => "let",
+            Atom::Of         => "of",
+            Atom::Package    => "package",
+            Atom::Private    => "private",
+            Atom::Protected  => "protected",
+            Atom::Public     => "public",
+            Atom::Static     => "static",
+            Atom::Yield      => "yield"
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -83,7 +143,7 @@ impl Token {
 #[derive(Debug, PartialEq)]
 #[allow(dead_code)]
 pub enum TokenData {
-    Reserved(Word),
+    Reserved(Reserved),
 
     // 11.7 Punctuators
     LBrace,
@@ -142,7 +202,7 @@ pub enum TokenData {
     String(String),
     RegExp(String, Vec<char>),
 
-    Identifier(String),
+    Identifier(Name),
 
     EOF
 }

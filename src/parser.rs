@@ -1,5 +1,5 @@
 use track::*;
-use token::{Token, TokenData, Word};
+use token::{Token, TokenData, Reserved, Atom, Name};
 use lexer::Lexer;
 
 use std::cell::Cell;
@@ -7,7 +7,7 @@ use std::rc::Rc;
 use std::mem::replace;
 use ast::*;
 use lexer::LexError;
-use context::{SharedContext, ParserContext, LabelType};
+use context::{SharedContext, ParserContext, LabelType, Mode};
 
 pub type Parse<T> = Result<T, ParseError>;
 
@@ -20,7 +20,9 @@ pub enum ParseError {
     IllegalBreak(Token),
     IllegalContinue(Token),
     InvalidLabel(Id),
-    InvalidLabelType(Id)
+    InvalidLabelType(Id),
+    ContextualKeyword(Id),
+    IllegalStrictBinding(Id)
 }
 
 pub struct Parser<I> {
@@ -68,8 +70,8 @@ impl Follows for Token {
     // follow(ModuleBody) = { EOF }
     fn follow_statement_list(&self) -> bool {
         match self.value {
-              TokenData::Reserved(Word::Case)
-            | TokenData::Reserved(Word::Default)
+              TokenData::Reserved(Reserved::Case)
+            | TokenData::Reserved(Reserved::Default)
             | TokenData::EOF
             | TokenData::RBrace => true,
             _ => false
@@ -90,10 +92,63 @@ trait HasLabelType {
 impl HasLabelType for Token {
     fn label_type(&self) -> LabelType {
         match self.value {
-            TokenData::Reserved(Word::Do)
-          | TokenData::Reserved(Word::While)
-          | TokenData::Reserved(Word::For) => LabelType::Iteration,
-            _                              => LabelType::Statement
+            TokenData::Reserved(Reserved::Do)
+          | TokenData::Reserved(Reserved::While)
+          | TokenData::Reserved(Reserved::For) => LabelType::Iteration,
+            _                                  => LabelType::Statement
+        }
+    }
+}
+
+trait AtomExt {
+    fn is_reserved(&self, Mode) -> bool;
+    fn is_illegal_strict_binding(&self) -> bool;
+}
+
+impl AtomExt for Name {
+    fn is_reserved(&self, mode: Mode) -> bool {
+        match self {
+            &Name::Atom(ref atom) => atom.is_reserved(mode),
+            _ => false
+        }
+    }
+
+    fn is_illegal_strict_binding(&self) -> bool {
+        match *self {
+            Name::Atom(ref atom) => atom.is_illegal_strict_binding(),
+            _ => false
+        }
+    }
+}
+
+impl AtomExt for Atom {
+    fn is_reserved(&self, mode: Mode) -> bool {
+        // 12.1.1
+        if mode.is_strict() {
+            match *self {
+                Atom::Implements
+              | Atom::Interface
+              | Atom::Let
+              | Atom::Package
+              | Atom::Private
+              | Atom::Protected
+              | Atom::Public
+              | Atom::Static
+              | Atom::Yield => true,
+                _ => false
+            }
+        // 11.6.2.2
+        } else {
+            mode == Mode::Module && *self == Atom::Await
+        }
+    }
+
+    // 12.1.1
+    fn is_illegal_strict_binding(&self) -> bool {
+        match *self {
+            Atom::Arguments
+          | Atom::Eval => true,
+            _ => false
         }
     }
 }
@@ -253,8 +308,8 @@ impl<I> Parser<I>
 
     fn declaration_opt(&mut self) -> Parse<Option<Decl>> {
         match try!(self.peek()).value {
-            TokenData::Reserved(Word::Function) => Ok(Some(try!(self.function_declaration()))),
-            _                                   => Ok(None)
+            TokenData::Reserved(Reserved::Function) => Ok(Some(try!(self.function_declaration()))),
+            _                                       => Ok(None)
         }
     }
 
@@ -292,7 +347,7 @@ impl<I> Parser<I>
     fn function(&mut self) -> Parse<Fun> {
         let outer_cx = replace(&mut self.parser_cx, ParserContext::new_function());
         let result = self.span(&mut |this| {
-            this.reread(TokenData::Reserved(Word::Function));
+            this.reread(TokenData::Reserved(Reserved::Function));
             let id = try!(this.id_opt());
             let params = try!(this.formal_parameters());
             try!(this.expect(TokenData::LBrace));
@@ -306,23 +361,26 @@ impl<I> Parser<I>
 
     fn statement(&mut self) -> Parse<Stmt> {
         match try!(self.peek()).value {
-            TokenData::LBrace                   => self.block_statement(),
-            TokenData::Reserved(Word::Var)      => self.var_statement(),
-            TokenData::Semi                     => self.empty_statement(),
-            TokenData::Reserved(Word::If)       => self.if_statement(),
-            TokenData::Reserved(Word::Continue) => self.continue_statement(),
-            TokenData::Reserved(Word::Break)    => self.break_statement(),
-            TokenData::Reserved(Word::Return)   => self.return_statement(),
-            TokenData::Reserved(Word::With)     => self.with_statement(),
-            TokenData::Reserved(Word::Switch)   => self.switch_statement(),
-            TokenData::Reserved(Word::Throw)    => self.throw_statement(),
-            TokenData::Reserved(Word::Try)      => self.try_statement(),
-            TokenData::Reserved(Word::While)    => self.while_statement(),
-            TokenData::Reserved(Word::Do)       => self.do_statement(),
-            TokenData::Reserved(Word::For)      => self.for_statement(),
-            TokenData::Reserved(Word::Debugger) => self.debugger_statement(),
-            TokenData::Identifier(_)            => { let id = self.id().ok().unwrap(); self.id_statement(id) }
-            _                                   => self.expression_statement()
+            TokenData::LBrace                       => self.block_statement(),
+            TokenData::Reserved(Reserved::Var)      => self.var_statement(),
+            TokenData::Semi                         => self.empty_statement(),
+            TokenData::Reserved(Reserved::If)       => self.if_statement(),
+            TokenData::Reserved(Reserved::Continue) => self.continue_statement(),
+            TokenData::Reserved(Reserved::Break)    => self.break_statement(),
+            TokenData::Reserved(Reserved::Return)   => self.return_statement(),
+            TokenData::Reserved(Reserved::With)     => self.with_statement(),
+            TokenData::Reserved(Reserved::Switch)   => self.switch_statement(),
+            TokenData::Reserved(Reserved::Throw)    => self.throw_statement(),
+            TokenData::Reserved(Reserved::Try)      => self.try_statement(),
+            TokenData::Reserved(Reserved::While)    => self.while_statement(),
+            TokenData::Reserved(Reserved::Do)       => self.do_statement(),
+            TokenData::Reserved(Reserved::For)      => self.for_statement(),
+            TokenData::Reserved(Reserved::Debugger) => self.debugger_statement(),
+            TokenData::Identifier(_)                => {
+                let id = self.id().ok().unwrap();
+                self.id_statement(id)
+            }
+            _                                       => self.expression_statement()
         }
     }
 
@@ -399,7 +457,7 @@ impl<I> Parser<I>
 
     fn var_statement(&mut self) -> Parse<Stmt> {
         let span = self.start();
-        self.reread(TokenData::Reserved(Word::Var));
+        self.reread(TokenData::Reserved(Reserved::Var));
         let dtors = try!(self.var_declaration_list());
         Ok(try!(span.end_with_auto_semi(self, Newline::Required, |semi| StmtData::Var(dtors, semi))))
     }
@@ -413,13 +471,32 @@ impl<I> Parser<I>
         Ok(items)
     }
 
+    fn binding_id(&mut self) -> Parse<Id> {
+        let id = try!(self.id());
+        if self.shared_cx.get().mode.is_strict() && id.value.name.is_illegal_strict_binding() {
+            return Err(ParseError::IllegalStrictBinding(id));
+        }
+        Ok(id)
+    }
+
     fn id(&mut self) -> Parse<Id> {
-        self.try_token_at(&mut |data, location| {
-            match data {
-                TokenData::Identifier(name) => Ok(IdData { name: name }),
-                _ => Err(data)
+        let Token { location, newline, value: data } = try!(self.read());
+        match data {
+            TokenData::Identifier(name) => {
+                if name.is_reserved(self.shared_cx.get().mode) {
+                    return Err(ParseError::ContextualKeyword(Id {
+                        value: IdData { name: name },
+                        location: Some(location)
+                    }));
+                }
+                Ok(Id { location: Some(location), value: IdData { name: name } })
             }
-        })
+            _ => Err(ParseError::UnexpectedToken(Token {
+                location: location,
+                newline: newline,
+                value: data
+            }))
+        }
     }
 
     fn id_opt(&mut self) -> Parse<Option<Id>> {
@@ -453,11 +530,11 @@ impl<I> Parser<I>
 
     fn if_statement(&mut self) -> Parse<Stmt> {
         self.span(&mut |this| {
-            try!(this.expect(TokenData::Reserved(Word::If)));
+            try!(this.expect(TokenData::Reserved(Reserved::If)));
             let test = try!(this.paren_expression());
             let cons = Box::new(try!(this.statement()));
-            let alt = if try!(this.peek()).value == TokenData::Reserved(Word::Else) {
-                this.reread(TokenData::Reserved(Word::Else));
+            let alt = if try!(this.peek()).value == TokenData::Reserved(Reserved::Else) {
+                this.reread(TokenData::Reserved(Reserved::Else));
                 Some(Box::new(try!(this.statement())))
             } else {
                 None
@@ -475,9 +552,9 @@ impl<I> Parser<I>
 
     fn do_statement(&mut self) -> Parse<Stmt> {
         let span = self.start();
-        self.reread(TokenData::Reserved(Word::Do));
+        self.reread(TokenData::Reserved(Reserved::Do));
         let body = Box::new(try!(self.iteration_body()));
-        try!(self.expect(TokenData::Reserved(Word::While)));
+        try!(self.expect(TokenData::Reserved(Reserved::While)));
         let test = try!(self.paren_expression());
         Ok(try!(span.end_with_auto_semi(self, Newline::Optional, |semi| {
             StmtData::DoWhile(body, test, semi)
@@ -486,7 +563,7 @@ impl<I> Parser<I>
 
     fn while_statement(&mut self) -> Parse<Stmt> {
         self.span(&mut |this| {
-            this.reread(TokenData::Reserved(Word::While));
+            this.reread(TokenData::Reserved(Reserved::While));
             let test = try!(this.paren_expression());
             let body = Box::new(try!(this.iteration_body()));
             Ok(StmtData::While(test, body))
@@ -494,6 +571,23 @@ impl<I> Parser<I>
     }
 
     fn for_statement(&mut self) -> Parse<Stmt> {
+        self.span(&mut |this| {
+            this.reread(TokenData::Reserved(Reserved::For));
+            try!(this.expect(TokenData::LParen));
+            match try!(this.peek()).value {
+                TokenData::Reserved(Reserved::Var)           => unimplemented!(),
+                TokenData::Identifier(Name::Atom(Atom::Let)) => unimplemented!(),
+                TokenData::Reserved(Reserved::Const)         => unimplemented!(),
+                _                                            => unimplemented!()
+            }
+        })
+    }
+
+    fn for_var_statement(&mut self) -> Parse<StmtData> {
+        unimplemented!()
+    }
+
+    fn for_let_statement(&mut self) -> Parse<StmtData> {
         unimplemented!()
     }
 
@@ -503,7 +597,7 @@ impl<I> Parser<I>
 
     fn break_statement(&mut self) -> Parse<Stmt> {
         let span = self.start();
-        let break_token = self.reread(TokenData::Reserved(Word::Break));
+        let break_token = self.reread(TokenData::Reserved(Reserved::Break));
         let arg = if try!(self.has_arg_same_line()) {
             let id = try!(self.id());
             if !self.parser_cx.labels.contains_key(&Rc::new(id.value.name.clone())) {
@@ -523,7 +617,7 @@ impl<I> Parser<I>
 
     fn continue_statement(&mut self) -> Parse<Stmt> {
         let span = self.start();
-        let continue_token = self.reread(TokenData::Reserved(Word::Continue));
+        let continue_token = self.reread(TokenData::Reserved(Reserved::Continue));
         let arg = if try!(self.has_arg_same_line()) {
             let id = try!(self.id());
             match self.parser_cx.labels.get(&Rc::new(id.value.name.clone())) {
@@ -545,7 +639,7 @@ impl<I> Parser<I>
 
     fn return_statement(&mut self) -> Parse<Stmt> {
         let span = self.start();
-        self.reread(TokenData::Reserved(Word::Return));
+        self.reread(TokenData::Reserved(Reserved::Return));
         let arg = if try!(self.has_arg_same_line()) { Some(try!(self.expression())) } else { None };
         let result = try!(span.end_with_auto_semi(self, Newline::Required, |semi| {
             StmtData::Return(arg, semi)
@@ -589,11 +683,13 @@ impl<I> Parser<I>
     fn primary_expression(&mut self) -> Parse<Expr> {
         self.try_token_at(&mut |data, location| {
             match data {
-                TokenData::Identifier(name)     => Ok(ExprData::Id(Id::new(name, Some(location)))),
-                TokenData::Reserved(Word::Null) => Ok(ExprData::Null),
-                TokenData::Reserved(Word::This) => Ok(ExprData::This),
-                TokenData::Number(literal)      => Ok(ExprData::Number(literal)),
-                _                               => Err(data)
+                TokenData::Identifier(name)         => {
+                    Ok(ExprData::Id(Id::new(name, Some(location))))
+                }
+                TokenData::Reserved(Reserved::Null) => Ok(ExprData::Null),
+                TokenData::Reserved(Reserved::This) => Ok(ExprData::This),
+                TokenData::Number(literal)          => Ok(ExprData::Number(literal)),
+                _                                   => Err(data)
             }
         })
     }

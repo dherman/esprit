@@ -6,4 +6,4 @@ authors = ["Dave Herman <dherman@mozilla.com>"]
 build = "build.rs"
 
 [dependencies]
-rustc-serialize = "0.3.7"
+rustc-serialize = "0.3.14"
