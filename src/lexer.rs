@@ -7,7 +7,6 @@ use token::{Token, TokenData, Exp, CharCase, Sign, NumberLiteral, Radix};
 use std::cell::Cell;
 use std::rc::Rc;
 use context::SharedContext;
-use context::Mode::*;
 use token::{Reserved, Atom, Name};
 use eschar::ESCharExt;
 use reader::Reader;
@@ -768,12 +767,11 @@ impl<I> Iterator for Lexer<I> where I: Iterator<Item=char> {
 mod tests {
 
     use test::{deserialize_lexer_tests, LexerTest};
-    use lexer::{Lexer, LexError, Lex};
+    use lexer::{Lexer, Lex};
     use context::SharedContext;
     use token::{Token, TokenData};
     use std::cell::Cell;
     use std::rc::Rc;
-    use std::str::Chars;
 
     fn lex2(source: &String, context: SharedContext) -> Lex<(Token, Token)> {
         let chars = source.chars();

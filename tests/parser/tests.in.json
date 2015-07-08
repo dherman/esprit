@@ -48,5 +48,54 @@
 
   "continue;": false,
   "foo: continue foo;": false,
-  "foo: continue bar;": false
+  "foo: continue bar;": false,
+
+  "for(;;);": true,
+  "for ( ; ; ) ;": true,
+
+  "for (null;;);": true,
+  "for (;null;);": true,
+  "for (;;null);": true,
+  "for (null;null;);": true,
+  "for (null;;null);": true,
+  "for (;null;null);": true,
+  "for (null;null;null);": true,
+
+  "for (foo;;);": true,
+  "for (;foo;);": true,
+  "for (;;foo);": true,
+  "for (foo;foo;);": true,
+  "for (foo;;foo);": true,
+  "for (;foo;foo);": true,
+  "for (foo;foo;foo);": true,
+
+  "for (var foo;;);": true,
+  "for (var foo=null;;);": true,
+  "for (var foo=null, bar=null;;);": true,
+  "for (let foo;;);": true,
+  "for (let foo=null;;);": true,
+  "for (let foo=null, bar=null;;);": true,
+
+  "for (var foo in bar);": true,
+  "for (var foo=null in bar);": true,
+  "for (var foo=null, bar=null in quux);": false,
+  "for (var foo, bar in quux);": false,
+
+  "for (let foo in bar);": true,
+  "for (let foo=null in bar);": false,
+  "for (let foo=null, bar=null in quux);": false,
+  "for (let foo, bar in quux);": false,
+
+  "foo: for(;;) { continue foo; }": true,
+  "foo: for(;;) { continue bar; }": false,
+  "for(;;) { continue; }": true,
+  "foo: for(;;) { continue; }": true,
+  "for(;;) { continue foo; }": false,
+
+  "foo: for(var x in y) { continue foo; }": true,
+  "foo: for(var x in y) { continue bar; }": false,
+  "for(var x in y) { continue; }": true,
+  "foo: for(var x in y) { continue; }": true,
+  "for(var x in y) { continue foo; }": false
+
 }

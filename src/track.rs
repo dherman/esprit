@@ -40,6 +40,17 @@ impl Track for Span {
     }
 }
 
+impl<T> Track for Option<T>
+  where T: Track
+{
+    fn location(&self) -> Option<Span> {
+        match self {
+            &Some(ref x) => x.location(),
+            &None        => None
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct Tracked<T> {
     pub location: Option<Span>,

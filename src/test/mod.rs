@@ -113,10 +113,16 @@ impl IntoStringSet for Array {
 
 pub fn deserialize_lexer_tests(src: &str) -> Vec<LexerTest> {
     let data: Json = src.parse().unwrap();
-    data.into_lexer_test_suite().ok().unwrap()
+    match data.into_lexer_test_suite() {
+        Ok(result) => result,
+        Err(err) => panic!(format!("lexer test failed to deserialize: {:?}", err))
+    }
 }
 
 pub fn deserialize_parser_tests(src: &str) -> Vec<ParserTest> {
     let data: Json = src.parse().unwrap();
-    data.into_parser_test_suite().ok().unwrap()
+    match data.into_parser_test_suite() {
+        Ok(result) => result,
+        Err(err) => panic!(format!("parser test failed to deserialize: {:?}", err))
+    }
 }

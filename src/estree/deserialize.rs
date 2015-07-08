@@ -27,6 +27,8 @@ pub enum DeserializeError {
     InvalidString(&'static str, String),
     InvalidArray(&'static str, json::Array),
     InvalidObject(&'static str, json::Object),
+    UninitializedPattern(CompoundPatt),
+    UnexpectedInitializer(Expr)
 }
 
 fn type_error<T>(expected: &'static str, actual: JsonType) -> Deserialize<T> {
@@ -383,7 +385,7 @@ impl IntoReserved for String {
 pub trait IntoNode {
     fn into_program(self) -> Deserialize<Script>;
     fn into_statement_list_item(self) -> Deserialize<StmtListItem>;
-    fn into_var_declarator(self) -> Deserialize<VarDtor>;
+    fn into_declarator(self) -> Deserialize<Dtor>;
     fn into_statement(self) -> Deserialize<Stmt>;
     fn into_expression(self) -> Deserialize<Expr>;
     fn into_identifier(self) -> Deserialize<Id>;
@@ -394,47 +396,45 @@ pub trait IntoNode {
 
 impl IntoNode for Json {
     fn into_program(self) -> Deserialize<Script> {
-        self.into_object().and_then(|obj| obj.into_program())
+        try!(self.into_object()).into_program()
     }
 
     fn into_statement_list_item(self) -> Deserialize<StmtListItem> {
-        self.into_object().and_then(|obj| obj.into_statement_list_item())
+        try!(self.into_object()).into_statement_list_item()
     }
 
-    fn into_var_declarator(self) -> Deserialize<VarDtor> {
-        self.into_object().and_then(|obj| obj.into_var_declarator())
+    fn into_declarator(self) -> Deserialize<Dtor> {
+        try!(self.into_object()).into_declarator()
     }
 
     fn into_statement(self) -> Deserialize<Stmt> {
-        self.into_object().and_then(|obj| obj.into_statement())
+        try!(self.into_object()).into_statement()
     }
 
     fn into_expression(self) -> Deserialize<Expr> {
-        self.into_object().and_then(|obj| obj.into_expression())
+        try!(self.into_object()).into_expression()
     }
 
     fn into_identifier(self) -> Deserialize<Id> {
-        self.into_object().and_then(|obj| obj.into_identifier())
+        try!(self.into_object()).into_identifier()
     }
 
     fn into_literal(self) -> Deserialize<Expr> {
-        self.into_object().and_then(|obj| obj.into_literal())
+        try!(self.into_object()).into_literal()
     }
 
     fn into_function(self) -> Deserialize<Fun> {
-        self.into_object().and_then(|obj| obj.into_function())
+        try!(self.into_object()).into_function()
     }
 
     fn into_pattern(self) -> Deserialize<Patt> {
-        self.into_object().and_then(|obj| obj.into_pattern())
+        try!(self.into_object()).into_pattern()
     }
 }
 
 impl IntoNode for Object {
     fn into_program(mut self) -> Deserialize<Script> {
-        Ok((ScriptData {
-            body: try!(self.extract("body").and_then(|data| data.into_statement_list()))
-        }).tracked(None))
+        Ok((ScriptData { body: try!(self.extract_statement_list("body")) }).tracked(None))
     }
 
     fn into_statement_list_item(self) -> Deserialize<StmtListItem> {
@@ -449,16 +449,10 @@ impl IntoNode for Object {
         }
     }
 
-    fn into_var_declarator(mut self) -> Deserialize<VarDtor> {
-        let id = try!(self.extract_id("id"));
-        let init = match try!(self.extract_object_opt("init")) {
-            None      => None,
-            Some(obj) => Some(try!(obj.into_expression()))
-        };
-        Ok((VarDtorData {
-            id: (PattData::Id(id)).tracked(None),
-            init: init
-        }).tracked(None))
+    fn into_declarator(mut self) -> Deserialize<Dtor> {
+        let lhs = try!(self.extract_pattern("id"));
+        let init = try!(self.extract_expression_opt("init"));
+        Dtor::from_init_opt(lhs, init).map_err(DeserializeError::UninitializedPattern)
     }
 
     fn into_expression(self) -> Deserialize<Expr> {
@@ -486,9 +480,9 @@ impl IntoNode for Object {
     fn into_function(mut self) -> Deserialize<Fun> {
         let id = try!(self.extract_id_opt("id"));
         let params = (ParamsData {
-            list: try!(self.extract("params").and_then(|data| data.into_pattern_list()))
+            list: try!(try!(self.extract_array("params")).deserialize_map(|elt| elt.into_pattern()))
         }).tracked(None);
-        let body = match try!(self.extract_object("body").and_then(|obj| obj.into_statement())).value {
+        let body = match try!(self.extract_statement("body")).value {
             StmtData::Block(items) => items,
             node                   => { return node_error("BlockStatement", format!("{:?}", node)); }
         };
@@ -496,52 +490,136 @@ impl IntoNode for Object {
     }
 
     fn into_statement(mut self) -> Deserialize<Stmt> {
-        let ty = try!(self.extract("type").and_then(|data| data.into_string()));
+        let ty = try!(self.extract_string("type"));
         match &ty[..] {
             "VariableDeclaration" => {
-                let dtors = try!(self.extract("declarations").and_then(|data| data.into_var_declarator_list()));
+                let dtors = try!(self.extract_declarator_list("declarations"));
                 Ok(StmtData::Var(dtors, Semi::Explicit(None)).tracked(None))
             }
             "EmptyStatement" => {
                 Ok(StmtData::Empty.tracked(None))
             }
             "ExpressionStatement" => {
-                let expr = try!(self.extract_object("expression").and_then(|obj| obj.into_expression()));
+                let expr = try!(self.extract_expression("expression"));
                 Ok(StmtData::Expr(expr, Semi::Explicit(None)).tracked(None))
             }
             "IfStatement" => {
-                let test = try!(self.extract_object("test").and_then(|obj| obj.into_expression()));
-                let cons = Box::new(try!(self.extract_object("consequent").and_then(|obj| obj.into_statement())));
-                let alt = match try!(self.extract_object_opt("alternate")) {
-                    None => None,
-                    Some(data) => Some(Box::new(try!(data.into_statement())))
-                };
+                let test = try!(self.extract_expression("test"));
+                let cons = Box::new(try!(self.extract_statement("consequent")));
+                let alt = try!(self.extract_statement_opt("alternate")).map(Box::new);
                 Ok(StmtData::If(test, cons, alt).tracked(None))
             }
             "DoWhileStatement" => {
-                let body = Box::new(try!(self.extract_object("body").and_then(|obj| obj.into_statement())));
-                let test = try!(self.extract_object("test").and_then(|obj| obj.into_expression()));
+                let body = Box::new(try!(self.extract_statement("body")));
+                let test = try!(self.extract_expression("test"));
                 Ok(StmtData::DoWhile(body, test, Semi::Explicit(None)).tracked(None))
             }
             "WhileStatement" => {
-                let test = try!(self.extract_object("test").and_then(|obj| obj.into_expression()));
-                let body = Box::new(try!(self.extract_object("body").and_then(|obj| obj.into_statement())));
+                let test = try!(self.extract_expression("test"));
+                let body = Box::new(try!(self.extract_statement("body")));
                 Ok(StmtData::While(test, body).tracked(None))
             }
+            "ForStatement" => {
+                let init0 = try!(self.extract_object_opt("init"));
+                let init = match init0 {
+                    None => None,
+                    Some(mut obj) => {
+                        match &(try!(obj.peek_type()))[..] {
+                            "VariableDeclaration" => {
+                                let dtors = try!(obj.extract_declarator_list("declarations"));
+                                let kind = try!(obj.extract_string("kind"));
+                                let head = (match &kind[..] {
+                                    "var" => ForHeadData::Var(dtors),
+                                    "let" => ForHeadData::Let(dtors),
+                                    _ => { return string_error("var or let", kind); }
+                                }).tracked(None);
+                                Some(Box::new(head))
+                            }
+                            _ => Some(Box::new(ForHeadData::Expr(try!(obj.into_expression())).tracked(None)))
+                        }
+                    }
+                };
+                let test = try!(self.extract_expression_opt("test"));
+                let update = try!(self.extract_expression_opt("update"));
+                let body = Box::new(try!(self.extract_statement("body")));
+                Ok(StmtData::For(init, test, update, body).tracked(None))
+            }
+            "ForInStatement" => {
+                let mut left0 = try!(self.extract_object("left"));
+                let left = Box::new((match &(try!(left0.peek_type()))[..] {
+                    "VariableDeclaration" => {
+                        let mut dtors = try!(left0.extract_array("declarations"));
+                        let kind = try!(left0.extract_string("kind"));
+                        if dtors.len() != 1 {
+                            return array_error("array of length 1", dtors);
+                        }
+                        let mut obj = try!(dtors.remove(0).into_object());
+                        let lhs = try!(obj.extract_pattern("id"));
+                        let init = try!(obj.extract_expression_opt("init"));
+                        match &kind[..] {
+                            "var" => match lhs {
+                                Patt::Simple(id) => {
+                                    match init {
+                                        None       => ForInHeadData::Var(Patt::Simple(id)),
+                                        Some(expr) => ForInHeadData::VarInit(id, expr)
+                                    }
+                                }
+                                Patt::Compound(patt) => {
+                                    match init {
+                                        None       => ForInHeadData::Var(Patt::Compound(patt)),
+                                        Some(expr) => { return Err(DeserializeError::UnexpectedInitializer(expr)); }
+                                    }
+                                }
+                            },
+                            "let" => {
+                                match init {
+                                    None       => ForInHeadData::Let(lhs),
+                                    Some(expr) => { return Err(DeserializeError::UnexpectedInitializer(expr)); }
+                                }
+                            }
+                            _ => { return string_error("var or let", kind); }
+                        }
+                    }
+                    _ => ForInHeadData::Expr(try!(left0.into_expression()))
+                }).tracked(None));
+                let right = try!(self.extract_expression("right"));
+                let body = try!(self.extract_statement("body"));
+                Ok(StmtData::ForIn(left, right, Box::new(body)).tracked(None))
+            }
+            "ForOfStatement" => {
+                let left0 = try!(self.extract_object("left"));
+                let left = Box::new((match &(try!(left0.peek_type()))[..] {
+                    "VariableDeclaration" => {
+                        let mut dtors = try!(self.extract_array("declarations"));
+                        let kind = try!(self.extract_string("kind"));
+                        if dtors.len() != 1 {
+                            return array_error("array of length 1", dtors);
+                        }
+                        let mut obj = try!(dtors.remove(0).into_object());
+                        let lhs = try!(obj.extract_pattern("id"));
+                        match &kind[..] {
+                            "var" => ForOfHeadData::Var(lhs),
+                            "let" => ForOfHeadData::Let(lhs),
+                            _ => { return string_error("var or let", kind); }
+                        }
+                    },
+                    _ => ForOfHeadData::Expr(try!(left0.into_expression()))
+                }).tracked(None));
+                let right = try!(self.extract_expression("right"));
+                let body = try!(self.extract_statement("body"));
+                Ok(StmtData::ForOf(left, right, Box::new(body)).tracked(None))
+            }
             "BlockStatement" => {
-                let body = try!(self.extract("body").and_then(|data| data.into_statement_list()));
+                let body = try!(self.extract_statement_list("body"));
                 Ok(StmtData::Block(body).tracked(None))
             }
             "ReturnStatement" => {
-                let arg = match try!(self.extract_object_opt("argument")) {
-                    None      => None,
-                    Some(obj) => Some(try!(obj.into_expression()))
-                };
+                let arg = try!(self.extract_expression_opt("argument"));
                 Ok(StmtData::Return(arg, Semi::Explicit(None)).tracked(None))
             }
             "LabeledStatement" => {
                 let label = try!(self.extract_id("label"));
-                let body = Box::new(try!(self.extract_object("body").and_then(|obj| obj.into_statement())));
+                let body = Box::new(try!(self.extract_statement("body")));
                 Ok(StmtData::Label(label, body).tracked(None))
             }
             "BreakStatement" => {
@@ -558,53 +636,21 @@ impl IntoNode for Object {
     }
 
     fn into_pattern(self) -> Deserialize<Patt> {
-        self.into_identifier().map(|id| PattData::Id(id).tracked(None))
+        self.into_identifier().map(|id| id.into_patt())
     }
 }
 
-trait IntoNodeList {
-    fn into_statement_list(self) -> Deserialize<Vec<StmtListItem>>;
-    fn into_var_declarator_list(self) -> Deserialize<Vec<VarDtor>>;
-    fn into_pattern_list(self) -> Deserialize<Vec<Patt>>;
+trait DeserializeMap<T> {
+    fn deserialize_map<F: Fn(Json) -> Deserialize<T>>(self, f: F) -> Deserialize<Vec<T>>;
 }
 
-impl IntoNodeList for json::Array {
-    fn into_statement_list(self) -> Deserialize<Vec<StmtListItem>> {
+impl<T> DeserializeMap<T> for json::Array {
+    fn deserialize_map<F: Fn(Json) -> Deserialize<T>>(self, f: F) -> Deserialize<Vec<T>> {
         let mut list = Vec::with_capacity(self.len());
         for data in self {
-            list.push(try!(data.into_statement_list_item()));
+            list.push(try!(f(data)));
         }
         Ok(list)
-    }
-
-    fn into_var_declarator_list(self) -> Deserialize<Vec<VarDtor>> {
-        let mut list = Vec::with_capacity(self.len());
-        for data in self {
-            list.push(try!(data.into_var_declarator()));
-        }
-        Ok(list)
-    }
-
-    fn into_pattern_list(self) -> Deserialize<Vec<Patt>> {
-        let mut list = Vec::with_capacity(self.len());
-        for data in self {
-            list.push(try!(data.into_pattern()));
-        }
-        Ok(list)
-    }
-}
-
-impl IntoNodeList for Json {
-    fn into_statement_list(self) -> Deserialize<Vec<StmtListItem>> {
-        self.into_array().and_then(|arr| arr.into_statement_list())
-    }
-
-    fn into_var_declarator_list(self) -> Deserialize<Vec<VarDtor>> {
-        self.into_array().and_then(|arr| arr.into_var_declarator_list())
-    }
-
-    fn into_pattern_list(self) -> Deserialize<Vec<Patt>> {
-        self.into_array().and_then(|arr| arr.into_pattern_list())
     }
 }
 
@@ -660,5 +706,51 @@ impl ExtractField for json::Object {
             Some(&Json::String(ref s)) => { Ok(s) },
             Some(data)                 => type_error("string", json_typeof(&data))
         }
+    }
+}
+
+pub trait ExtractNode {
+    fn extract_statement(&mut self, &'static str) -> Deserialize<Stmt>;
+    fn extract_expression(&mut self, &'static str) -> Deserialize<Expr>;
+    fn extract_expression_opt(&mut self, &'static str) -> Deserialize<Option<Expr>>;
+    fn extract_statement_opt(&mut self, &'static str) -> Deserialize<Option<Stmt>>;
+    fn extract_statement_list(&mut self, &'static str) -> Deserialize<Vec<StmtListItem>>;
+    fn extract_pattern(&mut self, &'static str) -> Deserialize<Patt>;
+    fn extract_declarator_list(&mut self, &'static str) -> Deserialize<Vec<Dtor>>;
+}
+
+impl ExtractNode for Object {
+    fn extract_statement(&mut self, name: &'static str) -> Deserialize<Stmt> {
+        try!(self.extract_object(name)).into_statement()
+    }
+
+    fn extract_expression(&mut self, name: &'static str) -> Deserialize<Expr> {
+        try!(self.extract_object(name)).into_expression()
+    }
+
+    fn extract_expression_opt(&mut self, name: &'static str) -> Deserialize<Option<Expr>> {
+        match try!(self.extract_object_opt(name)) {
+            None => Ok(None),
+            Some(obj) => Ok(Some(try!(obj.into_expression())))
+        }
+    }
+
+    fn extract_statement_opt(&mut self, name: &'static str) -> Deserialize<Option<Stmt>> {
+        match try!(self.extract_object_opt(name)) {
+            None => Ok(None),
+            Some(obj) => Ok(Some(try!(obj.into_statement())))
+        }
+    }
+
+    fn extract_statement_list(&mut self, name: &'static str) -> Deserialize<Vec<StmtListItem>> {
+        try!(self.extract_array(name)).deserialize_map(|elt| elt.into_statement_list_item())
+    }
+
+    fn extract_pattern(&mut self, name: &'static str) -> Deserialize<Patt> {
+        try!(self.extract_object(name)).into_pattern()
+    }
+
+    fn extract_declarator_list(&mut self, name: &'static str) -> Deserialize<Vec<Dtor>> {
+        try!(self.extract_array(name)).deserialize_map(|elt| elt.into_declarator())
     }
 }

@@ -47,6 +47,7 @@ pub struct ParserContext {
     pub function: bool,
     pub iteration: bool,
     pub switch: bool,
+    pub allow_in: bool,
     pub labels: HashMap<Rc<Name>, LabelType>
 }
 
@@ -56,6 +57,7 @@ impl ParserContext {
             function: false,
             iteration: false,
             switch: false,
+            allow_in: true,
             labels: HashMap::new()
         }
     }
@@ -65,6 +67,7 @@ impl ParserContext {
             function: true,
             iteration: false,
             switch: false,
+            allow_in: true,
             labels: HashMap::new()
         }
     }

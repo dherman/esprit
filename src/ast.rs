@@ -35,11 +35,18 @@ impl Id {
     }
 
     pub fn into_patt(self) -> Patt {
-        self.map_self(PattData::Id)
+        Patt::Simple(self)
     }
 
     pub fn into_expr(self) -> Expr {
         self.map_self(ExprData::Id)
+    }
+
+    pub fn into_dtor(self) -> Dtor {
+        Dtor {
+            location: self.location,
+            value: DtorData::Simple(self, None)
+        }
     }
 }
 
@@ -77,7 +84,7 @@ pub type Fun = Tracked<FunData>;
 pub enum StmtData {
     Empty,
     Block(Vec<StmtListItem>),
-    Var(Vec<VarDtor>, Semi),
+    Var(Vec<Dtor>, Semi),
     Expr(Expr, Semi),
     If(Expr, Box<Stmt>, Option<Box<Stmt>>),
     Label(Id, Box<Stmt>),
@@ -90,32 +97,34 @@ pub enum StmtData {
     Try(Vec<Stmt>, Option<Box<Catch>>, Option<Vec<Stmt>>),
     While(Expr, Box<Stmt>),
     DoWhile(Box<Stmt>, Expr, Semi),
-    For(Option<Box<ForHead>>, Option<Expr>, Option<Expr>),
+    For(Option<Box<ForHead>>, Option<Expr>, Option<Expr>, Box<Stmt>),
     ForIn(Box<ForInHead>, Expr, Box<Stmt>),
+    ForOf(Box<ForOfHead>, Expr, Box<Stmt>),
     Debugger
 }
 
 impl Untrack for StmtData {
     fn untrack(&mut self) {
         match *self {
-            StmtData::Empty                                             => { }
-            StmtData::Block(ref mut items)                              => { items.untrack(); }
-            StmtData::Var(ref mut dtors, ref mut semi)                  => { dtors.untrack(); semi.untrack(); }
-            StmtData::Expr(ref mut expr, ref mut semi)                  => { expr.untrack(); semi.untrack(); }
-            StmtData::If(ref mut test, ref mut cons, ref mut alt)       => { test.untrack(); cons.untrack(); alt.untrack(); }
-            StmtData::Label(ref mut lab, ref mut stmt)                  => { lab.untrack(); stmt.untrack(); }
-            StmtData::Break(ref mut lab, ref mut semi)                  => { lab.untrack(); semi.untrack(); }
-            StmtData::Cont(ref mut lab, ref mut semi)                   => { lab.untrack(); semi.untrack(); }
-            StmtData::With(ref mut expr, ref mut stmt)                  => { expr.untrack(); stmt.untrack(); }
-            StmtData::Switch(ref mut expr, ref mut cases)               => { expr.untrack(); cases.untrack(); }
-            StmtData::Return(ref mut expr, ref mut semi)                => { expr.untrack(); semi.untrack(); }
-            StmtData::Throw(ref mut expr)                               => { expr.untrack(); }
-            StmtData::Try(ref mut body, ref mut catch, ref mut finally) => { body.untrack(); catch.untrack(); finally.untrack(); }
-            StmtData::While(ref mut expr, ref mut stmt)                 => { expr.untrack(); stmt.untrack(); }
-            StmtData::DoWhile(ref mut stmt, ref mut expr, ref mut semi) => { stmt.untrack(); expr.untrack(); semi.untrack(); }
-            StmtData::For(ref mut init, ref mut test, ref mut incr)     => { init.untrack(); test.untrack(); incr.untrack(); }
-            StmtData::ForIn(ref mut lhs, ref mut rhs, ref mut body)     => { lhs.untrack(); rhs.untrack(); body.untrack(); }
-            StmtData::Debugger                                          => { }
+            StmtData::Empty                                                       => { }
+            StmtData::Block(ref mut items)                                        => { items.untrack(); }
+            StmtData::Var(ref mut dtors, ref mut semi)                            => { dtors.untrack(); semi.untrack(); }
+            StmtData::Expr(ref mut expr, ref mut semi)                            => { expr.untrack(); semi.untrack(); }
+            StmtData::If(ref mut test, ref mut cons, ref mut alt)                 => { test.untrack(); cons.untrack(); alt.untrack(); }
+            StmtData::Label(ref mut lab, ref mut stmt)                            => { lab.untrack(); stmt.untrack(); }
+            StmtData::Break(ref mut lab, ref mut semi)                            => { lab.untrack(); semi.untrack(); }
+            StmtData::Cont(ref mut lab, ref mut semi)                             => { lab.untrack(); semi.untrack(); }
+            StmtData::With(ref mut expr, ref mut stmt)                            => { expr.untrack(); stmt.untrack(); }
+            StmtData::Switch(ref mut expr, ref mut cases)                         => { expr.untrack(); cases.untrack(); }
+            StmtData::Return(ref mut expr, ref mut semi)                          => { expr.untrack(); semi.untrack(); }
+            StmtData::Throw(ref mut expr)                                         => { expr.untrack(); }
+            StmtData::Try(ref mut body, ref mut catch, ref mut finally)           => { body.untrack(); catch.untrack(); finally.untrack(); }
+            StmtData::While(ref mut expr, ref mut stmt)                           => { expr.untrack(); stmt.untrack(); }
+            StmtData::DoWhile(ref mut stmt, ref mut expr, ref mut semi)           => { stmt.untrack(); expr.untrack(); semi.untrack(); }
+            StmtData::For(ref mut init, ref mut test, ref mut incr, ref mut body) => { init.untrack(); test.untrack(); incr.untrack(); body.untrack(); }
+            StmtData::ForIn(ref mut lhs, ref mut rhs, ref mut body)               => { lhs.untrack(); rhs.untrack(); body.untrack(); }
+            StmtData::ForOf(ref mut lhs, ref mut rhs, ref mut body)               => { lhs.untrack(); rhs.untrack(); body.untrack(); }
+            StmtData::Debugger                                                    => { }
         }
     }
 }
@@ -124,7 +133,8 @@ pub type Stmt = Tracked<StmtData>;
 
 #[derive(Debug, PartialEq)]
 pub enum ForHeadData {
-    Var(Vec<VarDtor>),
+    Var(Vec<Dtor>),
+    Let(Vec<Dtor>),
     Expr(Expr)
 }
 
@@ -132,6 +142,7 @@ impl Untrack for ForHeadData {
     fn untrack(&mut self) {
         match *self {
             ForHeadData::Var(ref mut vec)   => { vec.untrack(); }
+            ForHeadData::Let(ref mut vec)   => { vec.untrack(); }
             ForHeadData::Expr(ref mut expr) => { expr.untrack(); }
         }
     }
@@ -141,20 +152,43 @@ pub type ForHead = Tracked<ForHeadData>;
 
 #[derive(Debug, PartialEq)]
 pub enum ForInHeadData {
-    Var(Vec<VarDtor>),
+    VarInit(Id, Expr),
+    Var(Patt),
+    Let(Patt),
     Expr(Expr)
 }
 
 impl Untrack for ForInHeadData {
     fn untrack(&mut self) {
         match *self {
-            ForInHeadData::Var(ref mut dtor)  => { dtor.untrack(); }
-            ForInHeadData::Expr(ref mut expr) => { expr.untrack(); }
+            ForInHeadData::VarInit(ref mut id, ref mut expr) => { id.untrack(); expr.untrack(); }
+            ForInHeadData::Var(ref mut patt)                 => { patt.untrack(); }
+            ForInHeadData::Let(ref mut patt)                 => { patt.untrack(); }
+            ForInHeadData::Expr(ref mut expr)                => { expr.untrack(); }
         }
     }
 }
 
 pub type ForInHead = Tracked<ForInHeadData>;
+
+#[derive(Debug, PartialEq)]
+pub enum ForOfHeadData {
+    Var(Patt),
+    Let(Patt),
+    Expr(Expr)
+}
+
+impl Untrack for ForOfHeadData {
+    fn untrack(&mut self) {
+        match *self {
+            ForOfHeadData::Var(ref mut patt)  => { patt.untrack(); }
+            ForOfHeadData::Let(ref mut patt)  => { patt.untrack(); }
+            ForOfHeadData::Expr(ref mut expr) => { expr.untrack(); }
+        }
+    }
+}
+
+pub type ForOfHead = Tracked<ForOfHeadData>;
 
 #[derive(Debug, PartialEq)]
 pub enum DeclData {
@@ -172,19 +206,74 @@ impl Untrack for DeclData {
 pub type Decl = Tracked<DeclData>;
 
 #[derive(Debug, PartialEq)]
-pub struct VarDtorData {
-    pub id: Patt,
-    pub init: Option<Expr>
+pub enum DtorData {
+    Simple(Id, Option<Expr>),
+    Compound(CompoundPatt, Expr)
 }
 
-impl Untrack for VarDtorData {
+impl Untrack for DtorData {
     fn untrack(&mut self) {
-        self.id.untrack();
-        self.init.untrack();
+        match *self {
+            DtorData::Simple(ref mut id, ref mut init)     => { id.untrack(); init.untrack(); }
+            DtorData::Compound(ref mut patt, ref mut init) => { patt.untrack(); init.untrack(); }
+        }
     }
 }
 
-pub type VarDtor = Tracked<VarDtorData>;
+pub type Dtor = Tracked<DtorData>;
+
+pub trait DtorExt {
+    fn from_simple_init(Id, Expr) -> Dtor;
+    fn from_compound_init(CompoundPatt, Expr) -> Dtor;
+    fn from_init(Patt, Expr) -> Dtor;
+    fn from_init_opt(Patt, Option<Expr>) -> Result<Dtor, CompoundPatt>;
+}
+
+impl DtorExt for Dtor {
+    fn from_compound_init(lhs: CompoundPatt, rhs: Expr) -> Dtor {
+        Dtor {
+            location: span(&lhs, &rhs),
+            value: DtorData::Compound(lhs, rhs)
+        }
+    }
+
+    fn from_simple_init(lhs: Id, rhs: Expr) -> Dtor {
+        Dtor {
+            location: span(&lhs, &rhs),
+            value: DtorData::Simple(lhs, Some(rhs))
+        }
+    }
+
+    fn from_init(lhs: Patt, rhs: Expr) -> Dtor {
+        Dtor {
+            location: span(&lhs, &rhs),
+            value: match lhs {
+                Patt::Simple(id) => DtorData::Simple(id, Some(rhs)),
+                Patt::Compound(patt) => DtorData::Compound(patt, rhs)
+            }
+        }
+    }
+
+    fn from_init_opt(lhs: Patt, rhs: Option<Expr>) -> Result<Dtor, CompoundPatt> {
+        match (lhs, rhs) {
+            (Patt::Simple(id), rhs) => {
+                let location = id.location();
+                Ok(Dtor {
+                    value: DtorData::Simple(id, rhs),
+                    location: location
+                })
+            }
+            (Patt::Compound(patt), None) => Err(patt),
+            (Patt::Compound(patt), Some(rhs)) => {
+                let location = span(&patt, &rhs);
+                Ok(Dtor {
+                    value: DtorData::Compound(patt, rhs),
+                    location: location
+                })
+            }
+        }
+    }
+}
 
 #[derive(Debug, PartialEq)]
 pub struct CatchData {
@@ -325,7 +414,7 @@ pub enum ExprData {
     Cond(Box<Expr>, Box<Expr>, Box<Expr>),
     Call(Box<Expr>, Vec<Expr>),
     New(Box<Expr>, Vec<Expr>),
-    Dot(Box<Expr>, String),
+    Dot(Box<Expr>, Id),
     Brack(Box<Expr>, Box<Expr>),
     True,
     False,
@@ -355,7 +444,7 @@ impl Untrack for ExprData {
             ExprData::Cond(ref mut test, ref mut cons, ref mut alt)  => { test.untrack(); cons.untrack(); alt.untrack(); }
             ExprData::Call(ref mut callee, ref mut args)             => { callee.untrack(); args.untrack(); }
             ExprData::New(ref mut ctor, ref mut args)                => { ctor.untrack(); args.untrack(); }
-            ExprData::Dot(ref mut obj, ref mut prop)                 => { obj.untrack(); }
+            ExprData::Dot(ref mut obj, ref mut prop)                 => { obj.untrack(); prop.untrack(); }
             ExprData::Brack(ref mut obj, ref mut prop)               => { obj.untrack(); prop.untrack(); }
             ExprData::True                                           => { }
             ExprData::False                                          => { }
@@ -428,20 +517,70 @@ impl Untrack for PropValData {
 
 pub type PropVal = Tracked<PropValData>;
 
-#[derive(Debug, Eq, PartialEq)]
-pub enum PattData {
-    Id(Id)
+#[derive(Debug, PartialEq)]
+pub enum CompoundPattData {
+    Arr(Vec<Patt>),
+    Obj(Vec<PropPatt>)
 }
 
-impl Untrack for PattData {
+impl Untrack for CompoundPattData {
     fn untrack(&mut self) {
         match *self {
-            PattData::Id(ref mut id) => { id.untrack(); }
+            CompoundPattData::Arr(ref mut patts) => { patts.untrack(); }
+            CompoundPattData::Obj(ref mut props) => { props.untrack(); }
         }
     }
 }
 
-pub type Patt = Tracked<PattData>;
+pub type CompoundPatt = Tracked<CompoundPattData>;
+
+#[derive(Debug, PartialEq)]
+pub struct PropPattData {
+    pub key: PropKey,
+    pub patt: Patt
+}
+
+impl Untrack for PropPattData {
+    fn untrack(&mut self) {
+        self.key.untrack();
+        self.patt.untrack();
+    }
+}
+
+pub type PropPatt = Tracked<PropPattData>;
+
+#[derive(Debug, PartialEq)]
+pub enum Patt {
+    Simple(Id),
+    Compound(CompoundPatt)
+}
+
+impl Patt {
+    pub fn is_simple(&self) -> bool {
+        match *self {
+            Patt::Simple(_)   => true,
+            Patt::Compound(_) => false
+        }
+    }
+}
+
+impl Track for Patt {
+    fn location(&self) -> Option<Span> {
+        match *self {
+            Patt::Simple(ref id)     => id.location(),
+            Patt::Compound(ref patt) => patt.location()
+        }
+    }
+}
+
+impl Untrack for Patt {
+    fn untrack(&mut self) {
+        match *self {
+            Patt::Simple(ref mut id)     => { id.untrack(); }
+            Patt::Compound(ref mut patt) => { patt.untrack(); }
+        }
+    }
+}
 
 #[derive(Debug, PartialEq)]
 pub struct ScriptData {

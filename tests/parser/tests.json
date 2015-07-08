@@ -811,4 +811,799 @@
 }, {
   "source": "foo: continue bar;",
   "expected": null
+}, {
+  "source": "for(;;);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": null,
+      "test": null,
+      "update": null,
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for ( ; ; ) ;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": null,
+      "test": null,
+      "update": null,
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (null;;);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "test": null,
+      "update": null,
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (;null;);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": null,
+      "test": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "update": null,
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (;;null);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": null,
+      "test": null,
+      "update": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (null;null;);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "test": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "update": null,
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (null;;null);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "test": null,
+      "update": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (;null;null);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": null,
+      "test": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "update": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (null;null;null);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "test": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "update": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (foo;;);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "test": null,
+      "update": null,
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (;foo;);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": null,
+      "test": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "update": null,
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (;;foo);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": null,
+      "test": null,
+      "update": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (foo;foo;);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "test": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "update": null,
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (foo;;foo);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "test": null,
+      "update": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (;foo;foo);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": null,
+      "test": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "update": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (foo;foo;foo);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "test": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "update": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (var foo;;);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": {
+        "type": "VariableDeclaration",
+        "declarations": [{
+          "type": "VariableDeclarator",
+          "id": {
+            "type": "Identifier",
+            "name": "foo"
+          },
+          "init": null
+        }],
+        "kind": "var"
+      },
+      "test": null,
+      "update": null,
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (var foo=null;;);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": {
+        "type": "VariableDeclaration",
+        "declarations": [{
+          "type": "VariableDeclarator",
+          "id": {
+            "type": "Identifier",
+            "name": "foo"
+          },
+          "init": {
+            "type": "Literal",
+            "value": null,
+            "raw": "null"
+          }
+        }],
+        "kind": "var"
+      },
+      "test": null,
+      "update": null,
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (var foo=null, bar=null;;);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": {
+        "type": "VariableDeclaration",
+        "declarations": [{
+          "type": "VariableDeclarator",
+          "id": {
+            "type": "Identifier",
+            "name": "foo"
+          },
+          "init": {
+            "type": "Literal",
+            "value": null,
+            "raw": "null"
+          }
+        }, {
+          "type": "VariableDeclarator",
+          "id": {
+            "type": "Identifier",
+            "name": "bar"
+          },
+          "init": {
+            "type": "Literal",
+            "value": null,
+            "raw": "null"
+          }
+        }],
+        "kind": "var"
+      },
+      "test": null,
+      "update": null,
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (let foo;;);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": {
+        "type": "VariableDeclaration",
+        "declarations": [{
+          "type": "VariableDeclarator",
+          "id": {
+            "type": "Identifier",
+            "name": "foo"
+          },
+          "init": null
+        }],
+        "kind": "let"
+      },
+      "test": null,
+      "update": null,
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (let foo=null;;);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": {
+        "type": "VariableDeclaration",
+        "declarations": [{
+          "type": "VariableDeclarator",
+          "id": {
+            "type": "Identifier",
+            "name": "foo"
+          },
+          "init": {
+            "type": "Literal",
+            "value": null,
+            "raw": "null"
+          }
+        }],
+        "kind": "let"
+      },
+      "test": null,
+      "update": null,
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (let foo=null, bar=null;;);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": {
+        "type": "VariableDeclaration",
+        "declarations": [{
+          "type": "VariableDeclarator",
+          "id": {
+            "type": "Identifier",
+            "name": "foo"
+          },
+          "init": {
+            "type": "Literal",
+            "value": null,
+            "raw": "null"
+          }
+        }, {
+          "type": "VariableDeclarator",
+          "id": {
+            "type": "Identifier",
+            "name": "bar"
+          },
+          "init": {
+            "type": "Literal",
+            "value": null,
+            "raw": "null"
+          }
+        }],
+        "kind": "let"
+      },
+      "test": null,
+      "update": null,
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (var foo in bar);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForInStatement",
+      "left": {
+        "type": "VariableDeclaration",
+        "declarations": [{
+          "type": "VariableDeclarator",
+          "id": {
+            "type": "Identifier",
+            "name": "foo"
+          },
+          "init": null
+        }],
+        "kind": "var"
+      },
+      "right": {
+        "type": "Identifier",
+        "name": "bar"
+      },
+      "body": {
+        "type": "EmptyStatement"
+      },
+      "each": false
+    }]
+  }
+}, {
+  "source": "for (var foo=null in bar);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForInStatement",
+      "left": {
+        "type": "VariableDeclaration",
+        "declarations": [{
+          "type": "VariableDeclarator",
+          "id": {
+            "type": "Identifier",
+            "name": "foo"
+          },
+          "init": {
+            "type": "Literal",
+            "value": null,
+            "raw": "null"
+          }
+        }],
+        "kind": "var"
+      },
+      "right": {
+        "type": "Identifier",
+        "name": "bar"
+      },
+      "body": {
+        "type": "EmptyStatement"
+      },
+      "each": false
+    }]
+  }
+}, {
+  "source": "for (var foo=null, bar=null in quux);",
+  "expected": null
+}, {
+  "source": "for (var foo, bar in quux);",
+  "expected": null
+}, {
+  "source": "for (let foo in bar);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForInStatement",
+      "left": {
+        "type": "VariableDeclaration",
+        "declarations": [{
+          "type": "VariableDeclarator",
+          "id": {
+            "type": "Identifier",
+            "name": "foo"
+          },
+          "init": null
+        }],
+        "kind": "let"
+      },
+      "right": {
+        "type": "Identifier",
+        "name": "bar"
+      },
+      "body": {
+        "type": "EmptyStatement"
+      },
+      "each": false
+    }]
+  }
+}, {
+  "source": "for (let foo=null in bar);",
+  "expected": null
+}, {
+  "source": "for (let foo=null, bar=null in quux);",
+  "expected": null
+}, {
+  "source": "for (let foo, bar in quux);",
+  "expected": null
+}, {
+  "source": "foo: for(;;) { continue foo; }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "LabeledStatement",
+      "label": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "body": {
+        "type": "ForStatement",
+        "init": null,
+        "test": null,
+        "update": null,
+        "body": {
+          "type": "BlockStatement",
+          "body": [{
+            "type": "ContinueStatement",
+            "label": {
+              "type": "Identifier",
+              "name": "foo"
+            }
+          }]
+        }
+      }
+    }]
+  }
+}, {
+  "source": "foo: for(;;) { continue bar; }",
+  "expected": null
+}, {
+  "source": "for(;;) { continue; }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": null,
+      "test": null,
+      "update": null,
+      "body": {
+        "type": "BlockStatement",
+        "body": [{
+          "type": "ContinueStatement",
+          "label": null
+        }]
+      }
+    }]
+  }
+}, {
+  "source": "foo: for(;;) { continue; }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "LabeledStatement",
+      "label": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "body": {
+        "type": "ForStatement",
+        "init": null,
+        "test": null,
+        "update": null,
+        "body": {
+          "type": "BlockStatement",
+          "body": [{
+            "type": "ContinueStatement",
+            "label": null
+          }]
+        }
+      }
+    }]
+  }
+}, {
+  "source": "for(;;) { continue foo; }",
+  "expected": null
+}, {
+  "source": "foo: for(var x in y) { continue foo; }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "LabeledStatement",
+      "label": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "body": {
+        "type": "ForInStatement",
+        "left": {
+          "type": "VariableDeclaration",
+          "declarations": [{
+            "type": "VariableDeclarator",
+            "id": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "init": null
+          }],
+          "kind": "var"
+        },
+        "right": {
+          "type": "Identifier",
+          "name": "y"
+        },
+        "body": {
+          "type": "BlockStatement",
+          "body": [{
+            "type": "ContinueStatement",
+            "label": {
+              "type": "Identifier",
+              "name": "foo"
+            }
+          }]
+        },
+        "each": false
+      }
+    }]
+  }
+}, {
+  "source": "foo: for(var x in y) { continue bar; }",
+  "expected": null
+}, {
+  "source": "for(var x in y) { continue; }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForInStatement",
+      "left": {
+        "type": "VariableDeclaration",
+        "declarations": [{
+          "type": "VariableDeclarator",
+          "id": {
+            "type": "Identifier",
+            "name": "x"
+          },
+          "init": null
+        }],
+        "kind": "var"
+      },
+      "right": {
+        "type": "Identifier",
+        "name": "y"
+      },
+      "body": {
+        "type": "BlockStatement",
+        "body": [{
+          "type": "ContinueStatement",
+          "label": null
+        }]
+      },
+      "each": false
+    }]
+  }
+}, {
+  "source": "foo: for(var x in y) { continue; }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "LabeledStatement",
+      "label": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "body": {
+        "type": "ForInStatement",
+        "left": {
+          "type": "VariableDeclaration",
+          "declarations": [{
+            "type": "VariableDeclarator",
+            "id": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "init": null
+          }],
+          "kind": "var"
+        },
+        "right": {
+          "type": "Identifier",
+          "name": "y"
+        },
+        "body": {
+          "type": "BlockStatement",
+          "body": [{
+            "type": "ContinueStatement",
+            "label": null
+          }]
+        },
+        "each": false
+      }
+    }]
+  }
+}, {
+  "source": "for(var x in y) { continue foo; }",
+  "expected": null
 }]

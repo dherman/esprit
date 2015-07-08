@@ -22,7 +22,8 @@ pub enum ParseError {
     InvalidLabel(Id),
     InvalidLabelType(Id),
     ContextualKeyword(Id),
-    IllegalStrictBinding(Id)
+    IllegalStrictBinding(Id),
+    ForOfLetExpr(Span)
 }
 
 pub struct Parser<I> {
@@ -38,8 +39,32 @@ impl<I> Parser<I> where I: Iterator<Item=char> {
     }
 }
 
+trait First {
+    fn first_binding(&self) -> bool;
+}
+
 trait Follows {
     fn follow_statement_list(&self) -> bool;
+}
+
+impl First for Token {
+    // first(LexicalBinding) =
+    //   first(BindingIdentifier)
+    // U first(BindingPattern)
+    // = IdentifierName
+    // U first(BindingPattern)
+    // = IdentifierName
+    // U first(ObjectBindingPattern)
+    // U first(ArrayBindingPattern)
+    // = IdentifierName U { '{', '[' }
+    fn first_binding(&self) -> bool {
+        match self.value {
+            TokenData::LBrace
+          | TokenData::LBrack
+          | TokenData::Identifier(_) => true,
+            _ => false
+        }
+    }
 }
 
 impl Follows for Token {
@@ -172,7 +197,7 @@ impl SpanTracker {
         let before = parser.posn();
         match try!(parser.peek()) {
             &Token { value: TokenData::Semi, location, .. } => {
-                parser.skip();
+                parser.reread(TokenData::Semi);
                 Ok(Tracked {
                     value: cons(Semi::Explicit(Some(location.start))),
                     location: Some(Span { start: self.start, end: parser.posn() })
@@ -236,12 +261,12 @@ impl<I> Parser<I>
         self.lexer.peek_token().map_err(ParseError::LexError)
     }
 
-    fn expect(&mut self, expected: TokenData) -> Parse<()> {
+    fn expect(&mut self, expected: TokenData) -> Parse<Token> {
         let token = try!(self.read());
         if token.value != expected {
             return Err(ParseError::UnexpectedToken(token));
         }
-        Ok(())
+        Ok(token)
     }
 
     fn matches(&mut self, expected: TokenData) -> Parse<bool> {
@@ -270,6 +295,15 @@ impl<I> Parser<I>
         let value = try!(parse(self));
         let end = self.posn();
         Ok(Tracked { value: value, location: Some(Span { start: start, end: end }) })
+    }
+
+    fn allow_in<F, T>(&mut self, allow_in: bool, parse: F) -> Parse<T>
+      where F: FnOnce(&mut Self) -> Parse<T>
+    {
+        let allow_in = replace(&mut self.parser_cx.allow_in, allow_in);
+        let result = parse(self);
+        replace(&mut self.parser_cx.allow_in, allow_in);
+        result
     }
 
     fn try_token_at<T, F>(&mut self, op: &mut F) -> Parse<Tracked<T>>
@@ -341,7 +375,20 @@ impl<I> Parser<I>
     }
 
     fn pattern(&mut self) -> Parse<Patt> {
-        Ok(try!(self.id()).into_patt())
+        match try!(self.peek()).value {
+            TokenData::Identifier(_) => {
+                let id = try!(self.binding_id());
+                Ok(Patt::Simple(id))
+            }
+            _ => {
+                let patt = try!(self.binding_pattern());
+                Ok(Patt::Compound(patt))
+            }
+        }
+    }
+
+    fn binding_pattern(&mut self) -> Parse<CompoundPatt> {
+        unimplemented!()
     }
 
     fn function(&mut self) -> Parse<Fun> {
@@ -458,15 +505,15 @@ impl<I> Parser<I>
     fn var_statement(&mut self) -> Parse<Stmt> {
         let span = self.start();
         self.reread(TokenData::Reserved(Reserved::Var));
-        let dtors = try!(self.var_declaration_list());
+        let dtors = try!(self.declarator_list());
         Ok(try!(span.end_with_auto_semi(self, Newline::Required, |semi| StmtData::Var(dtors, semi))))
     }
 
-    fn var_declaration_list(&mut self) -> Parse<Vec<VarDtor>> {
+    fn declarator_list(&mut self) -> Parse<Vec<Dtor>> {
         let mut items = Vec::new();
-        items.push(try!(self.var_declaration()));
+        items.push(try!(self.declarator()));
         while try!(self.matches(TokenData::Comma)) {
-            items.push(try!(self.var_declaration()));
+            items.push(try!(self.declarator()));
         }
         Ok(items)
     }
@@ -509,15 +556,25 @@ impl<I> Parser<I>
         }
     }
 
-    fn var_declaration(&mut self) -> Parse<VarDtor> {
+    fn declarator(&mut self) -> Parse<Dtor> {
         self.span(&mut |this| {
-            let lhs = try!(this.pattern());
-            let rhs = if try!(this.matches(TokenData::Assign)) {
-                Some(try!(this.assignment_expression()))
-            } else {
-                None
-            };
-            Ok(VarDtorData { id: lhs, init: rhs })
+            match try!(this.peek()).value {
+                TokenData::Identifier(_) => {
+                    let id = try!(this.binding_id());
+                    let init = if try!(this.matches(TokenData::Assign)) {
+                        Some(try!(this.assignment_expression()))
+                    } else {
+                        None
+                    };
+                    Ok(DtorData::Simple(id, init))
+                }
+                _ => {
+                    let lhs = try!(this.binding_pattern());
+                    try!(this.expect(TokenData::Assign));
+                    let rhs = try!(this.assignment_expression());
+                    Ok(DtorData::Compound(lhs, rhs))
+                }
+            }
         })
     }
 
@@ -575,20 +632,257 @@ impl<I> Parser<I>
             this.reread(TokenData::Reserved(Reserved::For));
             try!(this.expect(TokenData::LParen));
             match try!(this.peek()).value {
-                TokenData::Reserved(Reserved::Var)           => unimplemented!(),
-                TokenData::Identifier(Name::Atom(Atom::Let)) => unimplemented!(),
+                TokenData::Reserved(Reserved::Var)           => this.for_var(),
+                TokenData::Identifier(Name::Atom(Atom::Let)) => this.for_let(),
                 TokenData::Reserved(Reserved::Const)         => unimplemented!(),
-                _                                            => unimplemented!()
+                TokenData::Semi                              => {
+                    this.reread(TokenData::Semi);
+                    this.more_for(None)
+                }
+                _                                            => this.for_expr()
             }
         })
     }
 
-    fn for_var_statement(&mut self) -> Parse<StmtData> {
-        unimplemented!()
+    // 'for' '(' 'var' .
+    fn for_var(&mut self) -> Parse<StmtData> {
+        let var_token = self.reread(TokenData::Reserved(Reserved::Var));
+        let var_location = var_token.location;
+        let lhs = try!(self.pattern());
+        match try!(self.peek()).value {
+            // 'for' '(' 'var' id   '=' .
+            // 'for' '(' 'var' patt '=' . ==> C-style
+            TokenData::Assign => {
+                self.reread(TokenData::Assign);
+                match lhs {
+                    Patt::Simple(id) => {
+                        let rhs = try!(self.allow_in(false, |this| this.assignment_expression()));
+                        match try!(self.peek()).value {
+                            // 'for' '(' 'var' id '=' expr ','  . ==> C-style
+                            // 'for' '(' 'var' id '=' expr ';'  . ==> C-style
+                            TokenData::Comma
+                          | TokenData::Semi => {
+                                let head = Some(try!(self.more_for_head(&var_location, Dtor::from_simple_init(id, rhs), ForHeadData::Var)));
+                                self.more_for(head)
+                            }
+                            // 'for' '(' 'var' id '=' expr 'in' . ==> legacy enumeration
+                            TokenData::Reserved(Reserved::In) => {
+                                self.reread(TokenData::Reserved(Reserved::In));
+                                let head = Box::new(ForInHead {
+                                    location: span(&var_location, &rhs),
+                                    value: ForInHeadData::VarInit(id, rhs)
+                                });
+                                self.more_for_in(head)
+                            }
+                            _ => Err(ParseError::UnexpectedToken(try!(self.read())))
+                        }
+                    }
+                    // 'for' '(' 'var' patt '=' . ==> C-style
+                    Patt::Compound(patt) => {
+                        let rhs = try!(self.allow_in(false, |this| this.assignment_expression()));
+                        let head = Some(try!(self.more_for_head(&var_location, Dtor::from_compound_init(patt, rhs), ForHeadData::Var)));
+                        self.more_for(head)
+                    }
+                }
+            }
+            TokenData::Comma
+          | TokenData::Semi => {
+                // 'for' '(' 'var' id   ',' . ==> C-style
+                // 'for' '(' 'var' id   ';' . ==> C-style
+                // 'for' '(' 'var' patt ',' . ==> syntax error
+                // 'for' '(' 'var' patt ';' . ==> syntax error
+                let dtor = match Dtor::from_init_opt(lhs, None) {
+                    Ok(dtor) => dtor,
+                    Err(_) => { return Err(ParseError::UnexpectedToken(try!(self.read()))); }
+                };
+                let head = Some(try!(self.more_for_head(&var_location, dtor, ForHeadData::Var)));
+                self.more_for(head)
+            }
+            // 'for' '(' 'var' id   'in' . ==> enumeration
+            // 'for' '(' 'var' patt 'in' . ==> enumeration
+            TokenData::Reserved(Reserved::In) => {
+                self.reread(TokenData::Reserved(Reserved::In));
+                let head = Box::new(ForInHead {
+                    location: span(&var_location, &lhs),
+                    value: ForInHeadData::Var(lhs)
+                });
+                self.more_for_in(head)
+            }
+            // 'for' '(' 'var' id   'of' . ==> enumeration
+            // 'for' '(' 'var' patt 'of' . ==> enumeration
+            TokenData::Identifier(Name::Atom(Atom::Of)) => {
+                self.reread(TokenData::Identifier(Name::Atom(Atom::Of)));
+                let head = Box::new(ForOfHead {
+                    location: span(&var_location, &lhs),
+                    value: ForOfHeadData::Var(lhs)
+                });
+                self.more_for_of(head)
+            }
+            _ => Err(ParseError::UnexpectedToken(try!(self.read())))
+        }
     }
 
-    fn for_let_statement(&mut self) -> Parse<StmtData> {
-        unimplemented!()
+    // 'for' '(' 'let' .
+    fn for_let(&mut self) -> Parse<StmtData> {
+        let let_token = self.reread(TokenData::Identifier(Name::Atom(Atom::Let)));
+        let let_location = let_token.location;
+        // 'for' '(' 'let' . !{id, patt} ==> C-style
+        if !try!(self.peek()).first_binding() {
+            let result = try!(self.for_id_expr(Id::new(Name::Atom(Atom::Let), Some(let_token.location))));
+            if let StmtData::ForOf(_, _, _) = result {
+                // FIXME: this really ought to report the *next* token but that's hard
+                return Err(ParseError::ForOfLetExpr(let_location));
+            }
+            return Ok(result);
+        }
+        let lhs = try!(self.pattern());
+        match try!(self.peek()).value {
+            // 'for' '(' 'let' id   '=' . ==> C-style
+            // 'for' '(' 'let' patt '=' . ==> C-style
+            TokenData::Assign => {
+                self.reread(TokenData::Assign);
+                let rhs = try!(self.allow_in(false, |this| this.assignment_expression()));
+                let head = Some(try!(self.more_for_head(&let_location, Dtor::from_init(lhs, rhs), ForHeadData::Let)));
+                self.more_for(head)
+            }
+            TokenData::Comma
+          | TokenData::Semi => {
+                // 'for' '(' 'let' id   ',' . ==> C-style
+                // 'for' '(' 'let' id   ';' . ==> C-style
+                // 'for' '(' 'let' patt ',' . ==> error
+                // 'for' '(' 'let' patt ';' . ==> error
+                let dtor = match Dtor::from_init_opt(lhs, None) {
+                    Ok(dtor) => dtor,
+                    Err(_) => { return Err(ParseError::UnexpectedToken(try!(self.read()))); }
+                };
+                let head = Some(try!(self.more_for_head(&let_location, dtor, ForHeadData::Let)));
+                self.more_for(head)
+            }
+            // 'for' '(' 'let' id   'in' . ==> enumeration
+            // 'for' '(' 'let' patt 'in' . ==> enumeration
+            TokenData::Reserved(Reserved::In) => {
+                self.reread(TokenData::Reserved(Reserved::In));
+                let head = Box::new(ForInHead {
+                    location: span(&let_location, &lhs),
+                    value: ForInHeadData::Let(lhs)
+                });
+                self.more_for_in(head)
+            }
+            // 'for' '(' 'let' id   'of' . ==> enumeration
+            // 'for' '(' 'let' patt 'of' . ==> enumeration
+            TokenData::Identifier(Name::Atom(Atom::Of)) => {
+                self.reread(TokenData::Identifier(Name::Atom(Atom::Of)));
+                let head = Box::new(ForOfHead {
+                    location: span(&let_location, &lhs),
+                    value: ForOfHeadData::Let(lhs)
+                });
+                self.more_for_of(head)
+            }
+            _ => Err(ParseError::UnexpectedToken(try!(self.read())))
+        }
+    }
+
+    fn for_id_expr(&mut self, id: Id) -> Parse<StmtData> {
+        let lhs = try!(self.allow_in(false, |this| this.id_expression(id)));
+        self.more_for_expr(lhs)
+    }
+
+    fn for_expr(&mut self) -> Parse<StmtData> {
+        let lhs = try!(self.allow_in(false, |this| this.expression()));
+        self.more_for_expr(lhs)
+    }
+
+    fn more_for_expr(&mut self, lhs: Expr) -> Parse<StmtData> {
+        match try!(self.peek()).value {
+            TokenData::Semi => {
+                let semi_location = self.reread(TokenData::Semi).location;
+                let head = Some(Box::new(ForHead {
+                    location: span(&lhs, &semi_location),
+                    value: ForHeadData::Expr(lhs)
+                }));
+                self.more_for(head)
+            }
+            TokenData::Reserved(Reserved::In) => {
+                self.reread(TokenData::Reserved(Reserved::In));
+                let head = Box::new(ForInHead {
+                    location: lhs.location(),
+                    value: ForInHeadData::Expr(lhs)
+                });
+                self.more_for_in(head)
+            }
+            TokenData::Identifier(Name::Atom(Atom::Of)) => {
+                self.reread(TokenData::Identifier(Name::Atom(Atom::Of)));
+                let head = Box::new(ForOfHead {
+                    location: lhs.location(),
+                    value: ForOfHeadData::Expr(lhs)
+                });
+                self.more_for_of(head)
+            }
+            _ => Err(ParseError::UnexpectedToken(try!(self.read())))
+        }
+    }
+
+    // 'for' '(' dtor .
+    fn more_for_head<F>(&mut self, start: &Span, dtor: Dtor, op: F) -> Parse<Box<ForHead>>
+      where F: FnOnce(Vec<Dtor>) -> ForHeadData
+    {
+        let dtors = try!(self.allow_in(false, |this| {
+            let mut dtors = vec![dtor];
+            try!(this.more_dtors(&mut dtors));
+            Ok(dtors)
+        }));
+        let semi_location = try!(self.expect(TokenData::Semi)).location;
+        Ok(Box::new(ForHead {
+            location: span(start, &semi_location),
+            value: op(dtors)
+        }))
+    }
+
+    // 'for' '(' head ';' .
+    fn more_for(&mut self, head: Option<Box<ForHead>>) -> Parse<StmtData> {
+        let test = try!(self.expression_opt_semi());
+        let update = if try!(self.matches(TokenData::RParen)) {
+            None
+        } else {
+            let node = Some(try!(self.allow_in(true, |this| this.expression())));
+            try!(self.expect(TokenData::RParen));
+            node
+        };
+        let body = Box::new(try!(self.iteration_body()));
+        Ok(StmtData::For(head, test, update, body))
+    }
+
+    // 'for' '(' head 'in' .
+    fn more_for_in(&mut self, head: Box<ForInHead>) -> Parse<StmtData> {
+        let obj = try!(self.allow_in(true, |this| this.assignment_expression()));
+        try!(self.expect(TokenData::RParen));
+        let body = Box::new(try!(self.iteration_body()));
+        Ok(StmtData::ForIn(head, obj, body))
+    }
+
+    // 'for' '(' head 'of' .
+    fn more_for_of(&mut self, head: Box<ForOfHead>) -> Parse<StmtData> {
+        let obj = try!(self.allow_in(true, |this| this.assignment_expression()));
+        try!(self.expect(TokenData::RParen));
+        let body = Box::new(try!(self.iteration_body()));
+        Ok(StmtData::ForOf(head, obj, body))
+    }
+
+    fn expression_opt_semi(&mut self) -> Parse<Option<Expr>> {
+        Ok(if try!(self.matches(TokenData::Semi)) {
+            None
+        } else {
+            let expr = try!(self.allow_in(true, |this| this.expression()));
+            try!(self.expect(TokenData::Semi));
+            Some(expr)
+        })
+    }
+
+    fn more_dtors(&mut self, dtors: &mut Vec<Dtor>) -> Parse<()> {
+        while try!(self.matches(TokenData::Comma)) {
+            dtors.push(try!(self.declarator()));
+        }
+        Ok(())
     }
 
     fn switch_statement(&mut self) -> Parse<Stmt> {
@@ -703,6 +997,10 @@ impl<I> Parser<I>
         self.assignment_expression()
     }
 
+    fn id_expression(&mut self, id: Id) -> Parse<Expr> {
+        unimplemented!()
+    }
+
     pub fn expr(&mut self) -> Parse<Expr> {
         let left = match self.lexer.read_token() {
             Ok(Token { value: TokenData::Number(literal), location, .. }) => Expr { location: Some(location), value: ExprData::Number(literal) },
@@ -733,12 +1031,10 @@ impl<I> Parser<I>
 mod tests {
 
     use test::{deserialize_parser_tests, ParserTest};
-    use lexer::{Lexer, LexError};
+    use lexer::Lexer;
     use context::{SharedContext, Mode};
-    use token::{Token, TokenData};
     use std::cell::Cell;
     use std::rc::Rc;
-    use std::str::Chars;
     use parser::{Parser, Parse};
     use ast::*;
     use track::*;
@@ -759,7 +1055,7 @@ mod tests {
             match (result, expected) {
                 (Ok(mut actual_ast), Some(expected_ast)) => {
                     actual_ast.untrack();
-                    if (actual_ast != expected_ast) {
+                    if actual_ast != expected_ast {
                         println!("");
                         println!("test:         {}", source);
                         println!("expected AST: {:?}", expected_ast);
