@@ -120,6 +120,11 @@
   "throw\nnull": false,
 
   "debugger;": true,
-  "debugger": true
+  "debugger": true,
+
+  "try { } catch (x) { }": true,
+  "try { } finally { }": true,
+  "try { } catch (x) { } finally { }": true,
+  "try { }": false
 
 }

@@ -393,6 +393,7 @@ pub trait IntoNode {
     fn into_function(self) -> Deserialize<Fun>;
     fn into_pattern(self) -> Deserialize<Patt>;
     fn into_case(self) -> Deserialize<Case>;
+    fn into_catch(self) -> Deserialize<Catch>;
 }
 
 impl IntoNode for Json {
@@ -434,6 +435,10 @@ impl IntoNode for Json {
 
     fn into_case(self) -> Deserialize<Case> {
         try!(self.into_object()).into_case()
+    }
+
+    fn into_catch(self) -> Deserialize<Catch> {
+        try!(self.into_object()).into_catch()
     }
 }
 
@@ -652,6 +657,16 @@ impl IntoNode for Object {
             "DebuggerStatement" => {
                 Ok(StmtData::Debugger(Semi::Explicit(None)).tracked(None))
             }
+            "TryStatement" => {
+                let mut block = try!(self.extract_object("block"));
+                let body = try!(block.extract_statement_list("body"));
+                let catch = try!(self.extract_catch_opt("handler")).map(Box::new);
+                let mut finally = match try!(self.extract_object_opt("finalizer")) {
+                    Some(mut finalizer) => Some(try!(finalizer.extract_statement_list("body"))),
+                    None => None
+                };
+                Ok(StmtData::Try(body, catch, finally).tracked(None))
+            }
             // FIXME: remaining statement cases
             _ => string_error("statement type", ty)
         }
@@ -665,6 +680,13 @@ impl IntoNode for Object {
         let test = try!(self.extract_expression_opt("test"));
         let body = try!(self.extract_statement_list("consequent"));
         Ok((CaseData { test: test, body: body }).tracked(None))
+    }
+
+    fn into_catch(mut self) -> Deserialize<Catch> {
+        let param = try!(self.extract_pattern("param"));
+        let mut body = try!(self.extract_object("body"));
+        let body = try!(body.extract_statement_list("body"));
+        Ok((CatchData { param: param, body: body }).tracked(None))
     }
 }
 
@@ -746,6 +768,7 @@ pub trait ExtractNode {
     fn extract_pattern(&mut self, &'static str) -> Deserialize<Patt>;
     fn extract_declarator_list(&mut self, &'static str) -> Deserialize<Vec<Dtor>>;
     fn extract_case_list(&mut self, &'static str) -> Deserialize<Vec<Case>>;
+    fn extract_catch_opt(&mut self, &'static str) -> Deserialize<Option<Catch>>;
 }
 
 impl ExtractNode for Object {
@@ -785,5 +808,12 @@ impl ExtractNode for Object {
 
     fn extract_case_list(&mut self, name: &'static str) -> Deserialize<Vec<Case>> {
         try!(self.extract_array(name)).deserialize_map(|elt| elt.into_case())
+    }
+
+    fn extract_catch_opt(&mut self, name: &'static str) -> Deserialize<Option<Catch>> {
+        Ok(match try!(self.extract_object_opt(name)) {
+            Some(obj) => Some(try!(obj.into_catch())),
+            None => None
+        })
     }
 }

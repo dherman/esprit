@@ -1887,4 +1887,101 @@
       "type": "DebuggerStatement"
     }]
   }
+}, {
+  "source": "try { } catch (x) { }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "TryStatement",
+      "block": {
+        "type": "BlockStatement",
+        "body": []
+      },
+      "guardedHandlers": [],
+      "handlers": [{
+        "type": "CatchClause",
+        "param": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "body": {
+          "type": "BlockStatement",
+          "body": []
+        }
+      }],
+      "handler": {
+        "type": "CatchClause",
+        "param": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "body": {
+          "type": "BlockStatement",
+          "body": []
+        }
+      },
+      "finalizer": null
+    }]
+  }
+}, {
+  "source": "try { } finally { }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "TryStatement",
+      "block": {
+        "type": "BlockStatement",
+        "body": []
+      },
+      "guardedHandlers": [],
+      "handlers": [],
+      "handler": null,
+      "finalizer": {
+        "type": "BlockStatement",
+        "body": []
+      }
+    }]
+  }
+}, {
+  "source": "try { } catch (x) { } finally { }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "TryStatement",
+      "block": {
+        "type": "BlockStatement",
+        "body": []
+      },
+      "guardedHandlers": [],
+      "handlers": [{
+        "type": "CatchClause",
+        "param": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "body": {
+          "type": "BlockStatement",
+          "body": []
+        }
+      }],
+      "handler": {
+        "type": "CatchClause",
+        "param": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "body": {
+          "type": "BlockStatement",
+          "body": []
+        }
+      },
+      "finalizer": {
+        "type": "BlockStatement",
+        "body": []
+      }
+    }]
+  }
+}, {
+  "source": "try { }",
+  "expected": null
 }]

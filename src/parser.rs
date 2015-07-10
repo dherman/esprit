@@ -26,7 +26,8 @@ pub enum ParseError {
     ForOfLetExpr(Span),
     DuplicateDefault(Token),
     StrictWith(Token),
-    ThrowArgument(Token)
+    ThrowArgument(Token),
+    OrphanTry(Token)
 }
 
 pub struct Parser<I> {
@@ -1037,8 +1038,55 @@ impl<I> Parser<I>
         })
     }
 
+    fn block(&mut self) -> Parse<Vec<StmtListItem>> {
+        try!(self.expect(TokenData::LBrace));
+        let result = try!(self.statement_list());
+        try!(self.expect(TokenData::RBrace));
+        Ok(result)
+    }
+
     fn try_statement(&mut self) -> Parse<Stmt> {
-        unimplemented!()
+        self.span(&mut |this| {
+            this.reread(TokenData::Reserved(Reserved::Try));
+            let body = try!(this.block());
+            match try!(this.peek()).value {
+                TokenData::Reserved(Reserved::Catch) 
+              | TokenData::Reserved(Reserved::Finally) => { }
+                _ => {
+                    return Err(ParseError::OrphanTry(try!(this.read())));
+                }
+            }
+            let catch = try!(this.catch_opt()).map(Box::new);
+            let finally = try!(this.finally_opt());
+            Ok(StmtData::Try(body, catch, finally))
+        })
+    }
+
+    fn catch_opt(&mut self) -> Parse<Option<Catch>> {
+        match try!(self.peek()).value {
+            TokenData::Reserved(Reserved::Catch) => {
+                self.span(&mut |this| {
+                    this.reread(TokenData::Reserved(Reserved::Catch));
+                    try!(this.expect(TokenData::LParen));
+                    let param = try!(this.pattern());
+                    try!(this.expect(TokenData::RParen));
+
+                    let body = try!(this.block());
+                    Ok(CatchData { param: param, body: body })
+                }).map(Some)
+            }
+            _ => Ok(None)
+        }
+    }
+
+    fn finally_opt(&mut self) -> Parse<Option<Vec<StmtListItem>>> {
+        Ok(match try!(self.peek()).value {
+            TokenData::Reserved(Reserved::Finally) => {
+                self.reread(TokenData::Reserved(Reserved::Finally));
+                Some(try!(self.block()))
+            }
+            _ => None
+        })
     }
 
     fn debugger_statement(&mut self) -> Parse<Stmt> {

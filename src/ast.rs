@@ -94,7 +94,7 @@ pub enum StmtData {
     Switch(Expr, Vec<Case>),
     Return(Option<Expr>, Semi),
     Throw(Expr, Semi),
-    Try(Vec<Stmt>, Option<Box<Catch>>, Option<Vec<Stmt>>),
+    Try(Vec<StmtListItem>, Option<Box<Catch>>, Option<Vec<StmtListItem>>),
     While(Expr, Box<Stmt>),
     DoWhile(Box<Stmt>, Expr, Semi),
     For(Option<Box<ForHead>>, Option<Expr>, Option<Expr>, Box<Stmt>),
@@ -278,7 +278,7 @@ impl DtorExt for Dtor {
 #[derive(Debug, PartialEq)]
 pub struct CatchData {
     pub param: Patt,
-    pub body: Vec<Stmt>
+    pub body: Vec<StmtListItem>
 }
 
 impl Untrack for CatchData {
