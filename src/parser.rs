@@ -23,7 +23,8 @@ pub enum ParseError {
     InvalidLabelType(Id),
     ContextualKeyword(Id),
     IllegalStrictBinding(Id),
-    ForOfLetExpr(Span)
+    ForOfLetExpr(Span),
+    DuplicateDefault(Token)
 }
 
 pub struct Parser<I> {
@@ -886,7 +887,72 @@ impl<I> Parser<I>
     }
 
     fn switch_statement(&mut self) -> Parse<Stmt> {
-        unimplemented!()
+        self.span(&mut |this| {
+            this.reread(TokenData::Reserved(Reserved::Switch));
+            let disc = try!(this.paren_expression());
+            let outer_switch = replace(&mut this.parser_cx.switch, true);
+            let cases = this.switch_cases();
+            replace(&mut this.parser_cx.switch, outer_switch);
+            Ok(StmtData::Switch(disc, try!(cases)))
+        })
+    }
+
+    fn switch_cases(&mut self) -> Parse<Vec<Case>> {
+        try!(self.expect(TokenData::LBrace));
+        let mut cases = Vec::new();
+        let mut found_default = false;
+        loop {
+            match try!(self.peek()).value {
+                TokenData::Reserved(Reserved::Case) => { cases.push(try!(self.case())); }
+                TokenData::Reserved(Reserved::Default) => {
+                    if found_default {
+                        let token = self.reread(TokenData::Reserved(Reserved::Default));
+                        return Err(ParseError::DuplicateDefault(token));
+                    }
+                    found_default = true;
+                    cases.push(try!(self.default()));
+                }
+                _ => { break; }
+            }
+        }
+        try!(self.expect(TokenData::RBrace));
+        Ok(cases)
+    }
+
+    fn case(&mut self) -> Parse<Case> {
+        self.span(&mut |this| {
+            this.reread(TokenData::Reserved(Reserved::Case));
+            let test = try!(this.allow_in(true, |this| this.expression()));
+            try!(this.expect(TokenData::Colon));
+            let body = try!(this.case_body());
+            Ok(CaseData { test: Some(test), body: body })
+        })
+    }
+
+    fn case_body(&mut self) -> Parse<Vec<StmtListItem>> {
+        let mut items = Vec::new();
+        loop {
+            match try!(self.peek()).value {
+                TokenData::Reserved(Reserved::Case)
+              | TokenData::Reserved(Reserved::Default)
+              | TokenData::RBrace => { break; }
+                _ => { }
+            }
+            match try!(self.declaration_opt()) {
+                Some(decl) => { items.push(StmtListItem::Decl(decl)); }
+                None       => { items.push(StmtListItem::Stmt(try!(self.statement()))); }
+            }
+        }
+        Ok(items)
+    }
+
+    fn default(&mut self) -> Parse<Case> {
+        self.span(&mut |this| {
+            this.reread(TokenData::Reserved(Reserved::Default));
+            try!(this.expect(TokenData::Colon));
+            let body = try!(this.case_body());
+            Ok(CaseData { test: None, body: body })
+        })
     }
 
     fn break_statement(&mut self) -> Parse<Stmt> {
@@ -969,7 +1035,7 @@ impl<I> Parser<I>
 
     fn paren_expression(&mut self) -> Parse<Expr> {
         try!(self.expect(TokenData::LParen));
-        let result = try!(self.expression());
+        let result = try!(self.allow_in(true, |this| this.expression()));
         try!(self.expect(TokenData::RParen));
         Ok(result)
     }

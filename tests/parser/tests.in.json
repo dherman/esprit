@@ -96,6 +96,19 @@
   "foo: for(var x in y) { continue bar; }": false,
   "for(var x in y) { continue; }": true,
   "foo: for(var x in y) { continue; }": true,
-  "for(var x in y) { continue foo; }": false
+  "for(var x in y) { continue foo; }": false,
+
+  "switch (null) { }": true,
+  "switch (null) { default: }": true,
+  "switch (null) { default: break; }": true,
+  "switch (null) { case null: }": true,
+  "switch (null) { case null: break; }": true,
+  "switch (null) { case null: continue; }": false,
+  "for (;;) { switch (null) { case null: continue; } }": true,
+  "foo: for (;;) { bar: switch (null) { case null: continue foo; } }": true,
+  "foo: for (;;) { bar: switch (null) { case null: continue bar; } }": false,
+  "switch (null) { default: {} default: {} }": false,
+  "switch (null) { default: {} case: {} default: {} }": false,
+  "switch (null) { case: {} default: {} case: {} default: {} }": false
 
 }

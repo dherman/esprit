@@ -392,6 +392,7 @@ pub trait IntoNode {
     fn into_literal(self) -> Deserialize<Expr>;
     fn into_function(self) -> Deserialize<Fun>;
     fn into_pattern(self) -> Deserialize<Patt>;
+    fn into_case(self) -> Deserialize<Case>;
 }
 
 impl IntoNode for Json {
@@ -429,6 +430,10 @@ impl IntoNode for Json {
 
     fn into_pattern(self) -> Deserialize<Patt> {
         try!(self.into_object()).into_pattern()
+    }
+
+    fn into_case(self) -> Deserialize<Case> {
+        try!(self.into_object()).into_case()
     }
 }
 
@@ -630,6 +635,11 @@ impl IntoNode for Object {
                 let label = try!(self.extract_id_opt("label"));
                 Ok(StmtData::Cont(label, Semi::Explicit(None)).tracked(None))
             }
+            "SwitchStatement" => {
+                let disc = try!(self.extract_expression("discriminant"));
+                let cases = try!(self.extract_case_list("cases"));
+                Ok(StmtData::Switch(disc, cases).tracked(None))
+            }
             // FIXME: remaining statement cases
             _ => string_error("statement type", ty)
         }
@@ -637,6 +647,12 @@ impl IntoNode for Object {
 
     fn into_pattern(self) -> Deserialize<Patt> {
         self.into_identifier().map(|id| id.into_patt())
+    }
+
+    fn into_case(mut self) -> Deserialize<Case> {
+        let test = try!(self.extract_expression_opt("test"));
+        let body = try!(self.extract_statement_list("consequent"));
+        Ok((CaseData { test: test, body: body }).tracked(None))
     }
 }
 
@@ -717,6 +733,7 @@ pub trait ExtractNode {
     fn extract_statement_list(&mut self, &'static str) -> Deserialize<Vec<StmtListItem>>;
     fn extract_pattern(&mut self, &'static str) -> Deserialize<Patt>;
     fn extract_declarator_list(&mut self, &'static str) -> Deserialize<Vec<Dtor>>;
+    fn extract_case_list(&mut self, &'static str) -> Deserialize<Vec<Case>>;
 }
 
 impl ExtractNode for Object {
@@ -752,5 +769,9 @@ impl ExtractNode for Object {
 
     fn extract_declarator_list(&mut self, name: &'static str) -> Deserialize<Vec<Dtor>> {
         try!(self.extract_array(name)).deserialize_map(|elt| elt.into_declarator())
+    }
+
+    fn extract_case_list(&mut self, name: &'static str) -> Deserialize<Vec<Case>> {
+        try!(self.extract_array(name)).deserialize_map(|elt| elt.into_case())
     }
 }

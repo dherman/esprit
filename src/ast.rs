@@ -293,7 +293,7 @@ pub type Catch = Tracked<CatchData>;
 #[derive(Debug, PartialEq)]
 pub struct CaseData {
     pub test: Option<Expr>,
-    pub body: Vec<Stmt>
+    pub body: Vec<StmtListItem>
 }
 
 impl Untrack for CaseData {

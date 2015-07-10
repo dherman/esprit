@@ -1606,4 +1606,204 @@
 }, {
   "source": "for(var x in y) { continue foo; }",
   "expected": null
+}, {
+  "source": "switch (null) { }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "SwitchStatement",
+      "discriminant": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "cases": []
+    }]
+  }
+}, {
+  "source": "switch (null) { default: }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "SwitchStatement",
+      "discriminant": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "cases": [{
+        "type": "SwitchCase",
+        "test": null,
+        "consequent": []
+      }]
+    }]
+  }
+}, {
+  "source": "switch (null) { default: break; }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "SwitchStatement",
+      "discriminant": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "cases": [{
+        "type": "SwitchCase",
+        "test": null,
+        "consequent": [{
+          "type": "BreakStatement",
+          "label": null
+        }]
+      }]
+    }]
+  }
+}, {
+  "source": "switch (null) { case null: }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "SwitchStatement",
+      "discriminant": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "cases": [{
+        "type": "SwitchCase",
+        "test": {
+          "type": "Literal",
+          "value": null,
+          "raw": "null"
+        },
+        "consequent": []
+      }]
+    }]
+  }
+}, {
+  "source": "switch (null) { case null: break; }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "SwitchStatement",
+      "discriminant": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "cases": [{
+        "type": "SwitchCase",
+        "test": {
+          "type": "Literal",
+          "value": null,
+          "raw": "null"
+        },
+        "consequent": [{
+          "type": "BreakStatement",
+          "label": null
+        }]
+      }]
+    }]
+  }
+}, {
+  "source": "switch (null) { case null: continue; }",
+  "expected": null
+}, {
+  "source": "for (;;) { switch (null) { case null: continue; } }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": null,
+      "test": null,
+      "update": null,
+      "body": {
+        "type": "BlockStatement",
+        "body": [{
+          "type": "SwitchStatement",
+          "discriminant": {
+            "type": "Literal",
+            "value": null,
+            "raw": "null"
+          },
+          "cases": [{
+            "type": "SwitchCase",
+            "test": {
+              "type": "Literal",
+              "value": null,
+              "raw": "null"
+            },
+            "consequent": [{
+              "type": "ContinueStatement",
+              "label": null
+            }]
+          }]
+        }]
+      }
+    }]
+  }
+}, {
+  "source": "foo: for (;;) { bar: switch (null) { case null: continue foo; } }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "LabeledStatement",
+      "label": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "body": {
+        "type": "ForStatement",
+        "init": null,
+        "test": null,
+        "update": null,
+        "body": {
+          "type": "BlockStatement",
+          "body": [{
+            "type": "LabeledStatement",
+            "label": {
+              "type": "Identifier",
+              "name": "bar"
+            },
+            "body": {
+              "type": "SwitchStatement",
+              "discriminant": {
+                "type": "Literal",
+                "value": null,
+                "raw": "null"
+              },
+              "cases": [{
+                "type": "SwitchCase",
+                "test": {
+                  "type": "Literal",
+                  "value": null,
+                  "raw": "null"
+                },
+                "consequent": [{
+                  "type": "ContinueStatement",
+                  "label": {
+                    "type": "Identifier",
+                    "name": "foo"
+                  }
+                }]
+              }]
+            }
+          }]
+        }
+      }
+    }]
+  }
+}, {
+  "source": "foo: for (;;) { bar: switch (null) { case null: continue bar; } }",
+  "expected": null
+}, {
+  "source": "switch (null) { default: {} default: {} }",
+  "expected": null
+}, {
+  "source": "switch (null) { default: {} case: {} default: {} }",
+  "expected": null
+}, {
+  "source": "switch (null) { case: {} default: {} case: {} default: {} }",
+  "expected": null
 }]
