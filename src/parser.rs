@@ -1042,7 +1042,9 @@ impl<I> Parser<I>
     }
 
     fn debugger_statement(&mut self) -> Parse<Stmt> {
-        unimplemented!()
+        let span = self.start();
+        self.reread(TokenData::Reserved(Reserved::Debugger));
+        Ok(try!(span.end_with_auto_semi(self, Newline::Required, |semi| StmtData::Debugger(semi))))
     }
 
 /*

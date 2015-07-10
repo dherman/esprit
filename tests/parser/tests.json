@@ -1871,4 +1871,20 @@
 }, {
   "source": "throw\nnull",
   "expected": null
+}, {
+  "source": "debugger;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "DebuggerStatement"
+    }]
+  }
+}, {
+  "source": "debugger",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "DebuggerStatement"
+    }]
+  }
 }]

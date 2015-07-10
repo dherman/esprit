@@ -100,7 +100,7 @@ pub enum StmtData {
     For(Option<Box<ForHead>>, Option<Expr>, Option<Expr>, Box<Stmt>),
     ForIn(Box<ForInHead>, Expr, Box<Stmt>),
     ForOf(Box<ForOfHead>, Expr, Box<Stmt>),
-    Debugger
+    Debugger(Semi)
 }
 
 impl Untrack for StmtData {
@@ -124,7 +124,7 @@ impl Untrack for StmtData {
             StmtData::For(ref mut init, ref mut test, ref mut incr, ref mut body) => { init.untrack(); test.untrack(); incr.untrack(); body.untrack(); }
             StmtData::ForIn(ref mut lhs, ref mut rhs, ref mut body)               => { lhs.untrack(); rhs.untrack(); body.untrack(); }
             StmtData::ForOf(ref mut lhs, ref mut rhs, ref mut body)               => { lhs.untrack(); rhs.untrack(); body.untrack(); }
-            StmtData::Debugger                                                    => { }
+            StmtData::Debugger(ref mut semi)                                      => { semi.untrack(); }
         }
     }
 }

@@ -649,6 +649,9 @@ impl IntoNode for Object {
                 let arg = try!(self.extract_expression("argument"));
                 Ok(StmtData::Throw(arg, Semi::Explicit(None)).tracked(None))
             }
+            "DebuggerStatement" => {
+                Ok(StmtData::Debugger(Semi::Explicit(None)).tracked(None))
+            }
             // FIXME: remaining statement cases
             _ => string_error("statement type", ty)
         }

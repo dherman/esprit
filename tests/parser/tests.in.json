@@ -117,6 +117,9 @@
   "throw null;": true,
   "throw null": true,
   "throw": false,
-  "throw\nnull": false
+  "throw\nnull": false,
+
+  "debugger;": true,
+  "debugger": true
 
 }
