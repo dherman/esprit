@@ -109,6 +109,9 @@
   "foo: for (;;) { bar: switch (null) { case null: continue bar; } }": false,
   "switch (null) { default: {} default: {} }": false,
   "switch (null) { default: {} case: {} default: {} }": false,
-  "switch (null) { case: {} default: {} case: {} default: {} }": false
+  "switch (null) { case: {} default: {} case: {} default: {} }": false,
+
+  "with (null);": true,
+  "with (null) { }": true
 
 }

@@ -640,6 +640,11 @@ impl IntoNode for Object {
                 let cases = try!(self.extract_case_list("cases"));
                 Ok(StmtData::Switch(disc, cases).tracked(None))
             }
+            "WithStatement" => {
+                let obj = try!(self.extract_expression("object"));
+                let body = Box::new(try!(self.extract_statement("body")));
+                Ok(StmtData::With(obj, body).tracked(None))
+            }
             // FIXME: remaining statement cases
             _ => string_error("statement type", ty)
         }

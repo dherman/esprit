@@ -1806,4 +1806,37 @@
 }, {
   "source": "switch (null) { case: {} default: {} case: {} default: {} }",
   "expected": null
+}, {
+  "source": "with (null);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "WithStatement",
+      "object": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "with (null) { }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "WithStatement",
+      "object": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "body": {
+        "type": "BlockStatement",
+        "body": []
+      }
+    }]
+  }
 }]

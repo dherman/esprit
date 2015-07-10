@@ -24,7 +24,8 @@ pub enum ParseError {
     ContextualKeyword(Id),
     IllegalStrictBinding(Id),
     ForOfLetExpr(Span),
-    DuplicateDefault(Token)
+    DuplicateDefault(Token),
+    StrictWith(Token)
 }
 
 pub struct Parser<I> {
@@ -1012,7 +1013,15 @@ impl<I> Parser<I>
     }
 
     fn with_statement(&mut self) -> Parse<Stmt> {
-        unimplemented!()
+        self.span(&mut |this| {
+            let token = this.reread(TokenData::Reserved(Reserved::With));
+            if this.shared_cx.get().mode.is_strict() {
+                return Err(ParseError::StrictWith(token));
+            }
+            let obj = try!(this.paren_expression());
+            let body = Box::new(try!(this.statement()));
+            Ok(StmtData::With(obj, body))
+        })
     }
 
     fn throw_statement(&mut self) -> Parse<Stmt> {
