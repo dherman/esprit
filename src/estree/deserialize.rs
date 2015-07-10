@@ -645,6 +645,10 @@ impl IntoNode for Object {
                 let body = Box::new(try!(self.extract_statement("body")));
                 Ok(StmtData::With(obj, body).tracked(None))
             }
+            "ThrowStatement" => {
+                let arg = try!(self.extract_expression("argument"));
+                Ok(StmtData::Throw(arg, Semi::Explicit(None)).tracked(None))
+            }
             // FIXME: remaining statement cases
             _ => string_error("statement type", ty)
         }

@@ -112,6 +112,11 @@
   "switch (null) { case: {} default: {} case: {} default: {} }": false,
 
   "with (null);": true,
-  "with (null) { }": true
+  "with (null) { }": true,
+
+  "throw null;": true,
+  "throw null": true,
+  "throw": false,
+  "throw\nnull": false
 
 }

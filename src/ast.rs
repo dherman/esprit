@@ -93,7 +93,7 @@ pub enum StmtData {
     With(Expr, Box<Stmt>),
     Switch(Expr, Vec<Case>),
     Return(Option<Expr>, Semi),
-    Throw(Expr),
+    Throw(Expr, Semi),
     Try(Vec<Stmt>, Option<Box<Catch>>, Option<Vec<Stmt>>),
     While(Expr, Box<Stmt>),
     DoWhile(Box<Stmt>, Expr, Semi),
@@ -117,7 +117,7 @@ impl Untrack for StmtData {
             StmtData::With(ref mut expr, ref mut stmt)                            => { expr.untrack(); stmt.untrack(); }
             StmtData::Switch(ref mut expr, ref mut cases)                         => { expr.untrack(); cases.untrack(); }
             StmtData::Return(ref mut expr, ref mut semi)                          => { expr.untrack(); semi.untrack(); }
-            StmtData::Throw(ref mut expr)                                         => { expr.untrack(); }
+            StmtData::Throw(ref mut expr, ref mut semi)                           => { expr.untrack(); semi.untrack(); }
             StmtData::Try(ref mut body, ref mut catch, ref mut finally)           => { body.untrack(); catch.untrack(); finally.untrack(); }
             StmtData::While(ref mut expr, ref mut stmt)                           => { expr.untrack(); stmt.untrack(); }
             StmtData::DoWhile(ref mut stmt, ref mut expr, ref mut semi)           => { stmt.untrack(); expr.untrack(); semi.untrack(); }

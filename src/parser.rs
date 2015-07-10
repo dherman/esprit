@@ -25,7 +25,8 @@ pub enum ParseError {
     IllegalStrictBinding(Id),
     ForOfLetExpr(Span),
     DuplicateDefault(Token),
-    StrictWith(Token)
+    StrictWith(Token),
+    ThrowArgument(Token)
 }
 
 pub struct Parser<I> {
@@ -1025,7 +1026,15 @@ impl<I> Parser<I>
     }
 
     fn throw_statement(&mut self) -> Parse<Stmt> {
-        unimplemented!()
+        let span = self.start();
+        let token = self.reread(TokenData::Reserved(Reserved::Throw));
+        if !try!(self.has_arg_same_line()) {
+            return Err(ParseError::ThrowArgument(token));
+        }
+        let arg = try!(self.expression());
+        span.end_with_auto_semi(self, Newline::Required, |semi| {
+            StmtData::Throw(arg, semi)
+        })
     }
 
     fn try_statement(&mut self) -> Parse<Stmt> {

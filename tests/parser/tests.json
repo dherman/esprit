@@ -1839,4 +1839,36 @@
       }
     }]
   }
+}, {
+  "source": "throw null;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ThrowStatement",
+      "argument": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      }
+    }]
+  }
+}, {
+  "source": "throw null",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ThrowStatement",
+      "argument": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      }
+    }]
+  }
+}, {
+  "source": "throw",
+  "expected": null
+}, {
+  "source": "throw\nnull",
+  "expected": null
 }]
