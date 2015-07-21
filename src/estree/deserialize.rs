@@ -334,6 +334,67 @@ impl IntoToken for Json {
     }
 }
 
+pub trait IntoOperator {
+    fn into_binop(self) -> Deserialize<Binop>;
+    fn into_assop(self) -> Deserialize<Assop>;
+    fn into_logop(self) -> Deserialize<Logop>;
+}
+
+impl IntoOperator for String {
+    fn into_binop(self) -> Deserialize<Binop> {
+        Ok((match &self[..] {
+            "=="         => BinopTag::Eq,
+            "!="         => BinopTag::NEq,
+            "==="        => BinopTag::StrictEq,
+            "!=="        => BinopTag::StrictNEq,
+            "<"          => BinopTag::Lt,
+            "<="         => BinopTag::LEq,
+            ">"          => BinopTag::Gt,
+            ">="         => BinopTag::GEq,
+            "<<"         => BinopTag::LShift,
+            ">>"         => BinopTag::RShift,
+            ">>>"        => BinopTag::URShift,
+            "+"          => BinopTag::Plus,
+            "-"          => BinopTag::Minus,
+            "*"          => BinopTag::Times,
+            "/"          => BinopTag::Div,
+            "%"          => BinopTag::Mod,
+            "|"          => BinopTag::BitOr,
+            "^"          => BinopTag::BitXor,
+            "&"          => BinopTag::BitAnd,
+            "in"         => BinopTag::In,
+            "instanceof" => BinopTag::Instanceof,
+            _            => { return string_error("binop", self); }
+        }).tracked(None))
+    }
+
+    fn into_assop(self) -> Deserialize<Assop> {
+        Ok((match &self[..] {
+            "="    => AssopTag::Eq,
+            "+="   => AssopTag::PlusEq,
+            "-="   => AssopTag::MinusEq,
+            "*="   => AssopTag::TimesEq,
+            "/="   => AssopTag::DivEq,
+            "%="   => AssopTag::ModEq,
+            "<<="  => AssopTag::LShiftEq,
+            ">>="  => AssopTag::RShiftEq,
+            ">>>=" => AssopTag::URShiftEq,
+            "|="   => AssopTag::BitOrEq,
+            "^="   => AssopTag::BitXorEq,
+            "&="   => AssopTag::BitAndEq,
+            _      => { return string_error("assop", self); }
+        }).tracked(None))
+    }
+
+    fn into_logop(self) -> Deserialize<Logop> {
+        Ok((match &self[..] {
+            "||" => LogopTag::Or,
+            "&&" => LogopTag::And,
+            _    => { return string_error("logop", self); }
+        }).tracked(None))
+    }
+}
+
 pub trait IntoReserved {
     fn into_reserved(self) -> Deserialize<Reserved>;
 }
@@ -388,58 +449,15 @@ pub trait IntoNode {
     fn into_declarator(self) -> Deserialize<Dtor>;
     fn into_statement(self) -> Deserialize<Stmt>;
     fn into_expression(self) -> Deserialize<Expr>;
+    fn into_binary_expression(self) -> Deserialize<Expr>;
+    fn into_assignment_expression(self) -> Deserialize<Expr>;
+    fn into_logical_expression(self) -> Deserialize<Expr>;
     fn into_identifier(self) -> Deserialize<Id>;
     fn into_literal(self) -> Deserialize<Expr>;
     fn into_function(self) -> Deserialize<Fun>;
     fn into_pattern(self) -> Deserialize<Patt>;
     fn into_case(self) -> Deserialize<Case>;
     fn into_catch(self) -> Deserialize<Catch>;
-}
-
-impl IntoNode for Json {
-    fn into_program(self) -> Deserialize<Script> {
-        try!(self.into_object()).into_program()
-    }
-
-    fn into_statement_list_item(self) -> Deserialize<StmtListItem> {
-        try!(self.into_object()).into_statement_list_item()
-    }
-
-    fn into_declarator(self) -> Deserialize<Dtor> {
-        try!(self.into_object()).into_declarator()
-    }
-
-    fn into_statement(self) -> Deserialize<Stmt> {
-        try!(self.into_object()).into_statement()
-    }
-
-    fn into_expression(self) -> Deserialize<Expr> {
-        try!(self.into_object()).into_expression()
-    }
-
-    fn into_identifier(self) -> Deserialize<Id> {
-        try!(self.into_object()).into_identifier()
-    }
-
-    fn into_literal(self) -> Deserialize<Expr> {
-        try!(self.into_object()).into_literal()
-    }
-
-    fn into_function(self) -> Deserialize<Fun> {
-        try!(self.into_object()).into_function()
-    }
-
-    fn into_pattern(self) -> Deserialize<Patt> {
-        try!(self.into_object()).into_pattern()
-    }
-
-    fn into_case(self) -> Deserialize<Case> {
-        try!(self.into_object()).into_case()
-    }
-
-    fn into_catch(self) -> Deserialize<Catch> {
-        try!(self.into_object()).into_catch()
-    }
 }
 
 impl IntoNode for Object {
@@ -463,40 +481,6 @@ impl IntoNode for Object {
         let lhs = try!(self.extract_pattern("id"));
         let init = try!(self.extract_expression_opt("init"));
         Dtor::from_init_opt(lhs, init).map_err(DeserializeError::UninitializedPattern)
-    }
-
-    fn into_expression(self) -> Deserialize<Expr> {
-        match &(try!(self.peek_type()))[..] {
-            "Identifier" => self.into_identifier().map(|id| id.into_expr()),
-            "Literal"    => self.into_literal(),
-            // FIXME: implement remaining cases
-            _            => { return object_error("expression", self); }
-        }
-    }
-
-    fn into_identifier(mut self) -> Deserialize<Id> {
-        Ok((IdData { name: Name::new(try!(self.extract_string("name"))) }).tracked(None))
-    }
-
-    fn into_literal(mut self) -> Deserialize<Expr> {
-        let val = try!(self.extract("value"));
-        match val {
-            Json::Null => Ok(ExprData::Null.tracked(None)),
-            // FIXME: implement remaining cases
-            _          => type_error("null, number, boolean, or string", json_typeof(&val))
-        }
-    }
-
-    fn into_function(mut self) -> Deserialize<Fun> {
-        let id = try!(self.extract_id_opt("id"));
-        let params = (ParamsData {
-            list: try!(try!(self.extract_array("params")).deserialize_map(|elt| elt.into_pattern()))
-        }).tracked(None);
-        let body = match try!(self.extract_statement("body")).value {
-            StmtData::Block(items) => items,
-            node                   => { return node_error("BlockStatement", format!("{:?}", node)); }
-        };
-        Ok((FunData { id: id, params: params, body: body }).tracked(None))
     }
 
     fn into_statement(mut self) -> Deserialize<Stmt> {
@@ -672,6 +656,62 @@ impl IntoNode for Object {
         }
     }
 
+    fn into_expression(self) -> Deserialize<Expr> {
+        match &(try!(self.peek_type()))[..] {
+            "Identifier"            => self.into_identifier().map(|id| id.into_expr()),
+            "Literal"               => self.into_literal(),
+            "BinaryExpression"      => self.into_binary_expression(),
+            "AssignmentExpression"  => self.into_assignment_expression(),
+            "LogicalExpression"     => self.into_logical_expression(),
+            "ConditionalExpression" => unimplemented!(),
+            // FIXME: implement remaining cases
+            _                  => { return object_error("expression", self); }
+        }
+    }
+
+    fn into_binary_expression(mut self) -> Deserialize<Expr> {
+        let op = try!(try!(self.extract_string("operator")).into_binop());
+        let left = try!(self.extract_expression("left"));
+        let right = try!(self.extract_expression("right"));
+        Ok(ExprData::Binop(op, Box::new(left), Box::new(right)).tracked(None))
+    }
+
+    fn into_assignment_expression(self) -> Deserialize<Expr> {
+        unimplemented!()
+    }
+
+    fn into_logical_expression(mut self) -> Deserialize<Expr> {
+        let op = try!(try!(self.extract_string("operator")).into_logop());
+        let left = try!(self.extract_expression("left"));
+        let right = try!(self.extract_expression("right"));
+        Ok(ExprData::Logop(op, Box::new(left), Box::new(right)).tracked(None))
+    }
+
+    fn into_identifier(mut self) -> Deserialize<Id> {
+        Ok((IdData { name: Name::new(try!(self.extract_string("name"))) }).tracked(None))
+    }
+
+    fn into_literal(mut self) -> Deserialize<Expr> {
+        let val = try!(self.extract("value"));
+        match val {
+            Json::Null => Ok(ExprData::Null.tracked(None)),
+            // FIXME: implement remaining cases
+            _          => type_error("null, number, boolean, or string", json_typeof(&val))
+        }
+    }
+
+    fn into_function(mut self) -> Deserialize<Fun> {
+        let id = try!(self.extract_id_opt("id"));
+        let params = (ParamsData {
+            list: try!(try!(self.extract_object_array("params")).map(|obj| obj.into_pattern()))
+        }).tracked(None);
+        let body = match try!(self.extract_statement("body")).value {
+            StmtData::Block(items) => items,
+            node                   => { return node_error("BlockStatement", format!("{:?}", node)); }
+        };
+        Ok((FunData { id: id, params: params, body: body }).tracked(None))
+    }
+
     fn into_pattern(self) -> Deserialize<Patt> {
         self.into_identifier().map(|id| id.into_patt())
     }
@@ -690,12 +730,12 @@ impl IntoNode for Object {
     }
 }
 
-trait DeserializeMap<T> {
-    fn deserialize_map<F: Fn(Json) -> Deserialize<T>>(self, f: F) -> Deserialize<Vec<T>>;
+trait DeserializeMap<T, U> {
+    fn map<F: Fn(T) -> Deserialize<U>>(self, F) -> Deserialize<Vec<U>>;
 }
 
-impl<T> DeserializeMap<T> for json::Array {
-    fn deserialize_map<F: Fn(Json) -> Deserialize<T>>(self, f: F) -> Deserialize<Vec<T>> {
+impl<T, U> DeserializeMap<T, U> for Vec<T> {
+    fn map<F: Fn(T) -> Deserialize<U>>(self, f: F) -> Deserialize<Vec<U>> {
         let mut list = Vec::with_capacity(self.len());
         for data in self {
             list.push(try!(f(data)));
@@ -708,6 +748,7 @@ pub trait ExtractField {
     fn extract(&mut self, &'static str) -> Deserialize<Json>;
     fn extract_string(&mut self, &'static str) -> Deserialize<String>;
     fn extract_array(&mut self, &'static str) -> Deserialize<json::Array>;
+    fn extract_object_array(&mut self, &'static str) -> Deserialize<Vec<Object>>;
     fn extract_object(&mut self, &'static str) -> Deserialize<Object>;
     fn extract_object_opt(&mut self, &'static str) -> Deserialize<Option<Object>>;
     fn extract_id(&mut self, &'static str) -> Deserialize<Id>;
@@ -729,6 +770,11 @@ impl ExtractField for json::Object {
 
     fn extract_array(&mut self, name: &'static str) -> Deserialize<json::Array> {
         self.extract(name).and_then(|data| data.into_array())
+    }
+
+    fn extract_object_array(&mut self, name: &'static str) -> Deserialize<Vec<Object>> {
+        self.extract(name).and_then(|data| data.into_array())
+                          .and_then(|arr| arr.map(|elt| elt.into_object()))
     }
 
     fn extract_object(&mut self, name: &'static str) -> Deserialize<Object> {
@@ -795,7 +841,7 @@ impl ExtractNode for Object {
     }
 
     fn extract_statement_list(&mut self, name: &'static str) -> Deserialize<Vec<StmtListItem>> {
-        try!(self.extract_array(name)).deserialize_map(|elt| elt.into_statement_list_item())
+        try!(self.extract_object_array(name)).map(|obj| obj.into_statement_list_item())
     }
 
     fn extract_pattern(&mut self, name: &'static str) -> Deserialize<Patt> {
@@ -803,11 +849,11 @@ impl ExtractNode for Object {
     }
 
     fn extract_declarator_list(&mut self, name: &'static str) -> Deserialize<Vec<Dtor>> {
-        try!(self.extract_array(name)).deserialize_map(|elt| elt.into_declarator())
+        try!(self.extract_object_array(name)).map(|obj| obj.into_declarator())
     }
 
     fn extract_case_list(&mut self, name: &'static str) -> Deserialize<Vec<Case>> {
-        try!(self.extract_array(name)).deserialize_map(|elt| elt.into_case())
+        try!(self.extract_object_array(name)).map(|obj| obj.into_case())
     }
 
     fn extract_catch_opt(&mut self, name: &'static str) -> Deserialize<Option<Catch>> {

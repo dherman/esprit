@@ -8,6 +8,7 @@ use std::mem::replace;
 use ast::*;
 use lexer::LexError;
 use context::{SharedContext, ParserContext, LabelType, Mode};
+use stack::{Stack, Infix};
 
 pub type Parse<T> = Result<T, ParseError>;
 
@@ -27,7 +28,8 @@ pub enum ParseError {
     DuplicateDefault(Token),
     StrictWith(Token),
     ThrowArgument(Token),
-    OrphanTry(Token)
+    OrphanTry(Token),
+    InvalidLHS(Option<Span>)
 }
 
 pub struct Parser<I> {
@@ -436,10 +438,13 @@ impl<I> Parser<I>
     }
 
     fn id_statement(&mut self, id: Id) -> Parse<Stmt> {
-        //let id = self.id().ok().unwrap();
         match try!(self.peek()).value {
             TokenData::Colon => self.labelled_statement(id),
-            _                => unimplemented!()
+            _                => {
+                let span = self.start();
+                let expr = try!(self.id_expression(id));
+                Ok(try!(span.end_with_auto_semi(self, Newline::Required, |semi| StmtData::Expr(expr, semi))))
+            }
         }
     }
 
@@ -1108,6 +1113,17 @@ impl<I> Parser<I>
         Ok(result)
     }
 
+    // PrimaryExpression ::=
+    //   "this"
+    //   IdentifierReference
+    //   Literal
+    //   ArrayLiteral
+    //   ObjectLiteral
+    //   FunctionExpression
+    //   ClassExpression
+    //   GeneratorExpression
+    //   RegularExpressionLiteral
+    //   "(" Expression ")"
     fn primary_expression(&mut self) -> Parse<Expr> {
         self.try_token_at(&mut |data, location| {
             match data {
@@ -1122,43 +1138,143 @@ impl<I> Parser<I>
         })
     }
 
-    fn assignment_expression(&mut self) -> Parse<Expr> {
+
+    // FIXME: grammar left to work out
+
+    // Prefix ::=
+    //   "delete"
+    //   "void"
+    //   "typeof"
+    //   "++"
+    //   "--"
+    //   "+"
+    //   "-"
+    //   "~"
+    //   "!"
+    // 
+    // Suffix ::=
+    //   Deref
+    //   Arguments
+    // 
+    // PostfixOperator ::=
+    //   [no line terminator] "++"
+    //   [no line terminator] "--"
+    // 
+    // Deref ::=
+    //   "[" Expression "]"
+    //   "." IdentifierName
+
+
+    // MemberBaseExpression ::=
+    //   PrimaryExpression
+    //   "new" "." "target"
+    // 
+    // NewExpression ::=
+    //   "new"+n (MemberBaseExpression | "super" Deref) Deref* Arguments<n Suffix*
+    // 
+    // CallExpression ::=
+    //   (MemberBaseExpression | "super" Suffix) Suffix*
+
+
+    // LHSExpression ::=
+    //   NewExpression
+    //   CallExpression
+    fn lhs_expression(&mut self) -> Parse<Expr> {
+        // FIXME: implement
         self.primary_expression()
     }
 
+    // IDUnaryExpression ::=
+    //   IdentifierReference Suffix* PostfixOperator?
+    fn id_unary_expression(&mut self, id: Id) -> Parse<Expr> {
+        let location = id.location();
+        Ok(ExprData::Id(id).tracked(location))
+        // FIXME: implement suffixes, postfix operator
+    }
+
+    // UnaryExpression ::=
+    //   Unop* LHSExpression PostfixOperator?
+    fn unary_expression(&mut self) -> Parse<Expr> {
+        let mut prefixes = Vec::new();
+        while let Some(prefix) = try!(self.match_unop()) {
+            prefixes.push(prefix);
+        }
+        let arg = try!(self.lhs_expression());
+        let postfix = try!(self.match_postfix_operator_opt());
+        Ok(arg)
+    }
+
+    fn match_unop(&mut self) -> Parse<Option<Unop>> {
+        // FIXME: implement
+        Ok(None)
+    }
+
+    fn match_postfix_operator_opt(&mut self) -> Parse<Option<()>> {
+        // FIXME: implement
+        Ok(None)
+    }
+
+    // AssignmentExpression ::=
+    //   YieldPrefix* "yield"
+    //   YieldPrefix* UnaryExpression (Infix UnaryExpression)*
+    fn assignment_expression(&mut self) -> Parse<Expr> {
+        let left = try!(self.unary_expression());
+        self.binary_expression(left)
+    }
+
+    // IDAssignmentExpression ::=
+    //   IDUnaryExpression (Infix UnaryExpression)*
+    fn id_assignment_expression(&mut self, id: Id) -> Parse<Expr> {
+        let left = try!(self.id_unary_expression(id));
+        self.binary_expression(left)
+    }
+
+    fn binary_expression(&mut self, left: Expr) -> Parse<Expr> {
+        let mut stack = Stack::new();
+        let mut operand = left;
+        while let Some(op) = try!(self.match_infix()) {
+            try!(stack.extend(operand, op).map_err(ParseError::InvalidLHS));
+            //println!("{}\n", stack.debug());
+            operand = try!(self.unary_expression());
+        }
+        stack.finish(operand).map_err(ParseError::InvalidLHS)
+    }
+
+    fn match_infix(&mut self) -> Parse<Option<Infix>> {
+        if try!(self.matches(TokenData::Question)) {
+            let cons = try!(self.assignment_expression()); // FIXME: inherited attributes
+            try!(self.expect(TokenData::Colon));
+            return Ok(Some(Infix::Cond(cons)));
+        }
+        self.match_binary_infix()
+    }
+
+    fn match_binary_infix(&mut self) -> Parse<Option<Infix>> {
+        let token = try!(self.read());
+        let result = token.to_binop(self.parser_cx.allow_in).map_or_else(|| {
+            token.to_logop().map_or_else(|| {
+                token.to_assop().map(Infix::Assop)
+            }, |op| Some(Infix::Logop(op)))
+        }, |op| Some(Infix::Binop(op)));
+        if result.is_none() {
+            self.lexer.unread_token(token);
+        }
+        Ok(result)
+    }
+
+    // Expression ::=
+    //   AssignmentExpression ("," AssignmentExpression)*
     fn expression(&mut self) -> Parse<Expr> {
         // FIXME: implement for real
         self.assignment_expression()
     }
 
+    // IDExpression ::=
+    //   IDAssignmentExpression ("," AssignmentExpression)*
     fn id_expression(&mut self, id: Id) -> Parse<Expr> {
-        unimplemented!()
+        self.id_assignment_expression(id)
     }
 
-    pub fn expr(&mut self) -> Parse<Expr> {
-        let left = match self.lexer.read_token() {
-            Ok(Token { value: TokenData::Number(literal), location, .. }) => Expr { location: Some(location), value: ExprData::Number(literal) },
-            Ok(t) => return Err(ParseError::UnexpectedToken(t)),
-            Err(e) => return Err(ParseError::LexError(e))
-        };
-
-        let op = match self.lexer.read_token() {
-            Ok(Token { value: TokenData::Plus, location, .. }) => Binop { location: Some(location), value: BinopTag::Plus },
-            Ok(t) => return Err(ParseError::UnexpectedToken(t)),
-            Err(e) => return Err(ParseError::LexError(e))
-        };
-
-        let right = match self.lexer.read_token() {
-            Ok(Token { value: TokenData::Number(literal), location, .. }) => Expr { location: Some(location), value: ExprData::Number(literal) },
-            Ok(t) => return Err(ParseError::UnexpectedToken(t)),
-            Err(e) => return Err(ParseError::LexError(e))
-        };
-
-        Ok(Expr {
-            location: span(&left, &right),
-            value: ExprData::Binop(op, Box::new(left), Box::new(right))
-        })
-    }
 }
 
 #[cfg(test)]

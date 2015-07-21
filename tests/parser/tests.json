@@ -1984,4 +1984,628 @@
 }, {
   "source": "try { }",
   "expected": null
+}, {
+  "source": "a+b;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "BinaryExpression",
+        "operator": "+",
+        "left": {
+          "type": "Identifier",
+          "name": "a"
+        },
+        "right": {
+          "type": "Identifier",
+          "name": "b"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "var x = a+b;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "BinaryExpression",
+          "operator": "+",
+          "left": {
+            "type": "Identifier",
+            "name": "a"
+          },
+          "right": {
+            "type": "Identifier",
+            "name": "b"
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "a+b*c;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "BinaryExpression",
+        "operator": "+",
+        "left": {
+          "type": "Identifier",
+          "name": "a"
+        },
+        "right": {
+          "type": "BinaryExpression",
+          "operator": "*",
+          "left": {
+            "type": "Identifier",
+            "name": "b"
+          },
+          "right": {
+            "type": "Identifier",
+            "name": "c"
+          }
+        }
+      }
+    }]
+  }
+}, {
+  "source": "var x = a+b*c;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "BinaryExpression",
+          "operator": "+",
+          "left": {
+            "type": "Identifier",
+            "name": "a"
+          },
+          "right": {
+            "type": "BinaryExpression",
+            "operator": "*",
+            "left": {
+              "type": "Identifier",
+              "name": "b"
+            },
+            "right": {
+              "type": "Identifier",
+              "name": "c"
+            }
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "a*b+c;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "BinaryExpression",
+        "operator": "+",
+        "left": {
+          "type": "BinaryExpression",
+          "operator": "*",
+          "left": {
+            "type": "Identifier",
+            "name": "a"
+          },
+          "right": {
+            "type": "Identifier",
+            "name": "b"
+          }
+        },
+        "right": {
+          "type": "Identifier",
+          "name": "c"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "var x = a*b+c;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "BinaryExpression",
+          "operator": "+",
+          "left": {
+            "type": "BinaryExpression",
+            "operator": "*",
+            "left": {
+              "type": "Identifier",
+              "name": "a"
+            },
+            "right": {
+              "type": "Identifier",
+              "name": "b"
+            }
+          },
+          "right": {
+            "type": "Identifier",
+            "name": "c"
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "a * b + c + d * e * f + g;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "BinaryExpression",
+        "operator": "+",
+        "left": {
+          "type": "BinaryExpression",
+          "operator": "+",
+          "left": {
+            "type": "BinaryExpression",
+            "operator": "+",
+            "left": {
+              "type": "BinaryExpression",
+              "operator": "*",
+              "left": {
+                "type": "Identifier",
+                "name": "a"
+              },
+              "right": {
+                "type": "Identifier",
+                "name": "b"
+              }
+            },
+            "right": {
+              "type": "Identifier",
+              "name": "c"
+            }
+          },
+          "right": {
+            "type": "BinaryExpression",
+            "operator": "*",
+            "left": {
+              "type": "BinaryExpression",
+              "operator": "*",
+              "left": {
+                "type": "Identifier",
+                "name": "d"
+              },
+              "right": {
+                "type": "Identifier",
+                "name": "e"
+              }
+            },
+            "right": {
+              "type": "Identifier",
+              "name": "f"
+            }
+          }
+        },
+        "right": {
+          "type": "Identifier",
+          "name": "g"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "var x = a * b + c + d * e * f + g;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "BinaryExpression",
+          "operator": "+",
+          "left": {
+            "type": "BinaryExpression",
+            "operator": "+",
+            "left": {
+              "type": "BinaryExpression",
+              "operator": "+",
+              "left": {
+                "type": "BinaryExpression",
+                "operator": "*",
+                "left": {
+                  "type": "Identifier",
+                  "name": "a"
+                },
+                "right": {
+                  "type": "Identifier",
+                  "name": "b"
+                }
+              },
+              "right": {
+                "type": "Identifier",
+                "name": "c"
+              }
+            },
+            "right": {
+              "type": "BinaryExpression",
+              "operator": "*",
+              "left": {
+                "type": "BinaryExpression",
+                "operator": "*",
+                "left": {
+                  "type": "Identifier",
+                  "name": "d"
+                },
+                "right": {
+                  "type": "Identifier",
+                  "name": "e"
+                }
+              },
+              "right": {
+                "type": "Identifier",
+                "name": "f"
+              }
+            }
+          },
+          "right": {
+            "type": "Identifier",
+            "name": "g"
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "a * b + c + d < e * f * g + h;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "BinaryExpression",
+        "operator": "<",
+        "left": {
+          "type": "BinaryExpression",
+          "operator": "+",
+          "left": {
+            "type": "BinaryExpression",
+            "operator": "+",
+            "left": {
+              "type": "BinaryExpression",
+              "operator": "*",
+              "left": {
+                "type": "Identifier",
+                "name": "a"
+              },
+              "right": {
+                "type": "Identifier",
+                "name": "b"
+              }
+            },
+            "right": {
+              "type": "Identifier",
+              "name": "c"
+            }
+          },
+          "right": {
+            "type": "Identifier",
+            "name": "d"
+          }
+        },
+        "right": {
+          "type": "BinaryExpression",
+          "operator": "+",
+          "left": {
+            "type": "BinaryExpression",
+            "operator": "*",
+            "left": {
+              "type": "BinaryExpression",
+              "operator": "*",
+              "left": {
+                "type": "Identifier",
+                "name": "e"
+              },
+              "right": {
+                "type": "Identifier",
+                "name": "f"
+              }
+            },
+            "right": {
+              "type": "Identifier",
+              "name": "g"
+            }
+          },
+          "right": {
+            "type": "Identifier",
+            "name": "h"
+          }
+        }
+      }
+    }]
+  }
+}, {
+  "source": "var x = a * b + c + d < e * f * g + h;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "BinaryExpression",
+          "operator": "<",
+          "left": {
+            "type": "BinaryExpression",
+            "operator": "+",
+            "left": {
+              "type": "BinaryExpression",
+              "operator": "+",
+              "left": {
+                "type": "BinaryExpression",
+                "operator": "*",
+                "left": {
+                  "type": "Identifier",
+                  "name": "a"
+                },
+                "right": {
+                  "type": "Identifier",
+                  "name": "b"
+                }
+              },
+              "right": {
+                "type": "Identifier",
+                "name": "c"
+              }
+            },
+            "right": {
+              "type": "Identifier",
+              "name": "d"
+            }
+          },
+          "right": {
+            "type": "BinaryExpression",
+            "operator": "+",
+            "left": {
+              "type": "BinaryExpression",
+              "operator": "*",
+              "left": {
+                "type": "BinaryExpression",
+                "operator": "*",
+                "left": {
+                  "type": "Identifier",
+                  "name": "e"
+                },
+                "right": {
+                  "type": "Identifier",
+                  "name": "f"
+                }
+              },
+              "right": {
+                "type": "Identifier",
+                "name": "g"
+              }
+            },
+            "right": {
+              "type": "Identifier",
+              "name": "h"
+            }
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "a * b + c * d - e * f + g * h - i * j;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "BinaryExpression",
+        "operator": "-",
+        "left": {
+          "type": "BinaryExpression",
+          "operator": "+",
+          "left": {
+            "type": "BinaryExpression",
+            "operator": "-",
+            "left": {
+              "type": "BinaryExpression",
+              "operator": "+",
+              "left": {
+                "type": "BinaryExpression",
+                "operator": "*",
+                "left": {
+                  "type": "Identifier",
+                  "name": "a"
+                },
+                "right": {
+                  "type": "Identifier",
+                  "name": "b"
+                }
+              },
+              "right": {
+                "type": "BinaryExpression",
+                "operator": "*",
+                "left": {
+                  "type": "Identifier",
+                  "name": "c"
+                },
+                "right": {
+                  "type": "Identifier",
+                  "name": "d"
+                }
+              }
+            },
+            "right": {
+              "type": "BinaryExpression",
+              "operator": "*",
+              "left": {
+                "type": "Identifier",
+                "name": "e"
+              },
+              "right": {
+                "type": "Identifier",
+                "name": "f"
+              }
+            }
+          },
+          "right": {
+            "type": "BinaryExpression",
+            "operator": "*",
+            "left": {
+              "type": "Identifier",
+              "name": "g"
+            },
+            "right": {
+              "type": "Identifier",
+              "name": "h"
+            }
+          }
+        },
+        "right": {
+          "type": "BinaryExpression",
+          "operator": "*",
+          "left": {
+            "type": "Identifier",
+            "name": "i"
+          },
+          "right": {
+            "type": "Identifier",
+            "name": "j"
+          }
+        }
+      }
+    }]
+  }
+}, {
+  "source": "var x = a * b + c * d - e * f + g * h - i * j;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "BinaryExpression",
+          "operator": "-",
+          "left": {
+            "type": "BinaryExpression",
+            "operator": "+",
+            "left": {
+              "type": "BinaryExpression",
+              "operator": "-",
+              "left": {
+                "type": "BinaryExpression",
+                "operator": "+",
+                "left": {
+                  "type": "BinaryExpression",
+                  "operator": "*",
+                  "left": {
+                    "type": "Identifier",
+                    "name": "a"
+                  },
+                  "right": {
+                    "type": "Identifier",
+                    "name": "b"
+                  }
+                },
+                "right": {
+                  "type": "BinaryExpression",
+                  "operator": "*",
+                  "left": {
+                    "type": "Identifier",
+                    "name": "c"
+                  },
+                  "right": {
+                    "type": "Identifier",
+                    "name": "d"
+                  }
+                }
+              },
+              "right": {
+                "type": "BinaryExpression",
+                "operator": "*",
+                "left": {
+                  "type": "Identifier",
+                  "name": "e"
+                },
+                "right": {
+                  "type": "Identifier",
+                  "name": "f"
+                }
+              }
+            },
+            "right": {
+              "type": "BinaryExpression",
+              "operator": "*",
+              "left": {
+                "type": "Identifier",
+                "name": "g"
+              },
+              "right": {
+                "type": "Identifier",
+                "name": "h"
+              }
+            }
+          },
+          "right": {
+            "type": "BinaryExpression",
+            "operator": "*",
+            "left": {
+              "type": "Identifier",
+              "name": "i"
+            },
+            "right": {
+              "type": "Identifier",
+              "name": "j"
+            }
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
 }]

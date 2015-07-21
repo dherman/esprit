@@ -125,6 +125,19 @@
   "try { } catch (x) { }": true,
   "try { } finally { }": true,
   "try { } catch (x) { } finally { }": true,
-  "try { }": false
+  "try { }": false,
+
+  "a+b;": true,
+  "var x = a+b;": true,
+  "a+b*c;": true,
+  "var x = a+b*c;": true,
+  "a*b+c;": true,
+  "var x = a*b+c;": true,
+  "a * b + c + d * e * f + g;": true,
+  "var x = a * b + c + d * e * f + g;": true,
+  "a * b + c + d < e * f * g + h;": true,
+  "var x = a * b + c + d < e * f * g + h;": true,
+  "a * b + c * d - e * f + g * h - i * j;": true,
+  "var x = a * b + c * d - e * f + g * h - i * j;": true
 
 }

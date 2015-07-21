@@ -324,6 +324,16 @@ impl Untrack for Unop {
     }
 }
 
+pub trait Precedence {
+    fn precedence(&self) -> u32;
+}
+
+impl<T: Precedence> Precedence for Tracked<T> {
+    fn precedence(&self) -> u32 {
+        self.value.precedence()
+    }
+}
+
 #[derive(Debug, Eq, PartialEq)]
 pub enum BinopTag {
     Eq,
@@ -349,7 +359,63 @@ pub enum BinopTag {
     Instanceof,
 }
 
+impl Precedence for BinopTag {
+    fn precedence(&self) -> u32 {
+        match *self {
+            BinopTag::Eq         => 7,
+            BinopTag::NEq        => 7,
+            BinopTag::StrictEq   => 7,
+            BinopTag::StrictNEq  => 7,
+            BinopTag::Lt         => 8,
+            BinopTag::LEq        => 8,
+            BinopTag::Gt         => 8,
+            BinopTag::GEq        => 8,
+            BinopTag::LShift     => 9,
+            BinopTag::RShift     => 9,
+            BinopTag::URShift    => 9,
+            BinopTag::Plus       => 10,
+            BinopTag::Minus      => 10,
+            BinopTag::Times      => 11,
+            BinopTag::Div        => 11,
+            BinopTag::Mod        => 11,
+            BinopTag::BitOr      => 4,
+            BinopTag::BitXor     => 5,
+            BinopTag::BitAnd     => 6,
+            BinopTag::In         => 8,
+            BinopTag::Instanceof => 8,
+        }
+    }
+}
+
 pub type Binop = Tracked<BinopTag>;
+
+impl Binop {
+    pub fn pretty(&self) -> String {
+        match self.value {
+            BinopTag::Eq => format!("=="),
+            BinopTag::NEq => format!("!="),
+            BinopTag::StrictEq => format!("==="),
+            BinopTag::StrictNEq => format!("!=="),
+            BinopTag::Lt => format!("<"),
+            BinopTag::LEq => format!("<="),
+            BinopTag::Gt => format!(">"),
+            BinopTag::GEq => format!(">="),
+            BinopTag::LShift => format!("<<"),
+            BinopTag::RShift => format!(">>"),
+            BinopTag::URShift => format!(">>>"),
+            BinopTag::Plus => format!("+"),
+            BinopTag::Minus => format!("-"),
+            BinopTag::Times => format!("*"),
+            BinopTag::Div => format!("/"),
+            BinopTag::Mod => format!("%"),
+            BinopTag::BitOr => format!("|"),
+            BinopTag::BitXor => format!("^"),
+            BinopTag::BitAnd => format!("&"),
+            BinopTag::In => format!("in"),
+            BinopTag::Instanceof => format!("instanceof")
+        }
+    }
+}
 
 impl Untrack for Binop {
     fn untrack(&mut self) {
@@ -363,7 +429,25 @@ pub enum LogopTag {
     And
 }
 
+impl Precedence for LogopTag {
+    fn precedence(&self) -> u32 {
+        match *self {
+            LogopTag::Or  => 2,
+            LogopTag::And => 3
+        }
+    }
+}
+
 pub type Logop = Tracked<LogopTag>;
+
+impl Logop {
+    pub fn pretty(&self) -> String {
+        match self.value {
+            LogopTag::Or => format!("||"),
+            LogopTag::And => format!("&&")
+        }
+    }
+}
 
 impl Untrack for Logop {
     fn untrack(&mut self) {
@@ -387,7 +471,30 @@ pub enum AssopTag {
     BitAndEq
 }
 
+impl Precedence for AssopTag {
+    fn precedence(&self) -> u32 { 0 }
+}
+
 pub type Assop = Tracked<AssopTag>;
+
+impl Assop {
+    pub fn pretty(&self) -> String {
+        match self.value {
+            AssopTag::Eq => format!("="),
+            AssopTag::PlusEq => format!("+="),
+            AssopTag::MinusEq => format!("-="),
+            AssopTag::TimesEq => format!("*="),
+            AssopTag::DivEq => format!("/="),
+            AssopTag::ModEq => format!("%="),
+            AssopTag::LShiftEq => format!("<<="),
+            AssopTag::RShiftEq => format!(">>="),
+            AssopTag::URShiftEq => format!(">>>="),
+            AssopTag::BitOrEq => format!("|="),
+            AssopTag::BitXorEq => format!("^="),
+            AssopTag::BitAndEq => format!("&=")
+        }
+    }
+}
 
 impl Untrack for Assop {
     fn untrack(&mut self) {
@@ -410,7 +517,7 @@ pub enum ExprData {
     PostInc(Box<Expr>),
     PreDec(Box<Expr>),
     PostDec(Box<Expr>),
-    Assign(Assop, Patt, Box<Expr>),
+    Assign(Assop, APatt, Box<Expr>),
     Cond(Box<Expr>, Box<Expr>, Box<Expr>),
     Call(Box<Expr>, Vec<Expr>),
     New(Box<Expr>, Vec<Expr>),
@@ -422,6 +529,36 @@ pub enum ExprData {
     Number(NumberLiteral),
     RegExp(String),
     String(String)
+}
+
+// FIXME: should produce more detailed error information
+
+impl Expr {
+    pub fn into_assignment_pattern(self) -> Result<APatt, Option<Span>> {
+        match self.value {
+            ExprData::Id(id) => Ok(APatt::Simple(AssignTargetData::Id(id).tracked(self.location))),
+            ExprData::Dot(obj, prop) => Ok(APatt::Simple(AssignTargetData::Dot(obj, prop).tracked(self.location))),
+            ExprData::Brack(obj, prop) => Ok(APatt::Simple(AssignTargetData::Brack(obj, prop).tracked(self.location))),
+            ExprData::Obj(props) => {
+                let mut prop_patts = Vec::with_capacity(props.len());
+                for prop in props {
+                    prop_patts.push(try!(prop.into_assignment_property()));
+                }
+                Ok(APatt::Compound(CompoundAPattData::Obj(prop_patts).tracked(self.location)))
+            }
+            ExprData::Arr(exprs) => {
+                let mut patts = Vec::with_capacity(exprs.len());
+                for expr in exprs {
+                    patts.push(match expr {
+                        Some(expr) => Some(try!(expr.into_assignment_pattern())),
+                        None => None
+                    });
+                }
+                Ok(APatt::Compound(CompoundAPattData::Arr(patts).tracked(self.location)))
+            }
+            _ => Err(self.location)
+        }
+    }
 }
 
 impl Untrack for ExprData {
@@ -473,6 +610,17 @@ impl Untrack for PropData {
 
 pub type Prop = Tracked<PropData>;
 
+impl Prop {
+    pub fn into_assignment_property(self) -> Result<PropAPatt, Option<Span>> {
+        let key = self.value.key;
+        let patt = match self.value.val.value {
+            PropValData::Init(expr) => try!(expr.into_assignment_pattern()),
+            _ => { return Err(self.value.val.location); }
+        };
+        Ok((PropAPattData { key: key, patt: patt }).tracked(self.location))
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum PropKeyData {
     Id(Id),
@@ -517,9 +665,11 @@ impl Untrack for PropValData {
 
 pub type PropVal = Tracked<PropValData>;
 
+// FIXME: abstract Patt and APatt by parameterizing over the leaf node type
+
 #[derive(Debug, PartialEq)]
 pub enum CompoundPattData {
-    Arr(Vec<Patt>),
+    Arr(Vec<Option<Patt>>),
     Obj(Vec<PropPatt>)
 }
 
@@ -581,6 +731,81 @@ impl Untrack for Patt {
         }
     }
 }
+
+#[derive(Debug, PartialEq)]
+pub enum APatt {
+    Simple(AssignTarget),
+    Compound(CompoundAPatt)
+}
+
+impl Track for APatt {
+    fn location(&self) -> Option<Span> {
+        match *self {
+            APatt::Simple(ref target) => target.location(),
+            APatt::Compound(ref patt) => patt.location()
+        }
+    }
+}
+
+impl Untrack for APatt {
+    fn untrack(&mut self) {
+        match *self {
+            APatt::Simple(ref mut target) => { target.untrack(); }
+            APatt::Compound(ref mut patt) => { patt.untrack(); }
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum AssignTargetData {
+    Id(Id),
+    Dot(Box<Expr>, Id),
+    Brack(Box<Expr>, Box<Expr>)
+}
+
+impl Untrack for AssignTargetData {
+    fn untrack(&mut self) {
+        match *self {
+            AssignTargetData::Id(ref mut id)                   => { id.untrack(); }
+            AssignTargetData::Dot(ref mut obj, ref mut prop)   => { obj.untrack(); prop.untrack(); }
+            AssignTargetData::Brack(ref mut obj, ref mut prop) => { obj.untrack(); prop.untrack(); }
+        }
+    }
+}
+
+pub type AssignTarget = Tracked<AssignTargetData>;
+
+#[derive(Debug, PartialEq)]
+pub enum CompoundAPattData {
+    Arr(Vec<Option<APatt>>),
+    Obj(Vec<PropAPatt>)
+}
+
+impl Untrack for CompoundAPattData {
+    fn untrack(&mut self) {
+        match *self {
+            CompoundAPattData::Arr(ref mut patts) => { patts.untrack(); }
+            CompoundAPattData::Obj(ref mut props) => { props.untrack(); }
+        }
+    }
+}
+
+pub type CompoundAPatt = Tracked<CompoundAPattData>;
+
+#[derive(Debug, PartialEq)]
+pub struct PropAPattData {
+    pub key: PropKey,
+    pub patt: APatt
+}
+
+impl Untrack for PropAPattData {
+    fn untrack(&mut self) {
+        self.key.untrack();
+        self.patt.untrack();
+    }
+}
+
+pub type PropAPatt = Tracked<PropAPattData>;
 
 #[derive(Debug, PartialEq)]
 pub struct ScriptData {

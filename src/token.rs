@@ -1,4 +1,5 @@
 use track::*;
+use ast::{Binop, BinopTag, Logop, LogopTag, Assop, AssopTag};
 
 // Unconditionally reserved words.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -122,6 +123,67 @@ pub struct Token {
     pub location: Span,
     pub newline: bool,    // was there a newline between the preceding token and this one?
     pub value: TokenData
+}
+
+impl Token {
+    pub fn to_binop(&self, allow_in: bool) -> Option<Binop> {
+        match self.value {
+            TokenData::Star => Some(BinopTag::Times.tracked(self.location())),
+            TokenData::Slash => Some(BinopTag::Div.tracked(self.location())),
+            TokenData::Mod => Some(BinopTag::Mod.tracked(self.location())),
+            TokenData::Plus => Some(BinopTag::Plus.tracked(self.location())),
+            TokenData::Minus => Some(BinopTag::Minus.tracked(self.location())),
+            TokenData::LShift => Some(BinopTag::LShift.tracked(self.location())),
+            TokenData::RShift => Some(BinopTag::RShift.tracked(self.location())),
+            TokenData::URShift => Some(BinopTag::URShift.tracked(self.location())),
+            TokenData::LAngle => Some(BinopTag::Lt.tracked(self.location())),
+            TokenData::RAngle => Some(BinopTag::Gt.tracked(self.location())),
+            TokenData::LEq => Some(BinopTag::LEq.tracked(self.location())),
+            TokenData::GEq => Some(BinopTag::GEq.tracked(self.location())),
+            TokenData::Reserved(Reserved::Instanceof) => Some(BinopTag::Instanceof.tracked(self.location())),
+            TokenData::Reserved(Reserved::In) => {
+                if allow_in {
+                    Some(BinopTag::Instanceof.tracked(self.location()))
+                } else {
+                    None
+                }
+            }
+            TokenData::Eq => Some(BinopTag::Eq.tracked(self.location())),
+            TokenData::NEq => Some(BinopTag::NEq.tracked(self.location())),
+            TokenData::StrictEq => Some(BinopTag::StrictEq.tracked(self.location())),
+            TokenData::StrictNEq => Some(BinopTag::StrictNEq.tracked(self.location())),
+            TokenData::BitAnd => Some(BinopTag::BitAnd.tracked(self.location())),
+            TokenData::BitXor => Some(BinopTag::BitXor.tracked(self.location())),
+            TokenData::BitOr => Some(BinopTag::BitOr.tracked(self.location())),
+            _ => None
+        }
+    }
+
+    pub fn to_logop(&self) -> Option<Logop> {
+        match self.value {
+            TokenData::LogicalAnd => Some(LogopTag::And.tracked(self.location())),
+            TokenData::LogicalOr => Some(LogopTag::Or.tracked(self.location())),
+            _ => None
+        }
+    }
+
+    pub fn to_assop(&self) -> Option<Assop> {
+        match self.value {
+            TokenData::Assign => Some(AssopTag::Eq.tracked(self.location())),
+            TokenData::PlusAssign => Some(AssopTag::PlusEq.tracked(self.location())),
+            TokenData::MinusAssign => Some(AssopTag::MinusEq.tracked(self.location())),
+            TokenData::StarAssign => Some(AssopTag::TimesEq.tracked(self.location())),
+            TokenData::SlashAssign => Some(AssopTag::DivEq.tracked(self.location())),
+            TokenData::ModAssign => Some(AssopTag::ModEq.tracked(self.location())),
+            TokenData::LShiftAssign => Some(AssopTag::LShiftEq.tracked(self.location())),
+            TokenData::RShiftAssign => Some(AssopTag::RShiftEq.tracked(self.location())),
+            TokenData::URShiftAssign => Some(AssopTag::URShiftEq.tracked(self.location())),
+            TokenData::BitAndAssign => Some(AssopTag::BitAndEq.tracked(self.location())),
+            TokenData::BitOrAssign => Some(AssopTag::BitOrEq.tracked(self.location())),
+            TokenData::BitXorAssign => Some(AssopTag::BitXorEq.tracked(self.location())),
+            _ => None
+        }
+    }
 }
 
 impl Track for Token {
