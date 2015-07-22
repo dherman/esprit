@@ -138,6 +138,23 @@
   "a * b + c + d < e * f * g + h;": true,
   "var x = a * b + c + d < e * f * g + h;": true,
   "a * b + c * d - e * f + g * h - i * j;": true,
-  "var x = a * b + c * d - e * f + g * h - i * j;": true
+  "var x = a * b + c * d - e * f + g * h - i * j;": true,
+
+  "var x = +y;": true,
+  "var x = -y;": true,
+  "var x = !y;": true,
+  "var x = ~y;": true,
+  "var x = typeof y;": true,
+  "var x = delete y;": true,
+  "var x = void y;": true,
+
+  "var x = typeof delete y;": true,
+  "var x = + - ! ~ typeof void delete y;": true,
+  "var x = ++y;": true,
+  "var x = --y;": true,
+  "var x = y++;": true,
+  "var x = y--;": true,
+  "var x = typeof y++;": true,
+  "var x = void y--;": true
 
 }

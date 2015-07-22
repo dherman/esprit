@@ -230,6 +230,17 @@ impl SpanTracker {
     }
 }
 
+enum Prefix {
+    Unop(Unop),
+    Inc(Span),
+    Dec(Span)
+}
+
+enum Postfix {
+    Inc(Span),
+    Dec(Span)
+}
+
 impl<I> Parser<I>
   where I: Iterator<Item=char>
 {
@@ -1139,26 +1150,9 @@ impl<I> Parser<I>
     }
 
 
-    // FIXME: grammar left to work out
-
-    // Prefix ::=
-    //   "delete"
-    //   "void"
-    //   "typeof"
-    //   "++"
-    //   "--"
-    //   "+"
-    //   "-"
-    //   "~"
-    //   "!"
-    // 
     // Suffix ::=
     //   Deref
     //   Arguments
-    // 
-    // PostfixOperator ::=
-    //   [no line terminator] "++"
-    //   [no line terminator] "--"
     // 
     // Deref ::=
     //   "[" Expression "]"
@@ -1168,13 +1162,21 @@ impl<I> Parser<I>
     // MemberBaseExpression ::=
     //   PrimaryExpression
     //   "new" "." "target"
-    // 
+    fn member_base_expression(&mut self) -> Parse<Expr> {
+        unimplemented!()
+    }
+
     // NewExpression ::=
     //   "new"+n (MemberBaseExpression | "super" Deref) Deref* Arguments<n Suffix*
-    // 
+    fn new_expression(&mut self) -> Parse<Expr> {
+        unimplemented!()
+    }
+
     // CallExpression ::=
     //   (MemberBaseExpression | "super" Suffix) Suffix*
-
+    fn call_expression(&mut self) -> Parse<Expr> {
+        unimplemented!()
+    }
 
     // LHSExpression ::=
     //   NewExpression
@@ -1193,24 +1195,84 @@ impl<I> Parser<I>
     }
 
     // UnaryExpression ::=
-    //   Unop* LHSExpression PostfixOperator?
+    //   Prefix* LHSExpression PostfixOperator?
     fn unary_expression(&mut self) -> Parse<Expr> {
         let mut prefixes = Vec::new();
-        while let Some(prefix) = try!(self.match_unop()) {
+        while let Some(prefix) = try!(self.match_prefix()) {
             prefixes.push(prefix);
         }
-        let arg = try!(self.lhs_expression());
-        let postfix = try!(self.match_postfix_operator_opt());
+        let mut arg = try!(self.lhs_expression());
+        if let Some(postfix) = try!(self.match_postfix_operator_opt()) {
+            arg = match postfix {
+                Postfix::Inc(location) => ExprData::PostInc(Box::new(arg)).tracked(Some(location)),
+                Postfix::Dec(location) => ExprData::PostDec(Box::new(arg)).tracked(Some(location))
+            };
+        }
+        for prefix in prefixes.into_iter().rev() {
+            match prefix {
+                Prefix::Unop(op)      => {
+                    let location = span(&op, &arg);
+                    arg = ExprData::Unop(op, Box::new(arg)).tracked(location);
+                }
+                Prefix::Inc(location) => { arg = ExprData::PreInc(Box::new(arg)).tracked(Some(location)); }
+                Prefix::Dec(location) => { arg = ExprData::PreDec(Box::new(arg)).tracked(Some(location)); }
+            }
+        }
         Ok(arg)
     }
 
-    fn match_unop(&mut self) -> Parse<Option<Unop>> {
-        // FIXME: implement
-        Ok(None)
+    // Prefix ::=
+    //   Unop
+    //   "++"
+    //   "--"
+    fn match_prefix(&mut self) -> Parse<Option<Prefix>> {
+        let token = try!(self.read());
+        Ok(match token.value {
+            TokenData::Inc => Some(Prefix::Inc(token.location)),
+            TokenData::Dec => Some(Prefix::Dec(token.location)),
+            _ => {
+                self.lexer.unread_token(token);
+                try!(self.match_unop()).map(Prefix::Unop)
+            }
+        })
     }
 
-    fn match_postfix_operator_opt(&mut self) -> Parse<Option<()>> {
-        // FIXME: implement
+    // Unop ::=
+    //   "delete"
+    //   "void"
+    //   "typeof"
+    //   "+"
+    //   "-"
+    //   "~"
+    //   "!"
+    fn match_unop(&mut self) -> Parse<Option<Unop>> {
+        let token = try!(self.read());
+        let tag = match token.value {
+            TokenData::Reserved(Reserved::Delete) => UnopTag::Delete,
+            TokenData::Reserved(Reserved::Void)   => UnopTag::Void,
+            TokenData::Reserved(Reserved::Typeof) => UnopTag::Typeof,
+            TokenData::Plus                       => UnopTag::Plus,
+            TokenData::Minus                      => UnopTag::Minus,
+            TokenData::Tilde                      => UnopTag::BitNot,
+            TokenData::Bang                       => UnopTag::Not,
+            _ => { self.lexer.unread_token(token); return Ok(None); }
+        };
+        Ok(Some(tag.tracked(token.location())))
+    }
+
+    // PostfixOperator ::=
+    //   [no line terminator] "++"
+    //   [no line terminator] "--"
+    fn match_postfix_operator_opt(&mut self) -> Parse<Option<Postfix>> {
+        let next = try!(self.read());
+        if !next.newline {
+            match next.value {
+                TokenData::Inc => { return Ok(Some(Postfix::Inc(next.location))); }
+                TokenData::Dec => { return Ok(Some(Postfix::Dec(next.location))); }
+                _ => { }
+            }
+        }
+        self.lexer.unread_token(next);
         Ok(None)
     }
 
@@ -1219,17 +1281,17 @@ impl<I> Parser<I>
     //   YieldPrefix* UnaryExpression (Infix UnaryExpression)*
     fn assignment_expression(&mut self) -> Parse<Expr> {
         let left = try!(self.unary_expression());
-        self.binary_expression(left)
+        self.infix_expression(left)
     }
 
     // IDAssignmentExpression ::=
     //   IDUnaryExpression (Infix UnaryExpression)*
     fn id_assignment_expression(&mut self, id: Id) -> Parse<Expr> {
         let left = try!(self.id_unary_expression(id));
-        self.binary_expression(left)
+        self.infix_expression(left)
     }
 
-    fn binary_expression(&mut self, left: Expr) -> Parse<Expr> {
+    fn infix_expression(&mut self, left: Expr) -> Parse<Expr> {
         let mut stack = Stack::new();
         let mut operand = left;
         while let Some(op) = try!(self.match_infix()) {

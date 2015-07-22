@@ -60,6 +60,7 @@ pub trait MatchJson {
     fn into_name(self) -> Deserialize<Name>;
     fn into_object(self) -> Deserialize<Object>;
     fn into_object_opt(self) -> Deserialize<Option<Object>>;
+    fn into_bool(self) -> Deserialize<bool>;
 }
 
 pub trait IntoToken {
@@ -131,6 +132,13 @@ impl MatchJson for Json {
             Json::Object(object) => Ok(Some(object)),
             Json::Null           => Ok(None),
             _                    => type_error("object or null", json_typeof(&self))
+        }
+    }
+
+    fn into_bool(self) -> Deserialize<bool> {
+        match self {
+            Json::Boolean(val) => Ok(val),
+            _                  => type_error("boolean", json_typeof(&self))
         }
     }
 }
@@ -335,12 +343,26 @@ impl IntoToken for Json {
 }
 
 pub trait IntoOperator {
+    fn into_unop(self) -> Deserialize<Unop>;
     fn into_binop(self) -> Deserialize<Binop>;
     fn into_assop(self) -> Deserialize<Assop>;
     fn into_logop(self) -> Deserialize<Logop>;
 }
 
 impl IntoOperator for String {
+    fn into_unop(self) -> Deserialize<Unop> {
+        Ok((match &self[..] {
+            "-"       => UnopTag::Minus,
+            "+"       => UnopTag::Plus,
+            "!"       => UnopTag::Not,
+            "~"       => UnopTag::BitNot,
+            "typeof"  => UnopTag::Typeof,
+            "void"    => UnopTag::Void,
+            "delete"  => UnopTag::Delete,
+            _         => { return string_error("unop", self); }
+        }).tracked(None))
+    }
+
     fn into_binop(self) -> Deserialize<Binop> {
         Ok((match &self[..] {
             "=="         => BinopTag::Eq,
@@ -452,6 +474,8 @@ pub trait IntoNode {
     fn into_binary_expression(self) -> Deserialize<Expr>;
     fn into_assignment_expression(self) -> Deserialize<Expr>;
     fn into_logical_expression(self) -> Deserialize<Expr>;
+    fn into_unary_expression(self) -> Deserialize<Expr>;
+    fn into_update_expression(self) -> Deserialize<Expr>;
     fn into_identifier(self) -> Deserialize<Id>;
     fn into_literal(self) -> Deserialize<Expr>;
     fn into_function(self) -> Deserialize<Fun>;
@@ -663,10 +687,31 @@ impl IntoNode for Object {
             "BinaryExpression"      => self.into_binary_expression(),
             "AssignmentExpression"  => self.into_assignment_expression(),
             "LogicalExpression"     => self.into_logical_expression(),
+            "UnaryExpression"       => self.into_unary_expression(),
+            "UpdateExpression"      => self.into_update_expression(),
             "ConditionalExpression" => unimplemented!(),
             // FIXME: implement remaining cases
             _                  => { return object_error("expression", self); }
         }
+    }
+
+    fn into_unary_expression(mut self) -> Deserialize<Expr> {
+        let op = try!(try!(self.extract_string("operator")).into_unop());
+        let arg = try!(self.extract_expression("argument"));
+        Ok(ExprData::Unop(op, Box::new(arg)).tracked(None))
+    }
+
+    fn into_update_expression(mut self) -> Deserialize<Expr> {
+        let op = try!(self.extract_string("operator"));
+        let arg = Box::new(try!(self.extract_expression("argument")));
+        let prefix = try!(self.extract_bool("prefix"));
+        Ok((match (&op[..], prefix) {
+            ("++", true)  => ExprData::PreInc(arg),
+            ("++", false) => ExprData::PostInc(arg),
+            ("--", true)  => ExprData::PreDec(arg),
+            ("--", false) => ExprData::PostDec(arg),
+            _ => { return string_error("'++' or '--'", op); }
+        }).tracked(None))
     }
 
     fn into_binary_expression(mut self) -> Deserialize<Expr> {
@@ -751,6 +796,7 @@ pub trait ExtractField {
     fn extract_object_array(&mut self, &'static str) -> Deserialize<Vec<Object>>;
     fn extract_object(&mut self, &'static str) -> Deserialize<Object>;
     fn extract_object_opt(&mut self, &'static str) -> Deserialize<Option<Object>>;
+    fn extract_bool(&mut self, &'static str) -> Deserialize<bool>;
     fn extract_id(&mut self, &'static str) -> Deserialize<Id>;
     fn extract_id_opt(&mut self, &'static str) -> Deserialize<Option<Id>>;
     fn peek_type(&self) -> Deserialize<&String>;
@@ -783,6 +829,10 @@ impl ExtractField for json::Object {
 
     fn extract_object_opt(&mut self, name: &'static str) -> Deserialize<Option<Object>> {
         self.extract(name).and_then(|data| data.into_object_opt())
+    }
+
+    fn extract_bool(&mut self, name: &'static str) -> Deserialize<bool> {
+        self.extract(name).and_then(|data| data.into_bool())
     }
 
     fn extract_id(&mut self, name: &'static str) -> Deserialize<Id> {

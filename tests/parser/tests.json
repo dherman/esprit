@@ -2608,4 +2608,424 @@
       "kind": "var"
     }]
   }
+}, {
+  "source": "var x = +y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UnaryExpression",
+          "operator": "+",
+          "argument": {
+            "type": "Identifier",
+            "name": "y"
+          },
+          "prefix": true
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = -y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UnaryExpression",
+          "operator": "-",
+          "argument": {
+            "type": "Identifier",
+            "name": "y"
+          },
+          "prefix": true
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = !y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UnaryExpression",
+          "operator": "!",
+          "argument": {
+            "type": "Identifier",
+            "name": "y"
+          },
+          "prefix": true
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = ~y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UnaryExpression",
+          "operator": "~",
+          "argument": {
+            "type": "Identifier",
+            "name": "y"
+          },
+          "prefix": true
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = typeof y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UnaryExpression",
+          "operator": "typeof",
+          "argument": {
+            "type": "Identifier",
+            "name": "y"
+          },
+          "prefix": true
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = delete y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UnaryExpression",
+          "operator": "delete",
+          "argument": {
+            "type": "Identifier",
+            "name": "y"
+          },
+          "prefix": true
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = void y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UnaryExpression",
+          "operator": "void",
+          "argument": {
+            "type": "Identifier",
+            "name": "y"
+          },
+          "prefix": true
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = typeof delete y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UnaryExpression",
+          "operator": "typeof",
+          "argument": {
+            "type": "UnaryExpression",
+            "operator": "delete",
+            "argument": {
+              "type": "Identifier",
+              "name": "y"
+            },
+            "prefix": true
+          },
+          "prefix": true
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = + - ! ~ typeof void delete y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UnaryExpression",
+          "operator": "+",
+          "argument": {
+            "type": "UnaryExpression",
+            "operator": "-",
+            "argument": {
+              "type": "UnaryExpression",
+              "operator": "!",
+              "argument": {
+                "type": "UnaryExpression",
+                "operator": "~",
+                "argument": {
+                  "type": "UnaryExpression",
+                  "operator": "typeof",
+                  "argument": {
+                    "type": "UnaryExpression",
+                    "operator": "void",
+                    "argument": {
+                      "type": "UnaryExpression",
+                      "operator": "delete",
+                      "argument": {
+                        "type": "Identifier",
+                        "name": "y"
+                      },
+                      "prefix": true
+                    },
+                    "prefix": true
+                  },
+                  "prefix": true
+                },
+                "prefix": true
+              },
+              "prefix": true
+            },
+            "prefix": true
+          },
+          "prefix": true
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = ++y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UpdateExpression",
+          "operator": "++",
+          "argument": {
+            "type": "Identifier",
+            "name": "y"
+          },
+          "prefix": true
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = --y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UpdateExpression",
+          "operator": "--",
+          "argument": {
+            "type": "Identifier",
+            "name": "y"
+          },
+          "prefix": true
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = y++;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UpdateExpression",
+          "operator": "++",
+          "argument": {
+            "type": "Identifier",
+            "name": "y"
+          },
+          "prefix": false
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = y--;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UpdateExpression",
+          "operator": "--",
+          "argument": {
+            "type": "Identifier",
+            "name": "y"
+          },
+          "prefix": false
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = typeof y++;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UnaryExpression",
+          "operator": "typeof",
+          "argument": {
+            "type": "UpdateExpression",
+            "operator": "++",
+            "argument": {
+              "type": "Identifier",
+              "name": "y"
+            },
+            "prefix": false
+          },
+          "prefix": true
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = void y--;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UnaryExpression",
+          "operator": "void",
+          "argument": {
+            "type": "UpdateExpression",
+            "operator": "--",
+            "argument": {
+              "type": "Identifier",
+              "name": "y"
+            },
+            "prefix": false
+          },
+          "prefix": true
+        }
+      }],
+      "kind": "var"
+    }]
+  }
 }]
