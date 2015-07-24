@@ -241,6 +241,48 @@ enum Postfix {
     Dec(Span)
 }
 
+enum Deref {
+    Brack(Expr, Token),
+    Dot(Id)
+}
+
+impl Deref {
+    fn append_to(self, expr: Expr) -> Expr {
+        match self {
+            Deref::Brack(deref, end) => {
+                let location = span(&expr, &end);
+                ExprData::Brack(Box::new(expr), Box::new(deref)).tracked(location)
+            }
+            Deref::Dot(id) => {
+                let location = span(&expr, &id);
+                ExprData::Dot(Box::new(expr), id).tracked(location)
+            }
+        }
+    }
+}
+
+enum Suffix {
+    Deref(Deref),
+    Arguments(Arguments)
+}
+
+struct Arguments;
+
+impl Arguments {
+    fn append_to(self, expr: Expr) -> Expr {
+        unimplemented!()
+    }
+}
+
+impl Suffix {
+    fn append_to(self, expr: Expr) -> Expr {
+        match self {
+            Suffix::Deref(deref) => deref.append_to(expr),
+            Suffix::Arguments(args) => args.append_to(expr)
+        }
+    }
+}
+
 impl<I> Parser<I>
   where I: Iterator<Item=char>
 {
@@ -1149,16 +1191,6 @@ impl<I> Parser<I>
         })
     }
 
-
-    // Suffix ::=
-    //   Deref
-    //   Arguments
-    // 
-    // Deref ::=
-    //   "[" Expression "]"
-    //   "." IdentifierName
-
-
     // MemberBaseExpression ::=
     //   PrimaryExpression
     //   "new" "." "target"
@@ -1172,18 +1204,92 @@ impl<I> Parser<I>
         unimplemented!()
     }
 
+    // "new"+n MemberBaseExpression . Deref* Arguments<n Suffix*
+    fn more_new_expression(&mut self, news: Vec<Token>, base: Expr) -> Parse<Expr> {
+        unimplemented!()
+    }
+
     // CallExpression ::=
     //   (MemberBaseExpression | "super" Suffix) Suffix*
     fn call_expression(&mut self) -> Parse<Expr> {
+        // FIXME: super
+        let base = try!(self.primary_expression());
+        self.more_call_expression(base)
+    }
+
+    // Suffix ::=
+    //   Deref
+    //   Arguments
+    fn suffix_opt(&mut self) -> Parse<Option<Suffix>> {
+        match try!(self.peek()).value {
+            TokenData::Dot    => self.deref_dot().map(|deref| Some(Suffix::Deref(deref))),
+            TokenData::LBrack => self.deref_brack().map(|deref| Some(Suffix::Deref(deref))),
+            TokenData::LParen => self.arguments().map(|args| Some(Suffix::Arguments(args))),
+            _ => Ok(None)
+        }
+    }
+
+    fn arguments(&mut self) -> Parse<Arguments> {
         unimplemented!()
+    }
+
+    // Deref ::=
+    //   "[" Expression "]"
+    //   "." IdentifierName
+    fn deref(&mut self) -> Parse<Deref> {
+        match try!(self.peek()).value {
+            TokenData::LBrack => self.deref_brack(),
+            TokenData::Dot    => self.deref_dot(),
+            _ => Err(ParseError::UnexpectedToken(try!(self.read())))
+        }
+    }
+
+    fn deref_brack(&mut self) -> Parse<Deref> {
+        self.reread(TokenData::LBrack);
+        let expr = try!(self.expression()); // FIXME: inherited attributes
+        let end = try!(self.expect(TokenData::RBrack));
+        Ok(Deref::Brack(expr, end))
+    }
+
+    fn deref_dot(&mut self) -> Parse<Deref> {
+        self.reread(TokenData::Dot);
+        let name = try!(self.id());
+        Ok(Deref::Dot(name))
+    }
+
+    // MemberBaseExpression . Suffix*
+    fn more_call_expression(&mut self, base: Expr) -> Parse<Expr> {
+        let mut result = base;
+        let mut suffixes = Vec::new();
+        while let Some(suffix) = try!(self.suffix_opt()) {
+            suffixes.push(suffix);
+        }
+        for suffix in suffixes {
+            result = suffix.append_to(result);
+        }
+        Ok(result)
     }
 
     // LHSExpression ::=
     //   NewExpression
     //   CallExpression
     fn lhs_expression(&mut self) -> Parse<Expr> {
-        // FIXME: implement
-        self.primary_expression()
+        let mut news = Vec::new();
+        while try!(self.peek()).value == TokenData::Reserved(Reserved::New) {
+            news.push(self.reread(TokenData::Reserved(Reserved::New)));
+        }
+        if (news.len() > 0) && (try!(self.peek()).value == TokenData::Dot) {
+            let target = try!(self.expect(TokenData::Identifier(Name::Atom(Atom::Target))));
+            let new = news.pop();
+            let new_target = ExprData::NewTarget.tracked(span(&new, &target));
+            if news.len() > 0 {
+                self.more_new_expression(news, new_target)
+            } else {
+                self.more_call_expression(new_target)
+            }
+        } else {
+            self.call_expression()
+        }
     }
 
     // IDUnaryExpression ::=

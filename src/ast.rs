@@ -523,6 +523,7 @@ pub enum ExprData {
     New(Box<Expr>, Vec<Expr>),
     Dot(Box<Expr>, Id),
     Brack(Box<Expr>, Box<Expr>),
+    NewTarget,
     True,
     False,
     Null,
@@ -583,6 +584,7 @@ impl Untrack for ExprData {
             ExprData::New(ref mut ctor, ref mut args)                => { ctor.untrack(); args.untrack(); }
             ExprData::Dot(ref mut obj, ref mut prop)                 => { obj.untrack(); prop.untrack(); }
             ExprData::Brack(ref mut obj, ref mut prop)               => { obj.untrack(); prop.untrack(); }
+            ExprData::NewTarget                                      => { }
             ExprData::True                                           => { }
             ExprData::False                                          => { }
             ExprData::Null                                           => { }

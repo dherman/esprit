@@ -64,6 +64,7 @@ pub enum Atom {
     Protected,
     Public,
     Static,
+    Target,
     Yield
 }
 
@@ -90,6 +91,7 @@ impl Name {
             "protected"  => Name::Atom(Atom::Protected),
             "public"     => Name::Atom(Atom::Public),
             "static"     => Name::Atom(Atom::Static),
+            "target"     => Name::Atom(Atom::Target),
             "yield"      => Name::Atom(Atom::Yield),
             _            => Name::String(from)
         }
@@ -113,6 +115,7 @@ impl Atom {
             Atom::Protected  => "protected",
             Atom::Public     => "public",
             Atom::Static     => "static",
+            Atom::Target     => "target",
             Atom::Yield      => "yield"
         }
     }

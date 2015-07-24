@@ -476,6 +476,7 @@ pub trait IntoNode {
     fn into_logical_expression(self) -> Deserialize<Expr>;
     fn into_unary_expression(self) -> Deserialize<Expr>;
     fn into_update_expression(self) -> Deserialize<Expr>;
+    fn into_member_expression(self) -> Deserialize<Expr>;
     fn into_identifier(self) -> Deserialize<Id>;
     fn into_literal(self) -> Deserialize<Expr>;
     fn into_function(self) -> Deserialize<Fun>;
@@ -689,6 +690,7 @@ impl IntoNode for Object {
             "LogicalExpression"     => self.into_logical_expression(),
             "UnaryExpression"       => self.into_unary_expression(),
             "UpdateExpression"      => self.into_update_expression(),
+            "MemberExpression"      => self.into_member_expression(),
             "ConditionalExpression" => unimplemented!(),
             // FIXME: implement remaining cases
             _                  => { return object_error("expression", self); }
@@ -712,6 +714,17 @@ impl IntoNode for Object {
             ("--", false) => ExprData::PostDec(arg),
             _ => { return string_error("'++' or '--'", op); }
         }).tracked(None))
+    }
+
+    fn into_member_expression(mut self) -> Deserialize<Expr> {
+        let obj = Box::new(try!(self.extract_expression("object")));
+        if try!(self.extract_bool("computed")) {
+            let prop = Box::new(try!(self.extract_expression("property")));
+            Ok(ExprData::Brack(obj, prop).tracked(None))
+        } else {
+            let prop = try!(self.extract_id("property"));
+            Ok(ExprData::Dot(obj, prop).tracked(None))
+        }
     }
 
     fn into_binary_expression(mut self) -> Deserialize<Expr> {

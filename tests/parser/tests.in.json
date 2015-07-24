@@ -155,6 +155,18 @@
   "var x = y++;": true,
   "var x = y--;": true,
   "var x = typeof y++;": true,
-  "var x = void y--;": true
+  "var x = void y--;": true,
+
+  "var x = a.b;": true,
+  "var x = a.b.c;": true,
+  "var x = a.b.c.d;": true,
+  "var x = a[b];": true,
+  "var x = a[b][c];": true,
+  "var x = a[b][c][d];": true,
+  "var x = a[b].c.d;": true,
+  "var x = a[b][c].d;": true,
+  "var x = a[b].c[d];": true,
+  "var x = a.b[c][d];": true,
+  "var x = a.b[c].d;": true
 
 }
