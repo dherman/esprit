@@ -167,6 +167,19 @@
   "var x = a[b][c].d;": true,
   "var x = a[b].c[d];": true,
   "var x = a.b[c][d];": true,
-  "var x = a.b[c].d;": true
+  "var x = a.b[c].d;": true,
 
+  "var x = f();": true,
+  "var x = f(a);": true,
+  "var x = f(a,b);": true,
+  "var x = f(a,b,c);": true,
+
+  "var x = new Object;": true,
+  "var x = new Object();": true,
+  "var x = new Thing(a, b, c);": true,
+  "var x = new new Function(a);": true,
+  "var x = new new Function(a)(b);": true,
+
+  "var x = new Function(a)(b);": true,
+  "var x = new Function(a).length;": true
 }

@@ -502,7 +502,7 @@ impl Untrack for Assop {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub enum ExprData {
     This,
     Id(Id),
@@ -520,7 +520,7 @@ pub enum ExprData {
     Assign(Assop, APatt, Box<Expr>),
     Cond(Box<Expr>, Box<Expr>, Box<Expr>),
     Call(Box<Expr>, Vec<Expr>),
-    New(Box<Expr>, Vec<Expr>),
+    New(Box<Expr>, Option<Vec<Expr>>),
     Dot(Box<Expr>, Id),
     Brack(Box<Expr>, Box<Expr>),
     NewTarget,
@@ -530,6 +530,43 @@ pub enum ExprData {
     Number(NumberLiteral),
     RegExp(String),
     String(String)
+}
+
+impl PartialEq for ExprData {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (&ExprData::This, &ExprData::This) => true,
+            (&ExprData::Id(ref id_l), &ExprData::Id(ref id_r)) => id_l.eq(id_r),
+            (&ExprData::Arr(ref elts_l), &ExprData::Arr(ref elts_r)) => elts_l.eq(elts_r),
+            (&ExprData::Obj(ref props_l), &ExprData::Obj(ref props_r)) => props_l.eq(props_r),
+            (&ExprData::Fun(ref fun_l), &ExprData::Fun(ref fun_r)) => fun_l.eq(fun_r),
+            (&ExprData::Seq(ref exprs_l), &ExprData::Seq(ref exprs_r)) => exprs_l.eq(exprs_r),
+            (&ExprData::Unop(ref op_l, ref arg_l), &ExprData::Unop(ref op_r, ref arg_r)) => op_l.eq(op_r) && arg_l.eq(arg_r),
+            (&ExprData::Binop(ref op_l, ref arg1_l, ref arg2_l), &ExprData::Binop(ref op_r, ref arg1_r, ref arg2_r)) => op_l.eq(op_r) && arg1_l.eq(arg1_r) && arg2_l.eq(arg2_r),
+            (&ExprData::Logop(ref op_l, ref arg1_l, ref arg2_l), &ExprData::Logop(ref op_r, ref arg1_r, ref arg2_r)) => op_l.eq(op_r) && arg1_l.eq(arg1_r) && arg2_l.eq(arg2_r),
+            (&ExprData::PreInc(ref arg_l), &ExprData::PreInc(ref arg_r))
+          | (&ExprData::PostInc(ref arg_l), &ExprData::PostInc(ref arg_r))
+          | (&ExprData::PreDec(ref arg_l), &ExprData::PreDec(ref arg_r))
+          | (&ExprData::PostDec(ref arg_l), &ExprData::PostDec(ref arg_r)) => arg_l.eq(arg_r),
+            (&ExprData::Assign(ref op_l, ref patt_l, ref arg_l), &ExprData::Assign(ref op_r, ref patt_r, ref arg_r)) => op_l.eq(op_r) && patt_l.eq(patt_r) && arg_l.eq(arg_r),
+            (&ExprData::Cond(ref test_l, ref cons_l, ref alt_l), &ExprData::Cond(ref test_r, ref cons_r, ref alt_r)) => test_l.eq(test_r) && cons_l.eq(cons_r) && alt_l.eq(alt_r),
+            (&ExprData::Call(ref callee_l, ref args_l), &ExprData::Call(ref callee_r, ref args_r)) => callee_l.eq(callee_r) && args_l.eq(args_r),
+            (&ExprData::New(ref callee_l, None), &ExprData::New(ref callee_r, None)) => callee_l.eq(callee_r),
+            (&ExprData::New(ref callee_l, None), &ExprData::New(ref callee_r, Some(ref args_r))) => callee_l.eq(callee_r) && args_r.is_empty(),
+            (&ExprData::New(ref callee_l, Some(ref args_l)), &ExprData::New(ref callee_r, None)) => callee_l.eq(callee_r) && args_l.is_empty(),
+            (&ExprData::New(ref callee_l, Some(ref args_l)), &ExprData::New(ref callee_r, Some(ref args_r))) => callee_l.eq(callee_r) && args_l.eq(args_r),
+            (&ExprData::Dot(ref obj_l, ref id_l), &ExprData::Dot(ref obj_r, ref id_r)) => obj_l.eq(obj_r) && id_l.eq(id_r),
+            (&ExprData::Brack(ref obj_l, ref prop_l), &ExprData::Brack(ref obj_r, ref prop_r)) => obj_l.eq(obj_r) && prop_l.eq(prop_r),
+            (&ExprData::NewTarget, &ExprData::NewTarget) => true,
+            (&ExprData::True, &ExprData::True) => true,
+            (&ExprData::False, &ExprData::False) => true,
+            (&ExprData::Null, &ExprData::Null) => true,
+            (&ExprData::Number(ref lit_l), &ExprData::Number(ref lit_r)) => lit_l.eq(lit_r),
+            (&ExprData::RegExp(ref lit_l), &ExprData::RegExp(ref lit_r)) => lit_l.eq(lit_r),
+            (&ExprData::String(ref lit_l), &ExprData::String(ref lit_r)) => lit_l.eq(lit_r),
+            (_, _) => false
+        }
+    }
 }
 
 // FIXME: should produce more detailed error information
