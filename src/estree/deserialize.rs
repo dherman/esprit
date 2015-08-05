@@ -706,7 +706,7 @@ impl IntoNode for Object {
             "SequenceExpression"    => self.into_sequence_expression(),
             "ObjectExpression"      => self.into_object_expression(),
             "ConditionalExpression" => unimplemented!(),
-            // FIXME: implement remaining cases
+            "ThisExpression"        => unimplemented!(),
             _                  => { return object_error("expression", self); }
         }
     }

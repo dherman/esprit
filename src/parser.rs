@@ -1205,7 +1205,7 @@ impl<I> Parser<I>
                 self.lexer.unread_token(token);
                 return self.paren_expression();
             }
-            // FIXME: more cases
+            // FIXME: ES6 cases
             _ => { return Err(ParseError::UnexpectedToken(token)); }
         }).tracked(location))
     }
