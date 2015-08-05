@@ -383,20 +383,6 @@ impl<I> Parser<I>
         result
     }
 
-    fn try_token_at<T, F>(&mut self, op: &mut F) -> Parse<Tracked<T>>
-      where F: FnMut(TokenData, Span) -> Result<T, TokenData>
-    {
-        let Token { location, newline, value: token } = try!(self.read());
-        match op(token, location) {
-            Ok(node) => Ok(Tracked { location: Some(location), value: node }),
-            Err(token) => Err(ParseError::UnexpectedToken(Token {
-                location: location,
-                newline: newline,
-                value: token
-            }))
-        }
-    }
-
     fn statement_list(&mut self) -> Parse<Vec<StmtListItem>> {
         let mut items = Vec::new();
         while !try!(self.peek()).follow_statement_list() {
@@ -1196,18 +1182,183 @@ impl<I> Parser<I>
     //   RegularExpressionLiteral
     //   "(" Expression ")"
     fn primary_expression(&mut self) -> Parse<Expr> {
-        self.try_token_at(&mut |data, location| {
-            match data {
-                TokenData::Identifier(name)         => {
-                    Ok(ExprData::Id(Id::new(name, Some(location))))
-                }
-                TokenData::Reserved(Reserved::Null) => Ok(ExprData::Null),
-                TokenData::Reserved(Reserved::This) => Ok(ExprData::This),
-                TokenData::Number(literal)          => Ok(ExprData::Number(literal)),
-                // FIXME: more cases
-                _                                   => Err(data)
+        let token = try!(self.read());
+        let location = Some(token.location);
+        Ok((match token.value {
+            TokenData::Identifier(name)          => ExprData::Id(Id::new(name, location)),
+            TokenData::Reserved(Reserved::Null)  => ExprData::Null,
+            TokenData::Reserved(Reserved::This)  => ExprData::This,
+            TokenData::Reserved(Reserved::True)  => ExprData::True,
+            TokenData::Reserved(Reserved::False) => ExprData::False,
+            TokenData::Number(literal)           => ExprData::Number(literal),
+            TokenData::String(literal)           => ExprData::String(literal),
+            TokenData::RegExp(source, flags)     => ExprData::RegExp(source, flags),
+            TokenData::LBrack                    => { return self.array_literal(token); }
+            TokenData::LBrace                    => { return self.object_literal(token); }
+            TokenData::Reserved(Reserved::Function) => {
+                self.lexer.unread_token(token);
+                let fun = try!(self.function());
+                let location = fun.location();
+                return Ok(ExprData::Fun(fun).tracked(location));
             }
-        })
+            TokenData::LParen => {
+                self.lexer.unread_token(token);
+                return self.paren_expression();
+            }
+            // FIXME: more cases
+            _ => { return Err(ParseError::UnexpectedToken(token)); }
+        }).tracked(location))
+    }
+
+    fn array_literal(&mut self, start: Token) -> Parse<Expr> {
+        let mut elts = Vec::new();
+        if let Some(end) = try!(self.matches_token(TokenData::RBrack)) {
+            return Ok(ExprData::Arr(elts).tracked(span(&start, &end)));
+        }
+        loop {
+            let elt = try!(self.array_element());
+            elts.push(elt);
+            if !try!(self.matches(TokenData::Comma)) {
+                break;
+            }
+            // Optional final comma does not count as an element.
+            if try!(self.peek()).value == TokenData::RBrack {
+                break;
+            }
+        }
+        let end = try!(self.expect(TokenData::RBrack));
+        Ok(ExprData::Arr(elts).tracked(span(&start, &end)))
+    }
+
+    fn array_element(&mut self) -> Parse<Option<Expr>> {
+        if { let t = try!(self.peek()); t.value == TokenData::Comma || t.value == TokenData::RBrack } {
+            return Ok(None);
+        }
+        // FIXME: ellipsis
+        self.assignment_expression().map(Some) // FIXME: inherited attributes
+    }
+
+    fn object_literal(&mut self, start: Token) -> Parse<Expr> {
+        let mut props = Vec::new();
+        if let Some(end) = try!(self.matches_token(TokenData::RBrace)) {
+            return Ok(ExprData::Obj(props).tracked(span(&start, &end)));
+        }
+        loop {
+            let prop = try!(self.object_property());
+            props.push(prop);
+            if !try!(self.matches(TokenData::Comma)) {
+                break;
+            }
+            if try!(self.peek()).value == TokenData::RBrack {
+                break;
+            }
+        }
+        let end = try!(self.expect(TokenData::RBrace));
+        Ok(ExprData::Obj(props).tracked(span(&start, &end)))
+    }
+
+    fn more_prop_init(&mut self, key: PropKey) -> Parse<Prop> {
+        self.reread(TokenData::Colon);
+        let val = try!(self.assignment_expression()); // FIXME: inherited attributes
+        let key_location = key.location();
+        let val_location = val.location();
+        Ok((PropData {
+            key: key,
+            val: PropValData::Init(val).tracked(val_location)
+        }).tracked(span(&key_location, &val_location)))
+    }
+
+    fn property_key_opt(&mut self) -> Parse<Option<PropKey>> {
+        let token = try!(self.read());
+        let location = Some(token.location);
+        Ok(Some((match token.value {
+            TokenData::Identifier(name) => PropKeyData::Id(name.into_string()),
+            TokenData::Reserved(word) => PropKeyData::Id(word.into_string()),
+            TokenData::String(s) => PropKeyData::String(s),
+            TokenData::Number(n) => PropKeyData::Number(n),
+            _ => {
+                self.lexer.unread_token(token);
+                return Ok(None);
+            }
+        }).tracked(location)))
+    }
+
+    fn property_key(&mut self) -> Parse<PropKey> {
+        match try!(self.property_key_opt()) {
+            Some(key) => Ok(key),
+            None => Err(ParseError::UnexpectedToken(try!(self.read())))
+        }
+    }
+
+    fn object_property(&mut self) -> Parse<Prop> {
+        let first = try!(self.read());
+        match first.value {
+            // FIXME: test getter and setter syntax
+            TokenData::Identifier(Name::Atom(Atom::Get)) => {
+                if let Some(key) = try!(self.property_key_opt()) {
+                    let paren = try!(self.expect(TokenData::LParen));
+                    try!(self.expect(TokenData::RParen));
+                    let end = try!(self.expect(TokenData::LBrace));
+                    let outer_cx = replace(&mut self.parser_cx, ParserContext::new_function());
+                    let body = self.statement_list();
+                    replace(&mut self.parser_cx, outer_cx);
+                    let body = try!(body);
+                    let val_location = span(&paren, &end);
+                    let prop_location = span(&key, &end);
+                    return Ok((PropData {
+                        key: key,
+                        val: PropValData::Get(body).tracked(val_location)
+                    }).tracked(prop_location));
+                }
+                match try!(self.peek()).value {
+                    // FIXME: TokenData::LParen => unimplemented!(),
+                    TokenData::Colon => {
+                        let key_location = Some(first.location);
+                        self.more_prop_init(PropKeyData::Id(format!("get")).tracked(key_location))
+                    }
+                    // FIXME: treat as elided optional initializer
+                    _ => { return Err(ParseError::UnexpectedToken(try!(self.read()))); }
+                }
+            }
+            TokenData::Identifier(Name::Atom(Atom::Set)) => {
+                if let Some(key) = try!(self.property_key_opt()) {
+                    let paren = try!(self.expect(TokenData::LParen));
+                    let param = try!(self.pattern());
+                    try!(self.expect(TokenData::RParen));
+                    let end = try!(self.expect(TokenData::LBrace));
+                    let outer_cx = replace(&mut self.parser_cx, ParserContext::new_function());
+                    let body = self.statement_list();
+                    replace(&mut self.parser_cx, outer_cx);
+                    let body = try!(body);
+                    let val_location = span(&paren, &end);
+                    let prop_location = span(&key, &end);
+                    return Ok((PropData {
+                        key: key,
+                        val: PropValData::Set(param, body).tracked(val_location)
+                    }).tracked(prop_location));
+                }
+                match try!(self.peek()).value {
+                    // FIXME: TokenData::LParen => unimplemented!(),
+                    TokenData::Colon => {
+                        let key_location = Some(first.location);
+                        self.more_prop_init(PropKeyData::Id(format!("set")).tracked(key_location))
+                    }
+                    // FIXME: treat as elided optional initializer
+                    _ => { return Err(ParseError::UnexpectedToken(try!(self.read()))); }
+                }
+            }
+            // FIXME: TokenData::Star
+            _ => {
+                self.lexer.unread_token(first);
+                let key = try!(self.property_key());
+                match try!(self.peek()).value {
+                    TokenData::Colon => self.more_prop_init(key),
+                    // FIXME: TokenData::LParen =>
+                    // FIXME: treat as elided optional initializer
+                    _ => { return Err(ParseError::UnexpectedToken(try!(self.read()))); }
+                }
+            }
+        }
     }
 
     // MemberBaseExpression ::=
@@ -1521,8 +1672,16 @@ impl<I> Parser<I>
     // Expression ::=
     //   AssignmentExpression ("," AssignmentExpression)*
     fn expression(&mut self) -> Parse<Expr> {
-        // FIXME: implement for real
-        self.assignment_expression()
+        let first = try!(self.assignment_expression());
+        if try!(self.peek()).value != TokenData::Comma {
+            return Ok(first);
+        }
+        let mut elts = vec![first];
+        while try!(self.matches(TokenData::Comma)) {
+            elts.push(try!(self.assignment_expression()));
+        }
+        let location = self.vec_span(&elts);
+        Ok(ExprData::Seq(elts).tracked(location))
     }
 
     // IDExpression ::=

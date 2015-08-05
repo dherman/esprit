@@ -3793,4 +3793,1825 @@
       "kind": "var"
     }]
   }
+}, {
+  "source": "var x = true;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": true,
+          "raw": "true"
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = false;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": false,
+          "raw": "false"
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = 0;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": 0,
+          "raw": "0"
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = 1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1"
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = 1.0;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1.0"
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = 1.1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": 1.1,
+          "raw": "1.1"
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = -1.1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UnaryExpression",
+          "operator": "-",
+          "argument": {
+            "type": "Literal",
+            "value": 1.1,
+            "raw": "1.1"
+          },
+          "prefix": true
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = 9007199254740992;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": 9007199254740992,
+          "raw": "9007199254740992"
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = '';",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": "",
+          "raw": "''"
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = 'hello';",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": "hello",
+          "raw": "'hello'"
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = \"\";",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": "",
+          "raw": "\"\""
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = \"hello\";",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": "hello",
+          "raw": "\"hello\""
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = /foo/g;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": {},
+          "raw": "/foo/g",
+          "regex": {
+            "pattern": "foo",
+            "flags": "g"
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = /foo/i;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": {},
+          "raw": "/foo/i",
+          "regex": {
+            "pattern": "foo",
+            "flags": "i"
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = /foo/gi;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": {},
+          "raw": "/foo/gi",
+          "regex": {
+            "pattern": "foo",
+            "flags": "gi"
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = /foo/ig;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": {},
+          "raw": "/foo/ig",
+          "regex": {
+            "pattern": "foo",
+            "flags": "ig"
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": []
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [1];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [{
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [1,2];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [{
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }, {
+            "type": "Literal",
+            "value": 2,
+            "raw": "2"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [1,2,3];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [{
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }, {
+            "type": "Literal",
+            "value": 2,
+            "raw": "2"
+          }, {
+            "type": "Literal",
+            "value": 3,
+            "raw": "3"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [,];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [null]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [,,];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [null, null]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [,,,];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [null, null, null]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [,1];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [null, {
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [1,];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [{
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [,,1];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [null, null, {
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [1,,];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [{
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }, null]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [,1,];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [null, {
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [,,1,2];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [null, null, {
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }, {
+            "type": "Literal",
+            "value": 2,
+            "raw": "2"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [,1,,2];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [null, {
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }, null, {
+            "type": "Literal",
+            "value": 2,
+            "raw": "2"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [,1,2,];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [null, {
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }, {
+            "type": "Literal",
+            "value": 2,
+            "raw": "2"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [1,2,,];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [{
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }, {
+            "type": "Literal",
+            "value": 2,
+            "raw": "2"
+          }, null]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [,1,2,3];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [null, {
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }, {
+            "type": "Literal",
+            "value": 2,
+            "raw": "2"
+          }, {
+            "type": "Literal",
+            "value": 3,
+            "raw": "3"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [1,,2,3];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [{
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }, null, {
+            "type": "Literal",
+            "value": 2,
+            "raw": "2"
+          }, {
+            "type": "Literal",
+            "value": 3,
+            "raw": "3"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [1,2,,3];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [{
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }, {
+            "type": "Literal",
+            "value": 2,
+            "raw": "2"
+          }, null, {
+            "type": "Literal",
+            "value": 3,
+            "raw": "3"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [1,2,3,,];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [{
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }, {
+            "type": "Literal",
+            "value": 2,
+            "raw": "2"
+          }, {
+            "type": "Literal",
+            "value": 3,
+            "raw": "3"
+          }, null]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = function() { };",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "FunctionExpression",
+          "id": null,
+          "params": [],
+          "defaults": [],
+          "body": {
+            "type": "BlockStatement",
+            "body": []
+          },
+          "generator": false,
+          "expression": false
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = (1);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1"
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = (1,2);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "SequenceExpression",
+          "expressions": [{
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }, {
+            "type": "Literal",
+            "value": 2,
+            "raw": "2"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = (1,2,3);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "SequenceExpression",
+          "expressions": [{
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }, {
+            "type": "Literal",
+            "value": 2,
+            "raw": "2"
+          }, {
+            "type": "Literal",
+            "value": 3,
+            "raw": "3"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": []
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {a:1};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Identifier",
+              "name": "a"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {1:2};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 2,
+              "raw": "2"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {\"a\":1};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Literal",
+              "value": "a",
+              "raw": "\"a\""
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {'a':1};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Literal",
+              "value": "a",
+              "raw": "'a'"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {'a':1,'b':2};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Literal",
+              "value": "a",
+              "raw": "'a'"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }, {
+            "type": "Property",
+            "key": {
+              "type": "Literal",
+              "value": "b",
+              "raw": "'b'"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 2,
+              "raw": "2"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {'a':1,'b':2,'c':3};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Literal",
+              "value": "a",
+              "raw": "'a'"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }, {
+            "type": "Property",
+            "key": {
+              "type": "Literal",
+              "value": "b",
+              "raw": "'b'"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 2,
+              "raw": "2"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }, {
+            "type": "Property",
+            "key": {
+              "type": "Literal",
+              "value": "c",
+              "raw": "'c'"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 3,
+              "raw": "3"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {1:2,3:4};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 2,
+              "raw": "2"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }, {
+            "type": "Property",
+            "key": {
+              "type": "Literal",
+              "value": 3,
+              "raw": "3"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 4,
+              "raw": "4"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {1:2,3:4,5:6};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 2,
+              "raw": "2"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }, {
+            "type": "Property",
+            "key": {
+              "type": "Literal",
+              "value": 3,
+              "raw": "3"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 4,
+              "raw": "4"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }, {
+            "type": "Property",
+            "key": {
+              "type": "Literal",
+              "value": 5,
+              "raw": "5"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 6,
+              "raw": "6"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {a:1,b:2};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Identifier",
+              "name": "a"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }, {
+            "type": "Property",
+            "key": {
+              "type": "Identifier",
+              "name": "b"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 2,
+              "raw": "2"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {a:1,b:2,c:3};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Identifier",
+              "name": "a"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }, {
+            "type": "Property",
+            "key": {
+              "type": "Identifier",
+              "name": "b"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 2,
+              "raw": "2"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }, {
+            "type": "Property",
+            "key": {
+              "type": "Identifier",
+              "name": "c"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 3,
+              "raw": "3"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {a:1,'b':2,3:4};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Identifier",
+              "name": "a"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }, {
+            "type": "Property",
+            "key": {
+              "type": "Literal",
+              "value": "b",
+              "raw": "'b'"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 2,
+              "raw": "2"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }, {
+            "type": "Property",
+            "key": {
+              "type": "Literal",
+              "value": 3,
+              "raw": "3"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 4,
+              "raw": "4"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {null:1};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Identifier",
+              "name": "null"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {function:1};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Identifier",
+              "name": "function"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {delete:1};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Identifier",
+              "name": "delete"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {return:1};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Identifier",
+              "name": "return"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {throw:1};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Identifier",
+              "name": "throw"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "{}",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "BlockStatement",
+      "body": []
+    }]
+  }
+}, {
+  "source": "({})",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "ObjectExpression",
+        "properties": []
+      }
+    }]
+  }
+}, {
+  "source": "{a:1}",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "BlockStatement",
+      "body": [{
+        "type": "LabeledStatement",
+        "label": {
+          "type": "Identifier",
+          "name": "a"
+        },
+        "body": {
+          "type": "ExpressionStatement",
+          "expression": {
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }
+        }
+      }]
+    }]
+  }
+}, {
+  "source": "({a:1})",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "ObjectExpression",
+        "properties": [{
+          "type": "Property",
+          "key": {
+            "type": "Identifier",
+            "name": "a"
+          },
+          "computed": false,
+          "value": {
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          },
+          "kind": "init",
+          "method": false,
+          "shorthand": false
+        }]
+      }
+    }]
+  }
 }]

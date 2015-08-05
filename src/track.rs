@@ -23,6 +23,12 @@ pub struct Span {
 
 pub trait Track {
     fn location(&self) -> Option<Span>;
+    fn track<U>(&self, other: U) -> Tracked<U> {
+        Tracked {
+            location: self.location(),
+            value: other
+        }
+    }
 }
 
 impl Track for Posn {
@@ -59,12 +65,16 @@ pub struct Tracked<T> {
 
 pub trait IntoTracked {
     fn tracked(self, Option<Span>) -> Tracked<Self>;
+    //fn tracked<T: Track>(self, T) -> Tracked<Self>;
 }
 
 impl<T> IntoTracked for T {
     fn tracked(self, location: Option<Span>) -> Tracked<T> {
         Tracked { value: self, location: location }
     }
+    // fn tracked<U: Track>(self, track: U) -> Tracked<T> {
+    //     Tracked { value: self, location: track.location() }
+    // }
 }
 
 pub trait Untrack {

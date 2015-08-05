@@ -479,7 +479,13 @@ pub trait IntoNode {
     fn into_member_expression(self) -> Deserialize<Expr>;
     fn into_call_expression(self) -> Deserialize<Expr>;
     fn into_new_expression(self) -> Deserialize<Expr>;
+    fn into_array_expression(self) -> Deserialize<Expr>;
+    fn into_function_expression(self) -> Deserialize<Expr>;
+    fn into_sequence_expression(self) -> Deserialize<Expr>;
+    fn into_object_expression(self) -> Deserialize<Expr>;
     fn into_identifier(self) -> Deserialize<Id>;
+    fn into_property(self) -> Deserialize<Prop>;
+    fn into_property_key(self) -> Deserialize<PropKey>;
     fn into_literal(self) -> Deserialize<Expr>;
     fn into_function(self) -> Deserialize<Fun>;
     fn into_pattern(self) -> Deserialize<Patt>;
@@ -695,6 +701,10 @@ impl IntoNode for Object {
             "MemberExpression"      => self.into_member_expression(),
             "CallExpression"        => self.into_call_expression(),
             "NewExpression"         => self.into_new_expression(),
+            "ArrayExpression"       => self.into_array_expression(),
+            "FunctionExpression"    => self.into_function_expression(),
+            "SequenceExpression"    => self.into_sequence_expression(),
+            "ObjectExpression"      => self.into_object_expression(),
             "ConditionalExpression" => unimplemented!(),
             // FIXME: implement remaining cases
             _                  => { return object_error("expression", self); }
@@ -743,6 +753,29 @@ impl IntoNode for Object {
         Ok(ExprData::New(callee, Some(args)).tracked(None))
     }
 
+    fn into_array_expression(mut self) -> Deserialize<Expr> {
+        let elts = try!(try!(self.extract_object_opt_array("elements")).map(|opt| match opt {
+            None => Ok(None),
+            Some(obj) => obj.into_expression().map(Some)
+        }));
+        Ok(ExprData::Arr(elts).tracked(None))
+    }
+
+    fn into_function_expression(mut self) -> Deserialize<Expr> {
+        let fun = try!(self.into_function());
+        Ok(ExprData::Fun(fun).tracked(None))
+    }
+
+    fn into_sequence_expression(mut self) -> Deserialize<Expr> {
+        let elts = try!(try!(self.extract_object_array("expressions")).map(|obj| obj.into_expression()));
+        Ok(ExprData::Seq(elts).tracked(None))
+    }
+
+    fn into_object_expression(mut self) -> Deserialize<Expr> {
+        let props = try!(try!(self.extract_object_array("properties")).map(|obj| obj.into_property()));
+        Ok(ExprData::Obj(props).tracked(None))
+    }
+
     fn into_binary_expression(mut self) -> Deserialize<Expr> {
         let op = try!(try!(self.extract_string("operator")).into_binop());
         let left = try!(self.extract_expression("left"));
@@ -765,13 +798,56 @@ impl IntoNode for Object {
         Ok((IdData { name: Name::new(try!(self.extract_string("name"))) }).tracked(None))
     }
 
-    fn into_literal(mut self) -> Deserialize<Expr> {
-        let val = try!(self.extract("value"));
-        match val {
-            Json::Null => Ok(ExprData::Null.tracked(None)),
-            // FIXME: implement remaining cases
-            _          => type_error("null, number, boolean, or string", json_typeof(&val))
+    fn into_property(mut self) -> Deserialize<Prop> {
+        let key = try!(try!(self.extract_object("key")).into_property_key());
+        let mut val = try!(self.extract_object("value"));
+        let kind = try!(self.extract_string("kind"));
+        let val = (match &kind[..] {
+            "init" => PropValData::Init(try!(val.into_expression())),
+            "get" => PropValData::Get(try!(try!(val.extract_object("body")).extract_statement_list("body"))),
+            "set" => {
+                unimplemented!()
+            }
+            _ => { return type_error("'init', 'get', or 'set'", JsonType::String); }
+        }).tracked(None);
+        Ok((PropData { key: key, val: val }).tracked(None))
+    }
+
+    fn into_property_key(mut self) -> Deserialize<PropKey> {
+        if &(try!(self.peek_type()))[..] == "Identifier" {
+            let id = try!(self.into_identifier());
+            return Ok(PropKeyData::Id(id.value.name.into_string()).tracked(None));
         }
+        match try!(self.into_literal()).value {
+            ExprData::Number(lit) => Ok(PropKeyData::Number(lit).tracked(None)),
+            ExprData::String(val) => Ok(PropKeyData::String(val).tracked(None)),
+            _ => { return type_error("identifier, number literal, or string literal", JsonType::Object); }
+        }
+    }
+
+    fn into_literal(mut self) -> Deserialize<Expr> {
+        let json = try!(self.extract("value"));
+        Ok((match json {
+            Json::Null => ExprData::Null,
+            Json::Boolean(val) => if val { ExprData::True } else { ExprData::False },
+            Json::String(val) => ExprData::String(val),
+            Json::I64(val) => ExprData::Number(NumberLiteral::DecimalInt(format!("{}", val), None)),
+            Json::U64(val) => ExprData::Number(NumberLiteral::DecimalInt(format!("{}", val), None)),
+            Json::F64(val) => {
+                let s = format!("{}", val);
+                let v: Vec<&str> = s.split('.').collect();
+                let int_part = Some(v[0].to_owned());
+                let fract_part = if v.len() > 1 { Some(v[1].to_owned()) } else { None };
+                ExprData::Number(NumberLiteral::Float(int_part, fract_part, None))
+            }
+            Json::Object(_) => {
+                let mut regex = try!(self.extract_object("regex"));
+                let pattern = try!(regex.extract_string("pattern"));
+                let flags = try!(regex.extract_string("flags"));
+                ExprData::RegExp(pattern, flags.chars().collect())
+            }
+            _ => { return type_error("null, number, boolean, string, or object", json_typeof(&json)); }
+        }).tracked(None))
     }
 
     fn into_function(mut self) -> Deserialize<Fun> {
@@ -823,6 +899,7 @@ pub trait ExtractField {
     fn extract_string(&mut self, &'static str) -> Deserialize<String>;
     fn extract_array(&mut self, &'static str) -> Deserialize<json::Array>;
     fn extract_object_array(&mut self, &'static str) -> Deserialize<Vec<Object>>;
+    fn extract_object_opt_array(&mut self, &'static str) -> Deserialize<Vec<Option<Object>>>;
     fn extract_object(&mut self, &'static str) -> Deserialize<Object>;
     fn extract_object_opt(&mut self, &'static str) -> Deserialize<Option<Object>>;
     fn extract_bool(&mut self, &'static str) -> Deserialize<bool>;
@@ -850,6 +927,11 @@ impl ExtractField for json::Object {
     fn extract_object_array(&mut self, name: &'static str) -> Deserialize<Vec<Object>> {
         self.extract(name).and_then(|data| data.into_array())
                           .and_then(|arr| arr.map(|elt| elt.into_object()))
+    }
+
+    fn extract_object_opt_array(&mut self, name: &'static str) -> Deserialize<Vec<Option<Object>>> {
+        self.extract(name).and_then(|data| data.into_array())
+                          .and_then(|arr| arr.map(|elt| elt.into_object_opt()))
     }
 
     fn extract_object(&mut self, name: &'static str) -> Deserialize<Object> {

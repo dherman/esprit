@@ -47,6 +47,58 @@ pub enum Reserved {
     Enum
 }
 
+impl Reserved {
+    pub fn name(&self) -> &'static str {
+        match *self {
+            // 11.6.2 Reserved Words
+            Reserved::Null       => "null",
+            Reserved::True       => "true",
+            Reserved::False      => "false",
+
+            // 11.6.2.1 Keywords
+            Reserved::Break      => "break",
+            Reserved::Case       => "case",
+            Reserved::Catch      => "catch",
+            Reserved::Class      => "class",
+            Reserved::Const      => "const",
+            Reserved::Continue   => "continue",
+            Reserved::Debugger   => "debugger",
+            Reserved::Default    => "default",
+            Reserved::Delete     => "delete",
+            Reserved::Do         => "do",
+            Reserved::Else       => "else",
+            Reserved::Export     => "export",
+            Reserved::Extends    => "extends",
+            Reserved::Finally    => "finally",
+            Reserved::For        => "for",
+            Reserved::Function   => "function",
+            Reserved::If         => "if",
+            Reserved::Import     => "import",
+            Reserved::In         => "in",
+            Reserved::Instanceof => "instanceof",
+            Reserved::New        => "new",
+            Reserved::Return     => "return",
+            Reserved::Super      => "super",
+            Reserved::Switch     => "switch",
+            Reserved::This       => "this",
+            Reserved::Throw      => "throw",
+            Reserved::Try        => "try",
+            Reserved::Typeof     => "typeof",
+            Reserved::Var        => "var",
+            Reserved::Void       => "void",
+            Reserved::While      => "while",
+            Reserved::With       => "with",
+
+            // 11.6.2.2 Future Reserved Words
+            Reserved::Enum       => "enum"
+        }
+    }
+
+    pub fn into_string(self) -> String {
+        format!("{}", self.name())
+    }
+}
+
 // Contextually reserved words and special identifier names.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum Atom {
@@ -55,6 +107,7 @@ pub enum Atom {
     Await,
     Eval,
     From,
+    Get,
     Implements,
     Interface,
     Let,
@@ -63,6 +116,7 @@ pub enum Atom {
     Private,
     Protected,
     Public,
+    Set,
     Static,
     Target,
     Yield
@@ -82,6 +136,7 @@ impl Name {
             "eval"       => Name::Atom(Atom::Eval),
             "async"      => Name::Atom(Atom::Async),
             "from"       => Name::Atom(Atom::From),
+            "get"        => Name::Atom(Atom::Get),
             "implements" => Name::Atom(Atom::Implements),
             "interface"  => Name::Atom(Atom::Interface),
             "let"        => Name::Atom(Atom::Let),
@@ -90,10 +145,18 @@ impl Name {
             "private"    => Name::Atom(Atom::Private),
             "protected"  => Name::Atom(Atom::Protected),
             "public"     => Name::Atom(Atom::Public),
+            "set"        => Name::Atom(Atom::Set),
             "static"     => Name::Atom(Atom::Static),
             "target"     => Name::Atom(Atom::Target),
             "yield"      => Name::Atom(Atom::Yield),
             _            => Name::String(from)
+        }
+    }
+
+    pub fn into_string(self) -> String {
+        match self {
+            Name::Atom(atom) => format!("{}", atom.name()),
+            Name::String(s) => s
         }
     }
 }
@@ -106,6 +169,7 @@ impl Atom {
             Atom::Eval       => "eval",
             Atom::Async      => "async",
             Atom::From       => "from",
+            Atom::Get        => "get",
             Atom::Implements => "implements",
             Atom::Interface  => "interface",
             Atom::Let        => "let",
@@ -114,6 +178,7 @@ impl Atom {
             Atom::Private    => "private",
             Atom::Protected  => "protected",
             Atom::Public     => "public",
+            Atom::Set        => "set",
             Atom::Static     => "static",
             Atom::Target     => "target",
             Atom::Yield      => "yield"
@@ -279,6 +344,45 @@ pub enum NumberLiteral {
     Float(Option<String>, Option<String>, Option<Exp>)
 }
 
+fn format_sign(sign: &Option<Sign>) -> String {
+    match *sign {
+        Some(Sign::Minus) => format!("-"),
+        _ => format!("")
+    }
+}
+
+fn format_int(src: &Option<String>) -> String {
+    match *src {
+        None => format!(""),
+        Some(ref s) => format!("{}", s)
+    }
+}
+
+impl NumberLiteral {
+    pub fn value(&self) -> Option<f64> {
+        match *self {
+            NumberLiteral::DecimalInt(ref mantissa, None) => {
+                let i: Option<i64> = mantissa.parse().ok();
+                i.map(|i| i as f64)
+            }
+            NumberLiteral::DecimalInt(ref mantissa, Some(Exp { ref sign, ref value, .. })) => {
+                let s = format!("{}e{}{}", mantissa, format_sign(sign), value);
+                let i: Option<i64> = s.parse().ok();
+                i.map(|i| i as f64)
+            }
+            NumberLiteral::RadixInt(ref radix, ref src) => {
+                i64::from_str_radix(&src[..], radix.value()).ok().map(|i| i as f64)
+            }
+            NumberLiteral::Float(ref ip, ref fp, None) => {
+                format!("{}.{}", format_int(ip), format_int(fp)).parse().ok()
+            }
+            NumberLiteral::Float(ref ip, ref fp, Some(Exp { ref sign, ref value, .. })) => {
+                format!("{}.{}e{}{}", format_int(ip), format_int(fp), format_sign(sign), value).parse().ok()
+            }
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct Exp {
     pub e: CharCase,
@@ -291,6 +395,16 @@ pub enum Radix {
     Bin(CharCase),
     Oct(Option<CharCase>),
     Hex(CharCase)
+}
+
+impl Radix {
+    pub fn value(&self) -> u32 {
+        match *self {
+            Radix::Bin(_) => 2,
+            Radix::Oct(_) => 8,
+            Radix::Hex(_) => 16
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]

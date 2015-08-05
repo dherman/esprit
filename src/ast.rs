@@ -528,7 +528,7 @@ pub enum ExprData {
     False,
     Null,
     Number(NumberLiteral),
-    RegExp(String),
+    RegExp(String, Vec<char>),
     String(String)
 }
 
@@ -561,8 +561,8 @@ impl PartialEq for ExprData {
             (&ExprData::True, &ExprData::True) => true,
             (&ExprData::False, &ExprData::False) => true,
             (&ExprData::Null, &ExprData::Null) => true,
-            (&ExprData::Number(ref lit_l), &ExprData::Number(ref lit_r)) => lit_l.eq(lit_r),
-            (&ExprData::RegExp(ref lit_l), &ExprData::RegExp(ref lit_r)) => lit_l.eq(lit_r),
+            (&ExprData::Number(ref lit_l), &ExprData::Number(ref lit_r)) => lit_l.value() == lit_r.value(),
+            (&ExprData::RegExp(ref src_l, ref flags_l), &ExprData::RegExp(ref src_r, ref flags_r)) => src_l.eq(src_r) && flags_l.eq(flags_r),
             (&ExprData::String(ref lit_l), &ExprData::String(ref lit_r)) => lit_l.eq(lit_r),
             (_, _) => false
         }
@@ -626,7 +626,7 @@ impl Untrack for ExprData {
             ExprData::False                                          => { }
             ExprData::Null                                           => { }
             ExprData::Number(_)                                      => { } // FIXME: lit.untrack()
-            ExprData::RegExp(_)                                      => { }
+            ExprData::RegExp(_, _)                                   => { }
             ExprData::String(_)                                      => { }
         }
     }
@@ -662,25 +662,13 @@ impl Prop {
 
 #[derive(Debug, PartialEq)]
 pub enum PropKeyData {
-    Id(Id),
+    Id(String),
     String(String),
-    Number(f64),
-    Null,
-    True,
-    False
+    Number(NumberLiteral)
 }
 
 impl Untrack for PropKeyData {
-    fn untrack(&mut self) {
-        match *self {
-            PropKeyData::Id(ref mut id)    => { id.untrack(); }
-            PropKeyData::String(_)         => { }
-            PropKeyData::Number(_)         => { }
-            PropKeyData::Null              => { }
-            PropKeyData::True              => { }
-            PropKeyData::False             => { }
-        }
-    }
+    fn untrack(&mut self) { }
 }
 
 pub type PropKey = Tracked<PropKeyData>;
@@ -688,8 +676,8 @@ pub type PropKey = Tracked<PropKeyData>;
 #[derive(Debug, PartialEq)]
 pub enum PropValData {
     Init(Expr),
-    Get(Vec<Stmt>),
-    Set(Patt, Vec<Stmt>)
+    Get(Vec<StmtListItem>),
+    Set(Patt, Vec<StmtListItem>)
 }
 
 impl Untrack for PropValData {
