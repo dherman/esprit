@@ -1,6 +1,6 @@
 [package]
 
-name = "kora"
+name = "esprit"
 version = "0.0.1"
 authors = ["Dave Herman <dherman@mozilla.com>"]
 build = "build.rs"

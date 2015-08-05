@@ -1,7 +1,7 @@
 {
   "description": "Build script for generating parser tests.",
-  "homepage": "https://github.com/dherman/kora",
-  "repository": "https://github.com/dherman/kora",
+  "homepage": "https://github.com/dherman/esprit",
+  "repository": "https://github.com/dherman/esprit",
   "dependencies": {
     "esprima": "2.2.0",
     "js-beautify": "1.5.5"
