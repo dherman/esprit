@@ -1535,8 +1535,18 @@ impl<I> Parser<I>
     //   IdentifierReference Suffix* PostfixOperator?
     fn id_unary_expression(&mut self, id: Id) -> Parse<Expr> {
         let location = id.location();
-        Ok(ExprData::Id(id).tracked(location))
-        // FIXME: implement suffixes, postfix operator
+        let mut result = ExprData::Id(id).tracked(location);
+        let suffixes = try!(self.suffixes());
+        for suffix in suffixes {
+            result = suffix.append_to(result);
+        }
+        if let Some(postfix) = try!(self.match_postfix_operator_opt()) {
+            result = match postfix {
+                Postfix::Inc(location) => ExprData::PostInc(Box::new(result)).tracked(Some(location)),
+                Postfix::Dec(location) => ExprData::PostDec(Box::new(result)).tracked(Some(location))
+            };
+        }
+        Ok(result)
     }
 
     // UnaryExpression ::=
@@ -1626,17 +1636,17 @@ impl<I> Parser<I>
     //   YieldPrefix* UnaryExpression (Infix UnaryExpression)*
     fn assignment_expression(&mut self) -> Parse<Expr> {
         let left = try!(self.unary_expression());
-        self.infix_expression(left)
+        self.more_infix_expressions(left)
     }
 
     // IDAssignmentExpression ::=
     //   IDUnaryExpression (Infix UnaryExpression)*
     fn id_assignment_expression(&mut self, id: Id) -> Parse<Expr> {
         let left = try!(self.id_unary_expression(id));
-        self.infix_expression(left)
+        self.more_infix_expressions(left)
     }
 
-    fn infix_expression(&mut self, left: Expr) -> Parse<Expr> {
+    fn more_infix_expressions(&mut self, left: Expr) -> Parse<Expr> {
         let mut stack = Stack::new();
         let mut operand = left;
         while let Some(op) = try!(self.match_infix()) {
@@ -1673,6 +1683,17 @@ impl<I> Parser<I>
     //   AssignmentExpression ("," AssignmentExpression)*
     fn expression(&mut self) -> Parse<Expr> {
         let first = try!(self.assignment_expression());
+        self.more_expressions(first)
+    }
+
+    // IDExpression ::=
+    //   IDAssignmentExpression ("," AssignmentExpression)*
+    fn id_expression(&mut self, id: Id) -> Parse<Expr> {
+        let first = try!(self.id_assignment_expression(id));
+        self.more_expressions(first)
+    }
+
+    fn more_expressions(&mut self, first: Expr) -> Parse<Expr> {
         if try!(self.peek()).value != TokenData::Comma {
             return Ok(first);
         }
@@ -1683,13 +1704,6 @@ impl<I> Parser<I>
         let location = self.vec_span(&elts);
         Ok(ExprData::Seq(elts).tracked(location))
     }
-
-    // IDExpression ::=
-    //   IDAssignmentExpression ("," AssignmentExpression)*
-    fn id_expression(&mut self, id: Id) -> Parse<Expr> {
-        self.id_assignment_expression(id)
-    }
-
 }
 
 #[cfg(test)]

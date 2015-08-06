@@ -5614,4 +5614,1005 @@
       }
     }]
   }
+}, {
+  "source": "x;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "Identifier",
+        "name": "x"
+      }
+    }]
+  }
+}, {
+  "source": "x.y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "MemberExpression",
+        "computed": false,
+        "object": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "property": {
+          "type": "Identifier",
+          "name": "y"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x.y.z;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "MemberExpression",
+        "computed": false,
+        "object": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "Identifier",
+            "name": "x"
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "property": {
+          "type": "Identifier",
+          "name": "z"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x();",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "CallExpression",
+        "callee": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "arguments": []
+      }
+    }]
+  }
+}, {
+  "source": "x.y();",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "CallExpression",
+        "callee": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "Identifier",
+            "name": "x"
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "arguments": []
+      }
+    }]
+  }
+}, {
+  "source": "x.y.z();",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "CallExpression",
+        "callee": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "MemberExpression",
+            "computed": false,
+            "object": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "y"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "z"
+          }
+        },
+        "arguments": []
+      }
+    }]
+  }
+}, {
+  "source": "x[a];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "MemberExpression",
+        "computed": true,
+        "object": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "property": {
+          "type": "Identifier",
+          "name": "a"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x[a][b];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "MemberExpression",
+        "computed": true,
+        "object": {
+          "type": "MemberExpression",
+          "computed": true,
+          "object": {
+            "type": "Identifier",
+            "name": "x"
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "a"
+          }
+        },
+        "property": {
+          "type": "Identifier",
+          "name": "b"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x[a]();",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "CallExpression",
+        "callee": {
+          "type": "MemberExpression",
+          "computed": true,
+          "object": {
+            "type": "Identifier",
+            "name": "x"
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "a"
+          }
+        },
+        "arguments": []
+      }
+    }]
+  }
+}, {
+  "source": "x[a][b]();",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "CallExpression",
+        "callee": {
+          "type": "MemberExpression",
+          "computed": true,
+          "object": {
+            "type": "MemberExpression",
+            "computed": true,
+            "object": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "a"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "b"
+          }
+        },
+        "arguments": []
+      }
+    }]
+  }
+}, {
+  "source": "x.y.z[a][b]();",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "CallExpression",
+        "callee": {
+          "type": "MemberExpression",
+          "computed": true,
+          "object": {
+            "type": "MemberExpression",
+            "computed": true,
+            "object": {
+              "type": "MemberExpression",
+              "computed": false,
+              "object": {
+                "type": "MemberExpression",
+                "computed": false,
+                "object": {
+                  "type": "Identifier",
+                  "name": "x"
+                },
+                "property": {
+                  "type": "Identifier",
+                  "name": "y"
+                }
+              },
+              "property": {
+                "type": "Identifier",
+                "name": "z"
+              }
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "a"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "b"
+          }
+        },
+        "arguments": []
+      }
+    }]
+  }
+}, {
+  "source": "x().y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "MemberExpression",
+        "computed": false,
+        "object": {
+          "type": "CallExpression",
+          "callee": {
+            "type": "Identifier",
+            "name": "x"
+          },
+          "arguments": []
+        },
+        "property": {
+          "type": "Identifier",
+          "name": "y"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x().y.z;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "MemberExpression",
+        "computed": false,
+        "object": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "CallExpression",
+            "callee": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "arguments": []
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "property": {
+          "type": "Identifier",
+          "name": "z"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x()[a];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "MemberExpression",
+        "computed": true,
+        "object": {
+          "type": "CallExpression",
+          "callee": {
+            "type": "Identifier",
+            "name": "x"
+          },
+          "arguments": []
+        },
+        "property": {
+          "type": "Identifier",
+          "name": "a"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x()[a][b];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "MemberExpression",
+        "computed": true,
+        "object": {
+          "type": "MemberExpression",
+          "computed": true,
+          "object": {
+            "type": "CallExpression",
+            "callee": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "arguments": []
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "a"
+          }
+        },
+        "property": {
+          "type": "Identifier",
+          "name": "b"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x()[a].y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "MemberExpression",
+        "computed": false,
+        "object": {
+          "type": "MemberExpression",
+          "computed": true,
+          "object": {
+            "type": "CallExpression",
+            "callee": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "arguments": []
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "a"
+          }
+        },
+        "property": {
+          "type": "Identifier",
+          "name": "y"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x()[a].y.z;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "MemberExpression",
+        "computed": false,
+        "object": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "MemberExpression",
+            "computed": true,
+            "object": {
+              "type": "CallExpression",
+              "callee": {
+                "type": "Identifier",
+                "name": "x"
+              },
+              "arguments": []
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "a"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "property": {
+          "type": "Identifier",
+          "name": "z"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x()[a][b].y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "MemberExpression",
+        "computed": false,
+        "object": {
+          "type": "MemberExpression",
+          "computed": true,
+          "object": {
+            "type": "MemberExpression",
+            "computed": true,
+            "object": {
+              "type": "CallExpression",
+              "callee": {
+                "type": "Identifier",
+                "name": "x"
+              },
+              "arguments": []
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "a"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "b"
+          }
+        },
+        "property": {
+          "type": "Identifier",
+          "name": "y"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x()[a][b].y.z;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "MemberExpression",
+        "computed": false,
+        "object": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "MemberExpression",
+            "computed": true,
+            "object": {
+              "type": "MemberExpression",
+              "computed": true,
+              "object": {
+                "type": "CallExpression",
+                "callee": {
+                  "type": "Identifier",
+                  "name": "x"
+                },
+                "arguments": []
+              },
+              "property": {
+                "type": "Identifier",
+                "name": "a"
+              }
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "b"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "property": {
+          "type": "Identifier",
+          "name": "z"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x++;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "UpdateExpression",
+        "operator": "++",
+        "argument": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "prefix": false
+      }
+    }]
+  }
+}, {
+  "source": "x.y++;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "UpdateExpression",
+        "operator": "++",
+        "argument": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "Identifier",
+            "name": "x"
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "prefix": false
+      }
+    }]
+  }
+}, {
+  "source": "x.y.z++;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "UpdateExpression",
+        "operator": "++",
+        "argument": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "MemberExpression",
+            "computed": false,
+            "object": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "y"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "z"
+          }
+        },
+        "prefix": false
+      }
+    }]
+  }
+}, {
+  "source": "x[a]++;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "UpdateExpression",
+        "operator": "++",
+        "argument": {
+          "type": "MemberExpression",
+          "computed": true,
+          "object": {
+            "type": "Identifier",
+            "name": "x"
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "a"
+          }
+        },
+        "prefix": false
+      }
+    }]
+  }
+}, {
+  "source": "x[a][b]++;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "UpdateExpression",
+        "operator": "++",
+        "argument": {
+          "type": "MemberExpression",
+          "computed": true,
+          "object": {
+            "type": "MemberExpression",
+            "computed": true,
+            "object": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "a"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "b"
+          }
+        },
+        "prefix": false
+      }
+    }]
+  }
+}, {
+  "source": "x().y++;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "UpdateExpression",
+        "operator": "++",
+        "argument": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "CallExpression",
+            "callee": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "arguments": []
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "prefix": false
+      }
+    }]
+  }
+}, {
+  "source": "x().y.z++;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "UpdateExpression",
+        "operator": "++",
+        "argument": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "MemberExpression",
+            "computed": false,
+            "object": {
+              "type": "CallExpression",
+              "callee": {
+                "type": "Identifier",
+                "name": "x"
+              },
+              "arguments": []
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "y"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "z"
+          }
+        },
+        "prefix": false
+      }
+    }]
+  }
+}, {
+  "source": "x()[a]++;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "UpdateExpression",
+        "operator": "++",
+        "argument": {
+          "type": "MemberExpression",
+          "computed": true,
+          "object": {
+            "type": "CallExpression",
+            "callee": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "arguments": []
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "a"
+          }
+        },
+        "prefix": false
+      }
+    }]
+  }
+}, {
+  "source": "x()[a][b]++;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "UpdateExpression",
+        "operator": "++",
+        "argument": {
+          "type": "MemberExpression",
+          "computed": true,
+          "object": {
+            "type": "MemberExpression",
+            "computed": true,
+            "object": {
+              "type": "CallExpression",
+              "callee": {
+                "type": "Identifier",
+                "name": "x"
+              },
+              "arguments": []
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "a"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "b"
+          }
+        },
+        "prefix": false
+      }
+    }]
+  }
+}, {
+  "source": "x()[a].y++;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "UpdateExpression",
+        "operator": "++",
+        "argument": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "MemberExpression",
+            "computed": true,
+            "object": {
+              "type": "CallExpression",
+              "callee": {
+                "type": "Identifier",
+                "name": "x"
+              },
+              "arguments": []
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "a"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "prefix": false
+      }
+    }]
+  }
+}, {
+  "source": "x()[a].y.z++;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "UpdateExpression",
+        "operator": "++",
+        "argument": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "MemberExpression",
+            "computed": false,
+            "object": {
+              "type": "MemberExpression",
+              "computed": true,
+              "object": {
+                "type": "CallExpression",
+                "callee": {
+                  "type": "Identifier",
+                  "name": "x"
+                },
+                "arguments": []
+              },
+              "property": {
+                "type": "Identifier",
+                "name": "a"
+              }
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "y"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "z"
+          }
+        },
+        "prefix": false
+      }
+    }]
+  }
+}, {
+  "source": "x()[a][b].y++;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "UpdateExpression",
+        "operator": "++",
+        "argument": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "MemberExpression",
+            "computed": true,
+            "object": {
+              "type": "MemberExpression",
+              "computed": true,
+              "object": {
+                "type": "CallExpression",
+                "callee": {
+                  "type": "Identifier",
+                  "name": "x"
+                },
+                "arguments": []
+              },
+              "property": {
+                "type": "Identifier",
+                "name": "a"
+              }
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "b"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "prefix": false
+      }
+    }]
+  }
+}, {
+  "source": "x()[a][b].y.z++;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "UpdateExpression",
+        "operator": "++",
+        "argument": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "MemberExpression",
+            "computed": false,
+            "object": {
+              "type": "MemberExpression",
+              "computed": true,
+              "object": {
+                "type": "MemberExpression",
+                "computed": true,
+                "object": {
+                  "type": "CallExpression",
+                  "callee": {
+                    "type": "Identifier",
+                    "name": "x"
+                  },
+                  "arguments": []
+                },
+                "property": {
+                  "type": "Identifier",
+                  "name": "a"
+                }
+              },
+              "property": {
+                "type": "Identifier",
+                "name": "b"
+              }
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "y"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "z"
+          }
+        },
+        "prefix": false
+      }
+    }]
+  }
 }]
