@@ -211,7 +211,7 @@ impl Token {
             TokenData::Reserved(Reserved::Instanceof) => Some(BinopTag::Instanceof.tracked(self.location())),
             TokenData::Reserved(Reserved::In) => {
                 if allow_in {
-                    Some(BinopTag::Instanceof.tracked(self.location()))
+                    Some(BinopTag::In.tracked(self.location()))
                 } else {
                     None
                 }

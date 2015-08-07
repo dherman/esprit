@@ -86,6 +86,9 @@
   "for (let foo=null, bar=null in quux);": false,
   "for (let foo, bar in quux);": false,
 
+  "for (var foo in x in y);": true,
+  "for (let foo in x in y);": true,
+
   "foo: for(;;) { continue foo; }": true,
   "foo: for(;;) { continue bar; }": false,
   "for(;;) { continue; }": true,
@@ -186,6 +189,8 @@
   "var x = true;": true,
   "var x = false;": true,
 
+  "var x = this;": true,
+
   "var x = 0;": true,
   "var x = 1;": true,
   "var x = 1.0;": true,
@@ -250,6 +255,8 @@
   "var x = {return:1};": true,
   "var x = {throw:1};": true,
 
+  "var x = a ? b : c;": true,
+
   "{}": true,
   "({})": true,
   "{a:1}": true,
@@ -286,6 +293,17 @@
   "x()[a].y++;": true,
   "x()[a].y.z++;": true,
   "x()[a][b].y++;": true,
-  "x()[a][b].y.z++;": true
+  "x()[a][b].y.z++;": true,
+
+  "x in y;": true,
+  "switch (1) { case x in y: }": true,
+  "function f() { return x in y; }": true,
+  "throw x in y;": true,
+  "[x in y];": true,
+  "({ x: a in b })": true,
+  "f(a in b);": true,
+  "new C(a in b);": true,
+  "x[a in b];": true,
+  "x ? a in b : c;": true
 
 }

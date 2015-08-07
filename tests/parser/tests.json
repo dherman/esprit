@@ -1411,6 +1411,78 @@
   "source": "for (let foo, bar in quux);",
   "expected": null
 }, {
+  "source": "for (var foo in x in y);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForInStatement",
+      "left": {
+        "type": "VariableDeclaration",
+        "declarations": [{
+          "type": "VariableDeclarator",
+          "id": {
+            "type": "Identifier",
+            "name": "foo"
+          },
+          "init": null
+        }],
+        "kind": "var"
+      },
+      "right": {
+        "type": "BinaryExpression",
+        "operator": "in",
+        "left": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "right": {
+          "type": "Identifier",
+          "name": "y"
+        }
+      },
+      "body": {
+        "type": "EmptyStatement"
+      },
+      "each": false
+    }]
+  }
+}, {
+  "source": "for (let foo in x in y);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForInStatement",
+      "left": {
+        "type": "VariableDeclaration",
+        "declarations": [{
+          "type": "VariableDeclarator",
+          "id": {
+            "type": "Identifier",
+            "name": "foo"
+          },
+          "init": null
+        }],
+        "kind": "let"
+      },
+      "right": {
+        "type": "BinaryExpression",
+        "operator": "in",
+        "left": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "right": {
+          "type": "Identifier",
+          "name": "y"
+        }
+      },
+      "body": {
+        "type": "EmptyStatement"
+      },
+      "each": false
+    }]
+  }
+}, {
   "source": "foo: for(;;) { continue foo; }",
   "expected": {
     "type": "Program",
@@ -3836,6 +3908,25 @@
     }]
   }
 }, {
+  "source": "var x = this;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ThisExpression"
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
   "source": "var x = 0;",
   "expected": {
     "type": "Program",
@@ -5544,6 +5635,37 @@
     }]
   }
 }, {
+  "source": "var x = a ? b : c;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ConditionalExpression",
+          "test": {
+            "type": "Identifier",
+            "name": "a"
+          },
+          "consequent": {
+            "type": "Identifier",
+            "name": "b"
+          },
+          "alternate": {
+            "type": "Identifier",
+            "name": "c"
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
   "source": "{}",
   "expected": {
     "type": "Program",
@@ -6612,6 +6734,279 @@
           }
         },
         "prefix": false
+      }
+    }]
+  }
+}, {
+  "source": "x in y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "BinaryExpression",
+        "operator": "in",
+        "left": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "right": {
+          "type": "Identifier",
+          "name": "y"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "switch (1) { case x in y: }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "SwitchStatement",
+      "discriminant": {
+        "type": "Literal",
+        "value": 1,
+        "raw": "1"
+      },
+      "cases": [{
+        "type": "SwitchCase",
+        "test": {
+          "type": "BinaryExpression",
+          "operator": "in",
+          "left": {
+            "type": "Identifier",
+            "name": "x"
+          },
+          "right": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "consequent": []
+      }]
+    }]
+  }
+}, {
+  "source": "function f() { return x in y; }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "FunctionDeclaration",
+      "id": {
+        "type": "Identifier",
+        "name": "f"
+      },
+      "params": [],
+      "defaults": [],
+      "body": {
+        "type": "BlockStatement",
+        "body": [{
+          "type": "ReturnStatement",
+          "argument": {
+            "type": "BinaryExpression",
+            "operator": "in",
+            "left": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "right": {
+              "type": "Identifier",
+              "name": "y"
+            }
+          }
+        }]
+      },
+      "generator": false,
+      "expression": false
+    }]
+  }
+}, {
+  "source": "throw x in y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ThrowStatement",
+      "argument": {
+        "type": "BinaryExpression",
+        "operator": "in",
+        "left": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "right": {
+          "type": "Identifier",
+          "name": "y"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "[x in y];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "ArrayExpression",
+        "elements": [{
+          "type": "BinaryExpression",
+          "operator": "in",
+          "left": {
+            "type": "Identifier",
+            "name": "x"
+          },
+          "right": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        }]
+      }
+    }]
+  }
+}, {
+  "source": "({ x: a in b })",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "ObjectExpression",
+        "properties": [{
+          "type": "Property",
+          "key": {
+            "type": "Identifier",
+            "name": "x"
+          },
+          "computed": false,
+          "value": {
+            "type": "BinaryExpression",
+            "operator": "in",
+            "left": {
+              "type": "Identifier",
+              "name": "a"
+            },
+            "right": {
+              "type": "Identifier",
+              "name": "b"
+            }
+          },
+          "kind": "init",
+          "method": false,
+          "shorthand": false
+        }]
+      }
+    }]
+  }
+}, {
+  "source": "f(a in b);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "CallExpression",
+        "callee": {
+          "type": "Identifier",
+          "name": "f"
+        },
+        "arguments": [{
+          "type": "BinaryExpression",
+          "operator": "in",
+          "left": {
+            "type": "Identifier",
+            "name": "a"
+          },
+          "right": {
+            "type": "Identifier",
+            "name": "b"
+          }
+        }]
+      }
+    }]
+  }
+}, {
+  "source": "new C(a in b);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "NewExpression",
+        "callee": {
+          "type": "Identifier",
+          "name": "C"
+        },
+        "arguments": [{
+          "type": "BinaryExpression",
+          "operator": "in",
+          "left": {
+            "type": "Identifier",
+            "name": "a"
+          },
+          "right": {
+            "type": "Identifier",
+            "name": "b"
+          }
+        }]
+      }
+    }]
+  }
+}, {
+  "source": "x[a in b];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "MemberExpression",
+        "computed": true,
+        "object": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "property": {
+          "type": "BinaryExpression",
+          "operator": "in",
+          "left": {
+            "type": "Identifier",
+            "name": "a"
+          },
+          "right": {
+            "type": "Identifier",
+            "name": "b"
+          }
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x ? a in b : c;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "ConditionalExpression",
+        "test": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "consequent": {
+          "type": "BinaryExpression",
+          "operator": "in",
+          "left": {
+            "type": "Identifier",
+            "name": "a"
+          },
+          "right": {
+            "type": "Identifier",
+            "name": "b"
+          }
+        },
+        "alternate": {
+          "type": "Identifier",
+          "name": "c"
+        }
       }
     }]
   }

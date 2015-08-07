@@ -483,6 +483,7 @@ pub trait IntoNode {
     fn into_function_expression(self) -> Deserialize<Expr>;
     fn into_sequence_expression(self) -> Deserialize<Expr>;
     fn into_object_expression(self) -> Deserialize<Expr>;
+    fn into_conditional_expression(self) -> Deserialize<Expr>;
     fn into_identifier(self) -> Deserialize<Id>;
     fn into_property(self) -> Deserialize<Prop>;
     fn into_property_key(self) -> Deserialize<PropKey>;
@@ -705,8 +706,8 @@ impl IntoNode for Object {
             "FunctionExpression"    => self.into_function_expression(),
             "SequenceExpression"    => self.into_sequence_expression(),
             "ObjectExpression"      => self.into_object_expression(),
-            "ConditionalExpression" => unimplemented!(),
-            "ThisExpression"        => unimplemented!(),
+            "ConditionalExpression" => self.into_conditional_expression(),
+            "ThisExpression"        => Ok(ExprData::This.tracked(None)),
             _                  => { return object_error("expression", self); }
         }
     }
@@ -774,6 +775,13 @@ impl IntoNode for Object {
     fn into_object_expression(mut self) -> Deserialize<Expr> {
         let props = try!(try!(self.extract_object_array("properties")).map(|obj| obj.into_property()));
         Ok(ExprData::Obj(props).tracked(None))
+    }
+
+    fn into_conditional_expression(mut self) -> Deserialize<Expr> {
+        let test = Box::new(try!(self.extract_expression("test")));
+        let cons = Box::new(try!(self.extract_expression("consequent")));
+        let alt = Box::new(try!(self.extract_expression("alternate")));
+        Ok(ExprData::Cond(test, cons, alt).tracked(None))
     }
 
     fn into_binary_expression(mut self) -> Deserialize<Expr> {

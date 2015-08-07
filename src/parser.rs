@@ -555,7 +555,7 @@ impl<I> Parser<I>
 
     fn expression_statement(&mut self) -> Parse<Stmt> {
         let span = self.start();
-        let expr = try!(self.expression());
+        let expr = try!(self.allow_in(true, |this| this.expression()));
         Ok(try!(span.end_with_auto_semi(self, Newline::Required, |semi| StmtData::Expr(expr, semi))))
     }
 
@@ -1065,7 +1065,11 @@ impl<I> Parser<I>
     fn return_statement(&mut self) -> Parse<Stmt> {
         let span = self.start();
         self.reread(TokenData::Reserved(Reserved::Return));
-        let arg = if try!(self.has_arg_same_line()) { Some(try!(self.expression())) } else { None };
+        let arg = if try!(self.has_arg_same_line()) {
+            Some(try!(self.allow_in(true, |this| this.expression())))
+        } else {
+            None
+        };
         let result = try!(span.end_with_auto_semi(self, Newline::Required, |semi| {
             StmtData::Return(arg, semi)
         }));
@@ -1094,7 +1098,7 @@ impl<I> Parser<I>
         if !try!(self.has_arg_same_line()) {
             return Err(ParseError::ThrowArgument(token));
         }
-        let arg = try!(self.expression());
+        let arg = try!(self.allow_in(true, |this| this.expression()));
         span.end_with_auto_semi(self, Newline::Required, |semi| {
             StmtData::Throw(arg, semi)
         })
@@ -1235,7 +1239,7 @@ impl<I> Parser<I>
             return Ok(None);
         }
         // FIXME: ellipsis
-        self.assignment_expression().map(Some) // FIXME: inherited attributes
+        self.allow_in(true, |this| this.assignment_expression().map(Some))
     }
 
     fn object_literal(&mut self, start: Token) -> Parse<Expr> {
@@ -1259,7 +1263,7 @@ impl<I> Parser<I>
 
     fn more_prop_init(&mut self, key: PropKey) -> Parse<Prop> {
         self.reread(TokenData::Colon);
-        let val = try!(self.assignment_expression()); // FIXME: inherited attributes
+        let val = try!(self.allow_in(true, |this| this.assignment_expression()));
         let key_location = key.location();
         let val_location = val.location();
         Ok((PropData {
@@ -1435,7 +1439,7 @@ impl<I> Parser<I>
     // Argument ::= "..."? AssignmentExpression
     fn argument(&mut self) -> Parse<Expr> {
         // FIXME: if let ellipsis = try!(self.matches(TokenData::Ellipsis)) { ... }
-        self.assignment_expression() // FIXME: inherited attributes
+        self.allow_in(true, |this| this.assignment_expression())
     }
 
     // Arguments ::= "(" Argument*[","] ")"
@@ -1476,7 +1480,7 @@ impl<I> Parser<I>
 
     fn deref_brack(&mut self) -> Parse<Deref> {
         self.reread(TokenData::LBrack);
-        let expr = try!(self.expression()); // FIXME: inherited attributes
+        let expr = try!(self.allow_in(true, |this| this.expression()));
         let end = try!(self.expect(TokenData::RBrack));
         Ok(Deref::Brack(expr, end))
     }
@@ -1659,7 +1663,7 @@ impl<I> Parser<I>
 
     fn match_infix(&mut self) -> Parse<Option<Infix>> {
         if try!(self.matches(TokenData::Question)) {
-            let cons = try!(self.assignment_expression()); // FIXME: inherited attributes
+            let cons = try!(self.allow_in(true, |this| this.assignment_expression()));
             try!(self.expect(TokenData::Colon));
             return Ok(Some(Infix::Cond(cons)));
         }
