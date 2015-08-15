@@ -126,9 +126,19 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         Ok(self.lookahead.peek_token())
     }
 
+    pub fn repeek_token(&mut self) -> &Token {
+        debug_assert!(!self.lookahead.is_empty());
+        self.lookahead.peek_token()
+    }
+
     pub fn skip_token(&mut self) -> Lex<()> {
         try!(self.read_token());
         Ok(())
+    }
+
+    pub fn reread_token(&mut self) -> Token {
+        debug_assert!(!self.lookahead.is_empty());
+        self.lookahead.read_token()
     }
 
     pub fn read_token(&mut self) -> Lex<Token> {

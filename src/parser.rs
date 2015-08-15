@@ -325,8 +325,30 @@ impl<I> Parser<I>
         self.lexer.read_token().map_err(ParseError::LexError)
     }
 
+    fn read_op(&mut self) -> Parse<Token> {
+        let mut cx = self.shared_cx.get();
+        cx.operator = true;
+        self.shared_cx.set(cx);
+        let result = self.lexer.read_token().map_err(ParseError::LexError);
+        let mut cx = self.shared_cx.get();
+        cx.operator = false;
+        self.shared_cx.set(cx);
+        result
+    }
+
     fn peek(&mut self) -> Parse<&Token> {
         self.lexer.peek_token().map_err(ParseError::LexError)
+    }
+
+    fn peek_op(&mut self) -> Parse<&Token> {
+        let mut cx = self.shared_cx.get();
+        cx.operator = true;
+        self.shared_cx.set(cx);
+        let result = self.lexer.peek_token().map_err(ParseError::LexError);
+        let mut cx = self.shared_cx.get();
+        cx.operator = false;
+        self.shared_cx.set(cx);
+        result
     }
 
     fn expect(&mut self, expected: TokenData) -> Parse<Token> {
@@ -355,9 +377,20 @@ impl<I> Parser<I>
         Ok(true)
     }
 
+    fn matches_op(&mut self, expected: TokenData) -> Parse<bool> {
+        let token = try!(self.read_op());
+        if token.value != expected {
+            self.lexer.unread_token(token);
+            return Ok(false);
+        }
+        Ok(true)
+    }
+
     fn reread(&mut self, expected: TokenData) -> Token {
-        debug_assert!(self.peek().map(|actual| actual.value == expected).unwrap_or(false));
-        self.read().unwrap()
+        debug_assert!(self.lexer.repeek_token().value == expected);
+        self.lexer.reread_token()
+        // debug_assert!(self.peek().map(|actual| actual.value == expected).unwrap_or(false));
+        // self.read().unwrap()
     }
 
     fn has_arg_same_line(&mut self) -> Parse<bool> {
@@ -495,7 +528,7 @@ impl<I> Parser<I>
     }
 
     fn id_statement(&mut self, id: Id) -> Parse<Stmt> {
-        match try!(self.peek()).value {
+        match try!(self.peek_op()).value {
             TokenData::Colon => self.labelled_statement(id),
             _                => {
                 let span = self.start();
@@ -513,7 +546,7 @@ impl<I> Parser<I>
 
         while let TokenData::Identifier(_) = try!(self.peek()).value {
             let id = self.id().ok().unwrap();
-            if !try!(self.matches(TokenData::Colon)) {
+            if !try!(self.matches_op(TokenData::Colon)) {
                 expr_id = Some(id);
                 break;
             }
@@ -1392,7 +1425,7 @@ impl<I> Parser<I>
         }
         let mut args_lists = Vec::new();
         for _ in 0..news.len() {
-            if try!(self.peek()).value != TokenData::LParen {
+            if try!(self.peek_op()).value != TokenData::LParen {
                 break;
             }
             args_lists.push(try!(self.arguments()));
@@ -1427,7 +1460,7 @@ impl<I> Parser<I>
     //   Deref
     //   Arguments
     fn suffix_opt(&mut self) -> Parse<Option<Suffix>> {
-        match try!(self.peek()).value {
+        match try!(self.peek_op()).value {
             TokenData::Dot    => self.deref_dot().map(|deref| Some(Suffix::Deref(deref))),
             TokenData::LBrack => self.deref_brack().map(|deref| Some(Suffix::Deref(deref))),
             TokenData::LParen => self.arguments().map(|args| Some(Suffix::Arguments(args))),
@@ -1463,15 +1496,15 @@ impl<I> Parser<I>
     //   "[" Expression "]"
     //   "." IdentifierName
     fn deref(&mut self) -> Parse<Deref> {
-        match try!(self.peek()).value {
+        match try!(self.peek_op()).value {
             TokenData::LBrack => self.deref_brack(),
             TokenData::Dot    => self.deref_dot(),
-            _ => Err(ParseError::UnexpectedToken(try!(self.read())))
+            _ => Err(ParseError::UnexpectedToken(try!(self.read_op())))
         }
     }
 
     fn deref_opt(&mut self) -> Parse<Option<Deref>> {
-        match try!(self.peek()).value {
+        match try!(self.peek_op()).value {
             TokenData::LBrack => self.deref_brack().map(Some),
             TokenData::Dot    => self.deref_dot().map(Some),
             _ => Ok(None)
@@ -1518,7 +1551,7 @@ impl<I> Parser<I>
             news.push(self.reread(TokenData::Reserved(Reserved::New)));
         }
         if news.len() > 0 {
-            if try!(self.matches(TokenData::Dot)) {
+            if try!(self.matches_op(TokenData::Dot)) {
                 let target = try!(self.expect(TokenData::Identifier(Name::Atom(Atom::Target))));
                 let new = news.pop();
                 let new_target = ExprData::NewTarget.tracked(span(&new, &target));
@@ -1623,7 +1656,7 @@ impl<I> Parser<I>
     //   [no line terminator] "++"
     //   [no line terminator] "--"
     fn match_postfix_operator_opt(&mut self) -> Parse<Option<Postfix>> {
-        let next = try!(self.read());
+        let next = try!(self.read_op());
         if !next.newline {
             match next.value {
                 TokenData::Inc => { return Ok(Some(Postfix::Inc(next.location))); }
@@ -1662,7 +1695,7 @@ impl<I> Parser<I>
     }
 
     fn match_infix(&mut self) -> Parse<Option<Infix>> {
-        if try!(self.matches(TokenData::Question)) {
+        if try!(self.matches_op(TokenData::Question)) {
             let cons = try!(self.allow_in(true, |this| this.assignment_expression()));
             try!(self.expect(TokenData::Colon));
             return Ok(Some(Infix::Cond(cons)));
@@ -1671,7 +1704,7 @@ impl<I> Parser<I>
     }
 
     fn match_binary_infix(&mut self) -> Parse<Option<Infix>> {
-        let token = try!(self.read());
+        let token = try!(self.read_op());
         let result = token.to_binop(self.parser_cx.allow_in).map_or_else(|| {
             token.to_logop().map_or_else(|| {
                 token.to_assop().map(Infix::Assop)
@@ -1732,8 +1765,9 @@ mod tests {
 
     #[test]
     pub fn go() {
-        let tests = deserialize_parser_tests(include_str!("../tests/parser/tests.json"));
-        for ParserTest { source, expected, .. } in tests {
+        //let integration_tests = deserialize_parser_tests(include_str!("../tests/parser/integrations.json"));
+        let unit_tests = deserialize_parser_tests(include_str!("../tests/parser/unit.json"));
+        for ParserTest { source, expected, .. } in unit_tests {
             let result = parse(&source);
             match (result, expected) {
                 (Ok(mut actual_ast), Some(expected_ast)) => {

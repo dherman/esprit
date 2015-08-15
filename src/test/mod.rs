@@ -126,3 +126,7 @@ pub fn deserialize_parser_tests(src: &str) -> Vec<ParserTest> {
         Err(err) => panic!(format!("parser test failed to deserialize: {:?}", err))
     }
 }
+
+pub fn deserialize_parser_integration_tests(modpath: &str) -> () {
+    
+}

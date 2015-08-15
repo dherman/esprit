@@ -27,6 +27,7 @@ pub enum DeserializeError {
     InvalidString(&'static str, String),
     InvalidArray(&'static str, json::Array),
     InvalidObject(&'static str, json::Object),
+    InvalidLHS(&'static str),
     UninitializedPattern(CompoundPatt),
     UnexpectedInitializer(Expr)
 }
@@ -791,8 +792,11 @@ impl IntoNode for Object {
         Ok(ExprData::Binop(op, Box::new(left), Box::new(right)).tracked(None))
     }
 
-    fn into_assignment_expression(self) -> Deserialize<Expr> {
-        unimplemented!()
+    fn into_assignment_expression(mut self) -> Deserialize<Expr> {
+        let op = try!(try!(self.extract_string("operator")).into_assop());
+        let left = try!(self.extract_assignment_pattern("left"));
+        let right = try!(self.extract_expression("right"));
+        Ok(ExprData::Assign(op, left, Box::new(right)).tracked(None))
     }
 
     fn into_logical_expression(mut self) -> Deserialize<Expr> {
@@ -913,6 +917,7 @@ pub trait ExtractField {
     fn extract_bool(&mut self, &'static str) -> Deserialize<bool>;
     fn extract_id(&mut self, &'static str) -> Deserialize<Id>;
     fn extract_id_opt(&mut self, &'static str) -> Deserialize<Option<Id>>;
+    fn extract_assignment_pattern(&mut self, &'static str) -> Deserialize<APatt>;
     fn peek_type(&self) -> Deserialize<&String>;
 }
 
@@ -963,6 +968,14 @@ impl ExtractField for json::Object {
             None      => None,
             Some(obj) => Some(try!(obj.into_identifier()))
         })
+    }
+
+    fn extract_assignment_pattern(&mut self, name: &'static str) -> Deserialize<APatt> {
+        let expr = try!(self.extract_expression(name));
+        match expr.into_assignment_pattern() {
+            Ok(patt) => Ok(patt),
+            _ => Err(DeserializeError::InvalidLHS(name))
+        }
     }
 
     fn peek_type(&self) -> Deserialize<&String> {

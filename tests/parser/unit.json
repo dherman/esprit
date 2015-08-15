@@ -1,0 +1,7661 @@
+[{
+  "source": "",
+  "expected": {
+    "type": "Program",
+    "body": []
+  }
+}, {
+  "source": "var q = null;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "q"
+        },
+        "init": {
+          "type": "Literal",
+          "value": null,
+          "raw": "null"
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var a = null;\nvar b = null;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "a"
+        },
+        "init": {
+          "type": "Literal",
+          "value": null,
+          "raw": "null"
+        }
+      }],
+      "kind": "var"
+    }, {
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "b"
+        },
+        "init": {
+          "type": "Literal",
+          "value": null,
+          "raw": "null"
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var a = null\nvar b = null;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "a"
+        },
+        "init": {
+          "type": "Literal",
+          "value": null,
+          "raw": "null"
+        }
+      }],
+      "kind": "var"
+    }, {
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "b"
+        },
+        "init": {
+          "type": "Literal",
+          "value": null,
+          "raw": "null"
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var a = null\n  , b = null;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "a"
+        },
+        "init": {
+          "type": "Literal",
+          "value": null,
+          "raw": "null"
+        }
+      }, {
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "b"
+        },
+        "init": {
+          "type": "Literal",
+          "value": null,
+          "raw": "null"
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": ";",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "EmptyStatement"
+    }]
+  }
+}, {
+  "source": "if (null);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "IfStatement",
+      "test": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "consequent": {
+        "type": "EmptyStatement"
+      },
+      "alternate": null
+    }]
+  }
+}, {
+  "source": "if (null) if (null); else;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "IfStatement",
+      "test": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "consequent": {
+        "type": "IfStatement",
+        "test": {
+          "type": "Literal",
+          "value": null,
+          "raw": "null"
+        },
+        "consequent": {
+          "type": "EmptyStatement"
+        },
+        "alternate": {
+          "type": "EmptyStatement"
+        }
+      },
+      "alternate": null
+    }]
+  }
+}, {
+  "source": "do {} while (null);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "DoWhileStatement",
+      "body": {
+        "type": "BlockStatement",
+        "body": []
+      },
+      "test": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      }
+    }]
+  }
+}, {
+  "source": "do {} while (null)\n{}",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "DoWhileStatement",
+      "body": {
+        "type": "BlockStatement",
+        "body": []
+      },
+      "test": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      }
+    }, {
+      "type": "BlockStatement",
+      "body": []
+    }]
+  }
+}, {
+  "source": "do {} while (null) {}",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "DoWhileStatement",
+      "body": {
+        "type": "BlockStatement",
+        "body": []
+      },
+      "test": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      }
+    }, {
+      "type": "BlockStatement",
+      "body": []
+    }]
+  }
+}, {
+  "source": "function foo() { return null; }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "FunctionDeclaration",
+      "id": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "params": [],
+      "defaults": [],
+      "body": {
+        "type": "BlockStatement",
+        "body": [{
+          "type": "ReturnStatement",
+          "argument": {
+            "type": "Literal",
+            "value": null,
+            "raw": "null"
+          }
+        }]
+      },
+      "generator": false,
+      "expression": false
+    }]
+  }
+}, {
+  "source": "function foo() { return null }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "FunctionDeclaration",
+      "id": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "params": [],
+      "defaults": [],
+      "body": {
+        "type": "BlockStatement",
+        "body": [{
+          "type": "ReturnStatement",
+          "argument": {
+            "type": "Literal",
+            "value": null,
+            "raw": "null"
+          }
+        }]
+      },
+      "generator": false,
+      "expression": false
+    }]
+  }
+}, {
+  "source": "function foo() { return null\n}",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "FunctionDeclaration",
+      "id": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "params": [],
+      "defaults": [],
+      "body": {
+        "type": "BlockStatement",
+        "body": [{
+          "type": "ReturnStatement",
+          "argument": {
+            "type": "Literal",
+            "value": null,
+            "raw": "null"
+          }
+        }]
+      },
+      "generator": false,
+      "expression": false
+    }]
+  }
+}, {
+  "source": "function foo() { return }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "FunctionDeclaration",
+      "id": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "params": [],
+      "defaults": [],
+      "body": {
+        "type": "BlockStatement",
+        "body": [{
+          "type": "ReturnStatement",
+          "argument": null
+        }]
+      },
+      "generator": false,
+      "expression": false
+    }]
+  }
+}, {
+  "source": "function foo() { return\n}",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "FunctionDeclaration",
+      "id": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "params": [],
+      "defaults": [],
+      "body": {
+        "type": "BlockStatement",
+        "body": [{
+          "type": "ReturnStatement",
+          "argument": null
+        }]
+      },
+      "generator": false,
+      "expression": false
+    }]
+  }
+}, {
+  "source": "null;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      }
+    }]
+  }
+}, {
+  "source": "null\n",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      }
+    }]
+  }
+}, {
+  "source": "null",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      }
+    }]
+  }
+}, {
+  "source": "while (null);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "WhileStatement",
+      "test": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "while (null) { }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "WhileStatement",
+      "test": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "body": {
+        "type": "BlockStatement",
+        "body": []
+      }
+    }]
+  }
+}, {
+  "source": "return null;",
+  "expected": null
+}, {
+  "source": "foo:;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "LabeledStatement",
+      "label": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "break;",
+  "expected": null
+}, {
+  "source": "foo: break foo;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "LabeledStatement",
+      "label": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "body": {
+        "type": "BreakStatement",
+        "label": {
+          "type": "Identifier",
+          "name": "foo"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "foo: break bar;",
+  "expected": null
+}, {
+  "source": "break bar;",
+  "expected": null
+}, {
+  "source": "do { break; } while (null);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "DoWhileStatement",
+      "body": {
+        "type": "BlockStatement",
+        "body": [{
+          "type": "BreakStatement",
+          "label": null
+        }]
+      },
+      "test": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      }
+    }]
+  }
+}, {
+  "source": "foo: bar: do { break foo; } while (null);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "LabeledStatement",
+      "label": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "body": {
+        "type": "LabeledStatement",
+        "label": {
+          "type": "Identifier",
+          "name": "bar"
+        },
+        "body": {
+          "type": "DoWhileStatement",
+          "body": {
+            "type": "BlockStatement",
+            "body": [{
+              "type": "BreakStatement",
+              "label": {
+                "type": "Identifier",
+                "name": "foo"
+              }
+            }]
+          },
+          "test": {
+            "type": "Literal",
+            "value": null,
+            "raw": "null"
+          }
+        }
+      }
+    }]
+  }
+}, {
+  "source": "foo: bar: do { break bar; } while (null);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "LabeledStatement",
+      "label": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "body": {
+        "type": "LabeledStatement",
+        "label": {
+          "type": "Identifier",
+          "name": "bar"
+        },
+        "body": {
+          "type": "DoWhileStatement",
+          "body": {
+            "type": "BlockStatement",
+            "body": [{
+              "type": "BreakStatement",
+              "label": {
+                "type": "Identifier",
+                "name": "bar"
+              }
+            }]
+          },
+          "test": {
+            "type": "Literal",
+            "value": null,
+            "raw": "null"
+          }
+        }
+      }
+    }]
+  }
+}, {
+  "source": "do { continue; } while (null);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "DoWhileStatement",
+      "body": {
+        "type": "BlockStatement",
+        "body": [{
+          "type": "ContinueStatement",
+          "label": null
+        }]
+      },
+      "test": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      }
+    }]
+  }
+}, {
+  "source": "foo: do { continue foo; } while (null);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "LabeledStatement",
+      "label": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "body": {
+        "type": "DoWhileStatement",
+        "body": {
+          "type": "BlockStatement",
+          "body": [{
+            "type": "ContinueStatement",
+            "label": {
+              "type": "Identifier",
+              "name": "foo"
+            }
+          }]
+        },
+        "test": {
+          "type": "Literal",
+          "value": null,
+          "raw": "null"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "foo: bar: do { continue foo; } while (null);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "LabeledStatement",
+      "label": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "body": {
+        "type": "LabeledStatement",
+        "label": {
+          "type": "Identifier",
+          "name": "bar"
+        },
+        "body": {
+          "type": "DoWhileStatement",
+          "body": {
+            "type": "BlockStatement",
+            "body": [{
+              "type": "ContinueStatement",
+              "label": {
+                "type": "Identifier",
+                "name": "foo"
+              }
+            }]
+          },
+          "test": {
+            "type": "Literal",
+            "value": null,
+            "raw": "null"
+          }
+        }
+      }
+    }]
+  }
+}, {
+  "source": "foo: bar: do { continue bar; } while (null);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "LabeledStatement",
+      "label": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "body": {
+        "type": "LabeledStatement",
+        "label": {
+          "type": "Identifier",
+          "name": "bar"
+        },
+        "body": {
+          "type": "DoWhileStatement",
+          "body": {
+            "type": "BlockStatement",
+            "body": [{
+              "type": "ContinueStatement",
+              "label": {
+                "type": "Identifier",
+                "name": "bar"
+              }
+            }]
+          },
+          "test": {
+            "type": "Literal",
+            "value": null,
+            "raw": "null"
+          }
+        }
+      }
+    }]
+  }
+}, {
+  "source": "while (null) { break; }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "WhileStatement",
+      "test": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "body": {
+        "type": "BlockStatement",
+        "body": [{
+          "type": "BreakStatement",
+          "label": null
+        }]
+      }
+    }]
+  }
+}, {
+  "source": "foo: while (null) { break foo; }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "LabeledStatement",
+      "label": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "body": {
+        "type": "WhileStatement",
+        "test": {
+          "type": "Literal",
+          "value": null,
+          "raw": "null"
+        },
+        "body": {
+          "type": "BlockStatement",
+          "body": [{
+            "type": "BreakStatement",
+            "label": {
+              "type": "Identifier",
+              "name": "foo"
+            }
+          }]
+        }
+      }
+    }]
+  }
+}, {
+  "source": "while (null) { continue; }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "WhileStatement",
+      "test": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "body": {
+        "type": "BlockStatement",
+        "body": [{
+          "type": "ContinueStatement",
+          "label": null
+        }]
+      }
+    }]
+  }
+}, {
+  "source": "foo: while (null) { continue foo; }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "LabeledStatement",
+      "label": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "body": {
+        "type": "WhileStatement",
+        "test": {
+          "type": "Literal",
+          "value": null,
+          "raw": "null"
+        },
+        "body": {
+          "type": "BlockStatement",
+          "body": [{
+            "type": "ContinueStatement",
+            "label": {
+              "type": "Identifier",
+              "name": "foo"
+            }
+          }]
+        }
+      }
+    }]
+  }
+}, {
+  "source": "continue;",
+  "expected": null
+}, {
+  "source": "foo: continue foo;",
+  "expected": null
+}, {
+  "source": "foo: continue bar;",
+  "expected": null
+}, {
+  "source": "for(;;);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": null,
+      "test": null,
+      "update": null,
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for ( ; ; ) ;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": null,
+      "test": null,
+      "update": null,
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (null;;);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "test": null,
+      "update": null,
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (;null;);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": null,
+      "test": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "update": null,
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (;;null);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": null,
+      "test": null,
+      "update": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (null;null;);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "test": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "update": null,
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (null;;null);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "test": null,
+      "update": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (;null;null);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": null,
+      "test": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "update": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (null;null;null);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "test": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "update": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (foo;;);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "test": null,
+      "update": null,
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (;foo;);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": null,
+      "test": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "update": null,
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (;;foo);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": null,
+      "test": null,
+      "update": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (foo;foo;);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "test": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "update": null,
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (foo;;foo);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "test": null,
+      "update": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (;foo;foo);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": null,
+      "test": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "update": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (foo;foo;foo);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "test": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "update": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (var foo;;);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": {
+        "type": "VariableDeclaration",
+        "declarations": [{
+          "type": "VariableDeclarator",
+          "id": {
+            "type": "Identifier",
+            "name": "foo"
+          },
+          "init": null
+        }],
+        "kind": "var"
+      },
+      "test": null,
+      "update": null,
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (var foo=null;;);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": {
+        "type": "VariableDeclaration",
+        "declarations": [{
+          "type": "VariableDeclarator",
+          "id": {
+            "type": "Identifier",
+            "name": "foo"
+          },
+          "init": {
+            "type": "Literal",
+            "value": null,
+            "raw": "null"
+          }
+        }],
+        "kind": "var"
+      },
+      "test": null,
+      "update": null,
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (var foo=null, bar=null;;);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": {
+        "type": "VariableDeclaration",
+        "declarations": [{
+          "type": "VariableDeclarator",
+          "id": {
+            "type": "Identifier",
+            "name": "foo"
+          },
+          "init": {
+            "type": "Literal",
+            "value": null,
+            "raw": "null"
+          }
+        }, {
+          "type": "VariableDeclarator",
+          "id": {
+            "type": "Identifier",
+            "name": "bar"
+          },
+          "init": {
+            "type": "Literal",
+            "value": null,
+            "raw": "null"
+          }
+        }],
+        "kind": "var"
+      },
+      "test": null,
+      "update": null,
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (let foo;;);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": {
+        "type": "VariableDeclaration",
+        "declarations": [{
+          "type": "VariableDeclarator",
+          "id": {
+            "type": "Identifier",
+            "name": "foo"
+          },
+          "init": null
+        }],
+        "kind": "let"
+      },
+      "test": null,
+      "update": null,
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (let foo=null;;);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": {
+        "type": "VariableDeclaration",
+        "declarations": [{
+          "type": "VariableDeclarator",
+          "id": {
+            "type": "Identifier",
+            "name": "foo"
+          },
+          "init": {
+            "type": "Literal",
+            "value": null,
+            "raw": "null"
+          }
+        }],
+        "kind": "let"
+      },
+      "test": null,
+      "update": null,
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (let foo=null, bar=null;;);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": {
+        "type": "VariableDeclaration",
+        "declarations": [{
+          "type": "VariableDeclarator",
+          "id": {
+            "type": "Identifier",
+            "name": "foo"
+          },
+          "init": {
+            "type": "Literal",
+            "value": null,
+            "raw": "null"
+          }
+        }, {
+          "type": "VariableDeclarator",
+          "id": {
+            "type": "Identifier",
+            "name": "bar"
+          },
+          "init": {
+            "type": "Literal",
+            "value": null,
+            "raw": "null"
+          }
+        }],
+        "kind": "let"
+      },
+      "test": null,
+      "update": null,
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "for (var foo in bar);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForInStatement",
+      "left": {
+        "type": "VariableDeclaration",
+        "declarations": [{
+          "type": "VariableDeclarator",
+          "id": {
+            "type": "Identifier",
+            "name": "foo"
+          },
+          "init": null
+        }],
+        "kind": "var"
+      },
+      "right": {
+        "type": "Identifier",
+        "name": "bar"
+      },
+      "body": {
+        "type": "EmptyStatement"
+      },
+      "each": false
+    }]
+  }
+}, {
+  "source": "for (var foo=null in bar);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForInStatement",
+      "left": {
+        "type": "VariableDeclaration",
+        "declarations": [{
+          "type": "VariableDeclarator",
+          "id": {
+            "type": "Identifier",
+            "name": "foo"
+          },
+          "init": {
+            "type": "Literal",
+            "value": null,
+            "raw": "null"
+          }
+        }],
+        "kind": "var"
+      },
+      "right": {
+        "type": "Identifier",
+        "name": "bar"
+      },
+      "body": {
+        "type": "EmptyStatement"
+      },
+      "each": false
+    }]
+  }
+}, {
+  "source": "for (var foo=null, bar=null in quux);",
+  "expected": null
+}, {
+  "source": "for (var foo, bar in quux);",
+  "expected": null
+}, {
+  "source": "for (let foo in bar);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForInStatement",
+      "left": {
+        "type": "VariableDeclaration",
+        "declarations": [{
+          "type": "VariableDeclarator",
+          "id": {
+            "type": "Identifier",
+            "name": "foo"
+          },
+          "init": null
+        }],
+        "kind": "let"
+      },
+      "right": {
+        "type": "Identifier",
+        "name": "bar"
+      },
+      "body": {
+        "type": "EmptyStatement"
+      },
+      "each": false
+    }]
+  }
+}, {
+  "source": "for (let foo=null in bar);",
+  "expected": null
+}, {
+  "source": "for (let foo=null, bar=null in quux);",
+  "expected": null
+}, {
+  "source": "for (let foo, bar in quux);",
+  "expected": null
+}, {
+  "source": "for (var foo in x in y);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForInStatement",
+      "left": {
+        "type": "VariableDeclaration",
+        "declarations": [{
+          "type": "VariableDeclarator",
+          "id": {
+            "type": "Identifier",
+            "name": "foo"
+          },
+          "init": null
+        }],
+        "kind": "var"
+      },
+      "right": {
+        "type": "BinaryExpression",
+        "operator": "in",
+        "left": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "right": {
+          "type": "Identifier",
+          "name": "y"
+        }
+      },
+      "body": {
+        "type": "EmptyStatement"
+      },
+      "each": false
+    }]
+  }
+}, {
+  "source": "for (let foo in x in y);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForInStatement",
+      "left": {
+        "type": "VariableDeclaration",
+        "declarations": [{
+          "type": "VariableDeclarator",
+          "id": {
+            "type": "Identifier",
+            "name": "foo"
+          },
+          "init": null
+        }],
+        "kind": "let"
+      },
+      "right": {
+        "type": "BinaryExpression",
+        "operator": "in",
+        "left": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "right": {
+          "type": "Identifier",
+          "name": "y"
+        }
+      },
+      "body": {
+        "type": "EmptyStatement"
+      },
+      "each": false
+    }]
+  }
+}, {
+  "source": "foo: for(;;) { continue foo; }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "LabeledStatement",
+      "label": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "body": {
+        "type": "ForStatement",
+        "init": null,
+        "test": null,
+        "update": null,
+        "body": {
+          "type": "BlockStatement",
+          "body": [{
+            "type": "ContinueStatement",
+            "label": {
+              "type": "Identifier",
+              "name": "foo"
+            }
+          }]
+        }
+      }
+    }]
+  }
+}, {
+  "source": "foo: for(;;) { continue bar; }",
+  "expected": null
+}, {
+  "source": "for(;;) { continue; }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": null,
+      "test": null,
+      "update": null,
+      "body": {
+        "type": "BlockStatement",
+        "body": [{
+          "type": "ContinueStatement",
+          "label": null
+        }]
+      }
+    }]
+  }
+}, {
+  "source": "foo: for(;;) { continue; }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "LabeledStatement",
+      "label": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "body": {
+        "type": "ForStatement",
+        "init": null,
+        "test": null,
+        "update": null,
+        "body": {
+          "type": "BlockStatement",
+          "body": [{
+            "type": "ContinueStatement",
+            "label": null
+          }]
+        }
+      }
+    }]
+  }
+}, {
+  "source": "for(;;) { continue foo; }",
+  "expected": null
+}, {
+  "source": "foo: for(var x in y) { continue foo; }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "LabeledStatement",
+      "label": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "body": {
+        "type": "ForInStatement",
+        "left": {
+          "type": "VariableDeclaration",
+          "declarations": [{
+            "type": "VariableDeclarator",
+            "id": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "init": null
+          }],
+          "kind": "var"
+        },
+        "right": {
+          "type": "Identifier",
+          "name": "y"
+        },
+        "body": {
+          "type": "BlockStatement",
+          "body": [{
+            "type": "ContinueStatement",
+            "label": {
+              "type": "Identifier",
+              "name": "foo"
+            }
+          }]
+        },
+        "each": false
+      }
+    }]
+  }
+}, {
+  "source": "foo: for(var x in y) { continue bar; }",
+  "expected": null
+}, {
+  "source": "for(var x in y) { continue; }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForInStatement",
+      "left": {
+        "type": "VariableDeclaration",
+        "declarations": [{
+          "type": "VariableDeclarator",
+          "id": {
+            "type": "Identifier",
+            "name": "x"
+          },
+          "init": null
+        }],
+        "kind": "var"
+      },
+      "right": {
+        "type": "Identifier",
+        "name": "y"
+      },
+      "body": {
+        "type": "BlockStatement",
+        "body": [{
+          "type": "ContinueStatement",
+          "label": null
+        }]
+      },
+      "each": false
+    }]
+  }
+}, {
+  "source": "foo: for(var x in y) { continue; }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "LabeledStatement",
+      "label": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "body": {
+        "type": "ForInStatement",
+        "left": {
+          "type": "VariableDeclaration",
+          "declarations": [{
+            "type": "VariableDeclarator",
+            "id": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "init": null
+          }],
+          "kind": "var"
+        },
+        "right": {
+          "type": "Identifier",
+          "name": "y"
+        },
+        "body": {
+          "type": "BlockStatement",
+          "body": [{
+            "type": "ContinueStatement",
+            "label": null
+          }]
+        },
+        "each": false
+      }
+    }]
+  }
+}, {
+  "source": "for(var x in y) { continue foo; }",
+  "expected": null
+}, {
+  "source": "switch (null) { }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "SwitchStatement",
+      "discriminant": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "cases": []
+    }]
+  }
+}, {
+  "source": "switch (null) { default: }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "SwitchStatement",
+      "discriminant": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "cases": [{
+        "type": "SwitchCase",
+        "test": null,
+        "consequent": []
+      }]
+    }]
+  }
+}, {
+  "source": "switch (null) { default: break; }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "SwitchStatement",
+      "discriminant": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "cases": [{
+        "type": "SwitchCase",
+        "test": null,
+        "consequent": [{
+          "type": "BreakStatement",
+          "label": null
+        }]
+      }]
+    }]
+  }
+}, {
+  "source": "switch (null) { case null: }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "SwitchStatement",
+      "discriminant": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "cases": [{
+        "type": "SwitchCase",
+        "test": {
+          "type": "Literal",
+          "value": null,
+          "raw": "null"
+        },
+        "consequent": []
+      }]
+    }]
+  }
+}, {
+  "source": "switch (null) { case null: break; }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "SwitchStatement",
+      "discriminant": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "cases": [{
+        "type": "SwitchCase",
+        "test": {
+          "type": "Literal",
+          "value": null,
+          "raw": "null"
+        },
+        "consequent": [{
+          "type": "BreakStatement",
+          "label": null
+        }]
+      }]
+    }]
+  }
+}, {
+  "source": "switch (null) { case null: continue; }",
+  "expected": null
+}, {
+  "source": "for (;;) { switch (null) { case null: continue; } }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ForStatement",
+      "init": null,
+      "test": null,
+      "update": null,
+      "body": {
+        "type": "BlockStatement",
+        "body": [{
+          "type": "SwitchStatement",
+          "discriminant": {
+            "type": "Literal",
+            "value": null,
+            "raw": "null"
+          },
+          "cases": [{
+            "type": "SwitchCase",
+            "test": {
+              "type": "Literal",
+              "value": null,
+              "raw": "null"
+            },
+            "consequent": [{
+              "type": "ContinueStatement",
+              "label": null
+            }]
+          }]
+        }]
+      }
+    }]
+  }
+}, {
+  "source": "foo: for (;;) { bar: switch (null) { case null: continue foo; } }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "LabeledStatement",
+      "label": {
+        "type": "Identifier",
+        "name": "foo"
+      },
+      "body": {
+        "type": "ForStatement",
+        "init": null,
+        "test": null,
+        "update": null,
+        "body": {
+          "type": "BlockStatement",
+          "body": [{
+            "type": "LabeledStatement",
+            "label": {
+              "type": "Identifier",
+              "name": "bar"
+            },
+            "body": {
+              "type": "SwitchStatement",
+              "discriminant": {
+                "type": "Literal",
+                "value": null,
+                "raw": "null"
+              },
+              "cases": [{
+                "type": "SwitchCase",
+                "test": {
+                  "type": "Literal",
+                  "value": null,
+                  "raw": "null"
+                },
+                "consequent": [{
+                  "type": "ContinueStatement",
+                  "label": {
+                    "type": "Identifier",
+                    "name": "foo"
+                  }
+                }]
+              }]
+            }
+          }]
+        }
+      }
+    }]
+  }
+}, {
+  "source": "foo: for (;;) { bar: switch (null) { case null: continue bar; } }",
+  "expected": null
+}, {
+  "source": "switch (null) { default: {} default: {} }",
+  "expected": null
+}, {
+  "source": "switch (null) { default: {} case: {} default: {} }",
+  "expected": null
+}, {
+  "source": "switch (null) { case: {} default: {} case: {} default: {} }",
+  "expected": null
+}, {
+  "source": "with (null);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "WithStatement",
+      "object": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "body": {
+        "type": "EmptyStatement"
+      }
+    }]
+  }
+}, {
+  "source": "with (null) { }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "WithStatement",
+      "object": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      },
+      "body": {
+        "type": "BlockStatement",
+        "body": []
+      }
+    }]
+  }
+}, {
+  "source": "throw null;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ThrowStatement",
+      "argument": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      }
+    }]
+  }
+}, {
+  "source": "throw null",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ThrowStatement",
+      "argument": {
+        "type": "Literal",
+        "value": null,
+        "raw": "null"
+      }
+    }]
+  }
+}, {
+  "source": "throw",
+  "expected": null
+}, {
+  "source": "throw\nnull",
+  "expected": null
+}, {
+  "source": "debugger;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "DebuggerStatement"
+    }]
+  }
+}, {
+  "source": "debugger",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "DebuggerStatement"
+    }]
+  }
+}, {
+  "source": "try { } catch (x) { }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "TryStatement",
+      "block": {
+        "type": "BlockStatement",
+        "body": []
+      },
+      "guardedHandlers": [],
+      "handlers": [{
+        "type": "CatchClause",
+        "param": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "body": {
+          "type": "BlockStatement",
+          "body": []
+        }
+      }],
+      "handler": {
+        "type": "CatchClause",
+        "param": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "body": {
+          "type": "BlockStatement",
+          "body": []
+        }
+      },
+      "finalizer": null
+    }]
+  }
+}, {
+  "source": "try { } finally { }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "TryStatement",
+      "block": {
+        "type": "BlockStatement",
+        "body": []
+      },
+      "guardedHandlers": [],
+      "handlers": [],
+      "handler": null,
+      "finalizer": {
+        "type": "BlockStatement",
+        "body": []
+      }
+    }]
+  }
+}, {
+  "source": "try { } catch (x) { } finally { }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "TryStatement",
+      "block": {
+        "type": "BlockStatement",
+        "body": []
+      },
+      "guardedHandlers": [],
+      "handlers": [{
+        "type": "CatchClause",
+        "param": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "body": {
+          "type": "BlockStatement",
+          "body": []
+        }
+      }],
+      "handler": {
+        "type": "CatchClause",
+        "param": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "body": {
+          "type": "BlockStatement",
+          "body": []
+        }
+      },
+      "finalizer": {
+        "type": "BlockStatement",
+        "body": []
+      }
+    }]
+  }
+}, {
+  "source": "try { }",
+  "expected": null
+}, {
+  "source": "a+b;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "BinaryExpression",
+        "operator": "+",
+        "left": {
+          "type": "Identifier",
+          "name": "a"
+        },
+        "right": {
+          "type": "Identifier",
+          "name": "b"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "var x = a+b;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "BinaryExpression",
+          "operator": "+",
+          "left": {
+            "type": "Identifier",
+            "name": "a"
+          },
+          "right": {
+            "type": "Identifier",
+            "name": "b"
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "a+b*c;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "BinaryExpression",
+        "operator": "+",
+        "left": {
+          "type": "Identifier",
+          "name": "a"
+        },
+        "right": {
+          "type": "BinaryExpression",
+          "operator": "*",
+          "left": {
+            "type": "Identifier",
+            "name": "b"
+          },
+          "right": {
+            "type": "Identifier",
+            "name": "c"
+          }
+        }
+      }
+    }]
+  }
+}, {
+  "source": "var x = a+b*c;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "BinaryExpression",
+          "operator": "+",
+          "left": {
+            "type": "Identifier",
+            "name": "a"
+          },
+          "right": {
+            "type": "BinaryExpression",
+            "operator": "*",
+            "left": {
+              "type": "Identifier",
+              "name": "b"
+            },
+            "right": {
+              "type": "Identifier",
+              "name": "c"
+            }
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "a*b+c;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "BinaryExpression",
+        "operator": "+",
+        "left": {
+          "type": "BinaryExpression",
+          "operator": "*",
+          "left": {
+            "type": "Identifier",
+            "name": "a"
+          },
+          "right": {
+            "type": "Identifier",
+            "name": "b"
+          }
+        },
+        "right": {
+          "type": "Identifier",
+          "name": "c"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "var x = a*b+c;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "BinaryExpression",
+          "operator": "+",
+          "left": {
+            "type": "BinaryExpression",
+            "operator": "*",
+            "left": {
+              "type": "Identifier",
+              "name": "a"
+            },
+            "right": {
+              "type": "Identifier",
+              "name": "b"
+            }
+          },
+          "right": {
+            "type": "Identifier",
+            "name": "c"
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "a * b + c + d * e * f + g;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "BinaryExpression",
+        "operator": "+",
+        "left": {
+          "type": "BinaryExpression",
+          "operator": "+",
+          "left": {
+            "type": "BinaryExpression",
+            "operator": "+",
+            "left": {
+              "type": "BinaryExpression",
+              "operator": "*",
+              "left": {
+                "type": "Identifier",
+                "name": "a"
+              },
+              "right": {
+                "type": "Identifier",
+                "name": "b"
+              }
+            },
+            "right": {
+              "type": "Identifier",
+              "name": "c"
+            }
+          },
+          "right": {
+            "type": "BinaryExpression",
+            "operator": "*",
+            "left": {
+              "type": "BinaryExpression",
+              "operator": "*",
+              "left": {
+                "type": "Identifier",
+                "name": "d"
+              },
+              "right": {
+                "type": "Identifier",
+                "name": "e"
+              }
+            },
+            "right": {
+              "type": "Identifier",
+              "name": "f"
+            }
+          }
+        },
+        "right": {
+          "type": "Identifier",
+          "name": "g"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "var x = a * b + c + d * e * f + g;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "BinaryExpression",
+          "operator": "+",
+          "left": {
+            "type": "BinaryExpression",
+            "operator": "+",
+            "left": {
+              "type": "BinaryExpression",
+              "operator": "+",
+              "left": {
+                "type": "BinaryExpression",
+                "operator": "*",
+                "left": {
+                  "type": "Identifier",
+                  "name": "a"
+                },
+                "right": {
+                  "type": "Identifier",
+                  "name": "b"
+                }
+              },
+              "right": {
+                "type": "Identifier",
+                "name": "c"
+              }
+            },
+            "right": {
+              "type": "BinaryExpression",
+              "operator": "*",
+              "left": {
+                "type": "BinaryExpression",
+                "operator": "*",
+                "left": {
+                  "type": "Identifier",
+                  "name": "d"
+                },
+                "right": {
+                  "type": "Identifier",
+                  "name": "e"
+                }
+              },
+              "right": {
+                "type": "Identifier",
+                "name": "f"
+              }
+            }
+          },
+          "right": {
+            "type": "Identifier",
+            "name": "g"
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "a * b + c + d < e * f * g + h;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "BinaryExpression",
+        "operator": "<",
+        "left": {
+          "type": "BinaryExpression",
+          "operator": "+",
+          "left": {
+            "type": "BinaryExpression",
+            "operator": "+",
+            "left": {
+              "type": "BinaryExpression",
+              "operator": "*",
+              "left": {
+                "type": "Identifier",
+                "name": "a"
+              },
+              "right": {
+                "type": "Identifier",
+                "name": "b"
+              }
+            },
+            "right": {
+              "type": "Identifier",
+              "name": "c"
+            }
+          },
+          "right": {
+            "type": "Identifier",
+            "name": "d"
+          }
+        },
+        "right": {
+          "type": "BinaryExpression",
+          "operator": "+",
+          "left": {
+            "type": "BinaryExpression",
+            "operator": "*",
+            "left": {
+              "type": "BinaryExpression",
+              "operator": "*",
+              "left": {
+                "type": "Identifier",
+                "name": "e"
+              },
+              "right": {
+                "type": "Identifier",
+                "name": "f"
+              }
+            },
+            "right": {
+              "type": "Identifier",
+              "name": "g"
+            }
+          },
+          "right": {
+            "type": "Identifier",
+            "name": "h"
+          }
+        }
+      }
+    }]
+  }
+}, {
+  "source": "var x = a * b + c + d < e * f * g + h;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "BinaryExpression",
+          "operator": "<",
+          "left": {
+            "type": "BinaryExpression",
+            "operator": "+",
+            "left": {
+              "type": "BinaryExpression",
+              "operator": "+",
+              "left": {
+                "type": "BinaryExpression",
+                "operator": "*",
+                "left": {
+                  "type": "Identifier",
+                  "name": "a"
+                },
+                "right": {
+                  "type": "Identifier",
+                  "name": "b"
+                }
+              },
+              "right": {
+                "type": "Identifier",
+                "name": "c"
+              }
+            },
+            "right": {
+              "type": "Identifier",
+              "name": "d"
+            }
+          },
+          "right": {
+            "type": "BinaryExpression",
+            "operator": "+",
+            "left": {
+              "type": "BinaryExpression",
+              "operator": "*",
+              "left": {
+                "type": "BinaryExpression",
+                "operator": "*",
+                "left": {
+                  "type": "Identifier",
+                  "name": "e"
+                },
+                "right": {
+                  "type": "Identifier",
+                  "name": "f"
+                }
+              },
+              "right": {
+                "type": "Identifier",
+                "name": "g"
+              }
+            },
+            "right": {
+              "type": "Identifier",
+              "name": "h"
+            }
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "a * b + c * d - e * f + g * h - i * j;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "BinaryExpression",
+        "operator": "-",
+        "left": {
+          "type": "BinaryExpression",
+          "operator": "+",
+          "left": {
+            "type": "BinaryExpression",
+            "operator": "-",
+            "left": {
+              "type": "BinaryExpression",
+              "operator": "+",
+              "left": {
+                "type": "BinaryExpression",
+                "operator": "*",
+                "left": {
+                  "type": "Identifier",
+                  "name": "a"
+                },
+                "right": {
+                  "type": "Identifier",
+                  "name": "b"
+                }
+              },
+              "right": {
+                "type": "BinaryExpression",
+                "operator": "*",
+                "left": {
+                  "type": "Identifier",
+                  "name": "c"
+                },
+                "right": {
+                  "type": "Identifier",
+                  "name": "d"
+                }
+              }
+            },
+            "right": {
+              "type": "BinaryExpression",
+              "operator": "*",
+              "left": {
+                "type": "Identifier",
+                "name": "e"
+              },
+              "right": {
+                "type": "Identifier",
+                "name": "f"
+              }
+            }
+          },
+          "right": {
+            "type": "BinaryExpression",
+            "operator": "*",
+            "left": {
+              "type": "Identifier",
+              "name": "g"
+            },
+            "right": {
+              "type": "Identifier",
+              "name": "h"
+            }
+          }
+        },
+        "right": {
+          "type": "BinaryExpression",
+          "operator": "*",
+          "left": {
+            "type": "Identifier",
+            "name": "i"
+          },
+          "right": {
+            "type": "Identifier",
+            "name": "j"
+          }
+        }
+      }
+    }]
+  }
+}, {
+  "source": "var x = a * b + c * d - e * f + g * h - i * j;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "BinaryExpression",
+          "operator": "-",
+          "left": {
+            "type": "BinaryExpression",
+            "operator": "+",
+            "left": {
+              "type": "BinaryExpression",
+              "operator": "-",
+              "left": {
+                "type": "BinaryExpression",
+                "operator": "+",
+                "left": {
+                  "type": "BinaryExpression",
+                  "operator": "*",
+                  "left": {
+                    "type": "Identifier",
+                    "name": "a"
+                  },
+                  "right": {
+                    "type": "Identifier",
+                    "name": "b"
+                  }
+                },
+                "right": {
+                  "type": "BinaryExpression",
+                  "operator": "*",
+                  "left": {
+                    "type": "Identifier",
+                    "name": "c"
+                  },
+                  "right": {
+                    "type": "Identifier",
+                    "name": "d"
+                  }
+                }
+              },
+              "right": {
+                "type": "BinaryExpression",
+                "operator": "*",
+                "left": {
+                  "type": "Identifier",
+                  "name": "e"
+                },
+                "right": {
+                  "type": "Identifier",
+                  "name": "f"
+                }
+              }
+            },
+            "right": {
+              "type": "BinaryExpression",
+              "operator": "*",
+              "left": {
+                "type": "Identifier",
+                "name": "g"
+              },
+              "right": {
+                "type": "Identifier",
+                "name": "h"
+              }
+            }
+          },
+          "right": {
+            "type": "BinaryExpression",
+            "operator": "*",
+            "left": {
+              "type": "Identifier",
+              "name": "i"
+            },
+            "right": {
+              "type": "Identifier",
+              "name": "j"
+            }
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = +y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UnaryExpression",
+          "operator": "+",
+          "argument": {
+            "type": "Identifier",
+            "name": "y"
+          },
+          "prefix": true
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = -y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UnaryExpression",
+          "operator": "-",
+          "argument": {
+            "type": "Identifier",
+            "name": "y"
+          },
+          "prefix": true
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = !y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UnaryExpression",
+          "operator": "!",
+          "argument": {
+            "type": "Identifier",
+            "name": "y"
+          },
+          "prefix": true
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = ~y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UnaryExpression",
+          "operator": "~",
+          "argument": {
+            "type": "Identifier",
+            "name": "y"
+          },
+          "prefix": true
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = typeof y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UnaryExpression",
+          "operator": "typeof",
+          "argument": {
+            "type": "Identifier",
+            "name": "y"
+          },
+          "prefix": true
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = delete y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UnaryExpression",
+          "operator": "delete",
+          "argument": {
+            "type": "Identifier",
+            "name": "y"
+          },
+          "prefix": true
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = void y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UnaryExpression",
+          "operator": "void",
+          "argument": {
+            "type": "Identifier",
+            "name": "y"
+          },
+          "prefix": true
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = typeof delete y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UnaryExpression",
+          "operator": "typeof",
+          "argument": {
+            "type": "UnaryExpression",
+            "operator": "delete",
+            "argument": {
+              "type": "Identifier",
+              "name": "y"
+            },
+            "prefix": true
+          },
+          "prefix": true
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = + - ! ~ typeof void delete y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UnaryExpression",
+          "operator": "+",
+          "argument": {
+            "type": "UnaryExpression",
+            "operator": "-",
+            "argument": {
+              "type": "UnaryExpression",
+              "operator": "!",
+              "argument": {
+                "type": "UnaryExpression",
+                "operator": "~",
+                "argument": {
+                  "type": "UnaryExpression",
+                  "operator": "typeof",
+                  "argument": {
+                    "type": "UnaryExpression",
+                    "operator": "void",
+                    "argument": {
+                      "type": "UnaryExpression",
+                      "operator": "delete",
+                      "argument": {
+                        "type": "Identifier",
+                        "name": "y"
+                      },
+                      "prefix": true
+                    },
+                    "prefix": true
+                  },
+                  "prefix": true
+                },
+                "prefix": true
+              },
+              "prefix": true
+            },
+            "prefix": true
+          },
+          "prefix": true
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = ++y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UpdateExpression",
+          "operator": "++",
+          "argument": {
+            "type": "Identifier",
+            "name": "y"
+          },
+          "prefix": true
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = --y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UpdateExpression",
+          "operator": "--",
+          "argument": {
+            "type": "Identifier",
+            "name": "y"
+          },
+          "prefix": true
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = y++;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UpdateExpression",
+          "operator": "++",
+          "argument": {
+            "type": "Identifier",
+            "name": "y"
+          },
+          "prefix": false
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = y--;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UpdateExpression",
+          "operator": "--",
+          "argument": {
+            "type": "Identifier",
+            "name": "y"
+          },
+          "prefix": false
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = typeof y++;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UnaryExpression",
+          "operator": "typeof",
+          "argument": {
+            "type": "UpdateExpression",
+            "operator": "++",
+            "argument": {
+              "type": "Identifier",
+              "name": "y"
+            },
+            "prefix": false
+          },
+          "prefix": true
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = void y--;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UnaryExpression",
+          "operator": "void",
+          "argument": {
+            "type": "UpdateExpression",
+            "operator": "--",
+            "argument": {
+              "type": "Identifier",
+              "name": "y"
+            },
+            "prefix": false
+          },
+          "prefix": true
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = a.b;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "Identifier",
+            "name": "a"
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "b"
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = a.b.c;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "MemberExpression",
+            "computed": false,
+            "object": {
+              "type": "Identifier",
+              "name": "a"
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "b"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "c"
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = a.b.c.d;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "MemberExpression",
+            "computed": false,
+            "object": {
+              "type": "MemberExpression",
+              "computed": false,
+              "object": {
+                "type": "Identifier",
+                "name": "a"
+              },
+              "property": {
+                "type": "Identifier",
+                "name": "b"
+              }
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "c"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "d"
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = a[b];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "MemberExpression",
+          "computed": true,
+          "object": {
+            "type": "Identifier",
+            "name": "a"
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "b"
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = a[b][c];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "MemberExpression",
+          "computed": true,
+          "object": {
+            "type": "MemberExpression",
+            "computed": true,
+            "object": {
+              "type": "Identifier",
+              "name": "a"
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "b"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "c"
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = a[b][c][d];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "MemberExpression",
+          "computed": true,
+          "object": {
+            "type": "MemberExpression",
+            "computed": true,
+            "object": {
+              "type": "MemberExpression",
+              "computed": true,
+              "object": {
+                "type": "Identifier",
+                "name": "a"
+              },
+              "property": {
+                "type": "Identifier",
+                "name": "b"
+              }
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "c"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "d"
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = a[b].c.d;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "MemberExpression",
+            "computed": false,
+            "object": {
+              "type": "MemberExpression",
+              "computed": true,
+              "object": {
+                "type": "Identifier",
+                "name": "a"
+              },
+              "property": {
+                "type": "Identifier",
+                "name": "b"
+              }
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "c"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "d"
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = a[b][c].d;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "MemberExpression",
+            "computed": true,
+            "object": {
+              "type": "MemberExpression",
+              "computed": true,
+              "object": {
+                "type": "Identifier",
+                "name": "a"
+              },
+              "property": {
+                "type": "Identifier",
+                "name": "b"
+              }
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "c"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "d"
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = a[b].c[d];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "MemberExpression",
+          "computed": true,
+          "object": {
+            "type": "MemberExpression",
+            "computed": false,
+            "object": {
+              "type": "MemberExpression",
+              "computed": true,
+              "object": {
+                "type": "Identifier",
+                "name": "a"
+              },
+              "property": {
+                "type": "Identifier",
+                "name": "b"
+              }
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "c"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "d"
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = a.b[c][d];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "MemberExpression",
+          "computed": true,
+          "object": {
+            "type": "MemberExpression",
+            "computed": true,
+            "object": {
+              "type": "MemberExpression",
+              "computed": false,
+              "object": {
+                "type": "Identifier",
+                "name": "a"
+              },
+              "property": {
+                "type": "Identifier",
+                "name": "b"
+              }
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "c"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "d"
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = a.b[c].d;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "MemberExpression",
+            "computed": true,
+            "object": {
+              "type": "MemberExpression",
+              "computed": false,
+              "object": {
+                "type": "Identifier",
+                "name": "a"
+              },
+              "property": {
+                "type": "Identifier",
+                "name": "b"
+              }
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "c"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "d"
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = f();",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "CallExpression",
+          "callee": {
+            "type": "Identifier",
+            "name": "f"
+          },
+          "arguments": []
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = f(a);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "CallExpression",
+          "callee": {
+            "type": "Identifier",
+            "name": "f"
+          },
+          "arguments": [{
+            "type": "Identifier",
+            "name": "a"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = f(a,b);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "CallExpression",
+          "callee": {
+            "type": "Identifier",
+            "name": "f"
+          },
+          "arguments": [{
+            "type": "Identifier",
+            "name": "a"
+          }, {
+            "type": "Identifier",
+            "name": "b"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = f(a,b,c);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "CallExpression",
+          "callee": {
+            "type": "Identifier",
+            "name": "f"
+          },
+          "arguments": [{
+            "type": "Identifier",
+            "name": "a"
+          }, {
+            "type": "Identifier",
+            "name": "b"
+          }, {
+            "type": "Identifier",
+            "name": "c"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = new Object;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "NewExpression",
+          "callee": {
+            "type": "Identifier",
+            "name": "Object"
+          },
+          "arguments": []
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = new Object();",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "NewExpression",
+          "callee": {
+            "type": "Identifier",
+            "name": "Object"
+          },
+          "arguments": []
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = new Thing(a, b, c);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "NewExpression",
+          "callee": {
+            "type": "Identifier",
+            "name": "Thing"
+          },
+          "arguments": [{
+            "type": "Identifier",
+            "name": "a"
+          }, {
+            "type": "Identifier",
+            "name": "b"
+          }, {
+            "type": "Identifier",
+            "name": "c"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = new new Function(a);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "NewExpression",
+          "callee": {
+            "type": "NewExpression",
+            "callee": {
+              "type": "Identifier",
+              "name": "Function"
+            },
+            "arguments": [{
+              "type": "Identifier",
+              "name": "a"
+            }]
+          },
+          "arguments": []
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = new new Function(a)(b);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "NewExpression",
+          "callee": {
+            "type": "NewExpression",
+            "callee": {
+              "type": "Identifier",
+              "name": "Function"
+            },
+            "arguments": [{
+              "type": "Identifier",
+              "name": "a"
+            }]
+          },
+          "arguments": [{
+            "type": "Identifier",
+            "name": "b"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = new Function(a)(b);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "CallExpression",
+          "callee": {
+            "type": "NewExpression",
+            "callee": {
+              "type": "Identifier",
+              "name": "Function"
+            },
+            "arguments": [{
+              "type": "Identifier",
+              "name": "a"
+            }]
+          },
+          "arguments": [{
+            "type": "Identifier",
+            "name": "b"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = new Function(a).length;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "NewExpression",
+            "callee": {
+              "type": "Identifier",
+              "name": "Function"
+            },
+            "arguments": [{
+              "type": "Identifier",
+              "name": "a"
+            }]
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "length"
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = true;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": true,
+          "raw": "true"
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = false;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": false,
+          "raw": "false"
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = this;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ThisExpression"
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = 0;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": 0,
+          "raw": "0"
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = 1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1"
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = 1.0;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1.0"
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = 1.1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": 1.1,
+          "raw": "1.1"
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = -1.1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "UnaryExpression",
+          "operator": "-",
+          "argument": {
+            "type": "Literal",
+            "value": 1.1,
+            "raw": "1.1"
+          },
+          "prefix": true
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = 9007199254740992;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": 9007199254740992,
+          "raw": "9007199254740992"
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = '';",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": "",
+          "raw": "''"
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = 'hello';",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": "hello",
+          "raw": "'hello'"
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = \"\";",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": "",
+          "raw": "\"\""
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = \"hello\";",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": "hello",
+          "raw": "\"hello\""
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = /foo/g;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": {},
+          "raw": "/foo/g",
+          "regex": {
+            "pattern": "foo",
+            "flags": "g"
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = /foo/i;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": {},
+          "raw": "/foo/i",
+          "regex": {
+            "pattern": "foo",
+            "flags": "i"
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = /foo/gi;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": {},
+          "raw": "/foo/gi",
+          "regex": {
+            "pattern": "foo",
+            "flags": "gi"
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = /foo/ig;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": {},
+          "raw": "/foo/ig",
+          "regex": {
+            "pattern": "foo",
+            "flags": "ig"
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": []
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [1];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [{
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [1,2];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [{
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }, {
+            "type": "Literal",
+            "value": 2,
+            "raw": "2"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [1,2,3];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [{
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }, {
+            "type": "Literal",
+            "value": 2,
+            "raw": "2"
+          }, {
+            "type": "Literal",
+            "value": 3,
+            "raw": "3"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [,];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [null]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [,,];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [null, null]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [,,,];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [null, null, null]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [,1];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [null, {
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [1,];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [{
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [,,1];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [null, null, {
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [1,,];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [{
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }, null]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [,1,];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [null, {
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [,,1,2];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [null, null, {
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }, {
+            "type": "Literal",
+            "value": 2,
+            "raw": "2"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [,1,,2];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [null, {
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }, null, {
+            "type": "Literal",
+            "value": 2,
+            "raw": "2"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [,1,2,];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [null, {
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }, {
+            "type": "Literal",
+            "value": 2,
+            "raw": "2"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [1,2,,];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [{
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }, {
+            "type": "Literal",
+            "value": 2,
+            "raw": "2"
+          }, null]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [,1,2,3];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [null, {
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }, {
+            "type": "Literal",
+            "value": 2,
+            "raw": "2"
+          }, {
+            "type": "Literal",
+            "value": 3,
+            "raw": "3"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [1,,2,3];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [{
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }, null, {
+            "type": "Literal",
+            "value": 2,
+            "raw": "2"
+          }, {
+            "type": "Literal",
+            "value": 3,
+            "raw": "3"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [1,2,,3];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [{
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }, {
+            "type": "Literal",
+            "value": 2,
+            "raw": "2"
+          }, null, {
+            "type": "Literal",
+            "value": 3,
+            "raw": "3"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = [1,2,3,,];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ArrayExpression",
+          "elements": [{
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }, {
+            "type": "Literal",
+            "value": 2,
+            "raw": "2"
+          }, {
+            "type": "Literal",
+            "value": 3,
+            "raw": "3"
+          }, null]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = function() { };",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "FunctionExpression",
+          "id": null,
+          "params": [],
+          "defaults": [],
+          "body": {
+            "type": "BlockStatement",
+            "body": []
+          },
+          "generator": false,
+          "expression": false
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = (1);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1"
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = (1,2);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "SequenceExpression",
+          "expressions": [{
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }, {
+            "type": "Literal",
+            "value": 2,
+            "raw": "2"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = (1,2,3);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "SequenceExpression",
+          "expressions": [{
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }, {
+            "type": "Literal",
+            "value": 2,
+            "raw": "2"
+          }, {
+            "type": "Literal",
+            "value": 3,
+            "raw": "3"
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": []
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {a:1};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Identifier",
+              "name": "a"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {1:2};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 2,
+              "raw": "2"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {\"a\":1};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Literal",
+              "value": "a",
+              "raw": "\"a\""
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {'a':1};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Literal",
+              "value": "a",
+              "raw": "'a'"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {'a':1,'b':2};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Literal",
+              "value": "a",
+              "raw": "'a'"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }, {
+            "type": "Property",
+            "key": {
+              "type": "Literal",
+              "value": "b",
+              "raw": "'b'"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 2,
+              "raw": "2"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {'a':1,'b':2,'c':3};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Literal",
+              "value": "a",
+              "raw": "'a'"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }, {
+            "type": "Property",
+            "key": {
+              "type": "Literal",
+              "value": "b",
+              "raw": "'b'"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 2,
+              "raw": "2"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }, {
+            "type": "Property",
+            "key": {
+              "type": "Literal",
+              "value": "c",
+              "raw": "'c'"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 3,
+              "raw": "3"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {1:2,3:4};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 2,
+              "raw": "2"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }, {
+            "type": "Property",
+            "key": {
+              "type": "Literal",
+              "value": 3,
+              "raw": "3"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 4,
+              "raw": "4"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {1:2,3:4,5:6};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 2,
+              "raw": "2"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }, {
+            "type": "Property",
+            "key": {
+              "type": "Literal",
+              "value": 3,
+              "raw": "3"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 4,
+              "raw": "4"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }, {
+            "type": "Property",
+            "key": {
+              "type": "Literal",
+              "value": 5,
+              "raw": "5"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 6,
+              "raw": "6"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {a:1,b:2};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Identifier",
+              "name": "a"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }, {
+            "type": "Property",
+            "key": {
+              "type": "Identifier",
+              "name": "b"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 2,
+              "raw": "2"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {a:1,b:2,c:3};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Identifier",
+              "name": "a"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }, {
+            "type": "Property",
+            "key": {
+              "type": "Identifier",
+              "name": "b"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 2,
+              "raw": "2"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }, {
+            "type": "Property",
+            "key": {
+              "type": "Identifier",
+              "name": "c"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 3,
+              "raw": "3"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {a:1,'b':2,3:4};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Identifier",
+              "name": "a"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }, {
+            "type": "Property",
+            "key": {
+              "type": "Literal",
+              "value": "b",
+              "raw": "'b'"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 2,
+              "raw": "2"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }, {
+            "type": "Property",
+            "key": {
+              "type": "Literal",
+              "value": 3,
+              "raw": "3"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 4,
+              "raw": "4"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {null:1};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Identifier",
+              "name": "null"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {function:1};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Identifier",
+              "name": "function"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {delete:1};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Identifier",
+              "name": "delete"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {return:1};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Identifier",
+              "name": "return"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = {throw:1};",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ObjectExpression",
+          "properties": [{
+            "type": "Property",
+            "key": {
+              "type": "Identifier",
+              "name": "throw"
+            },
+            "computed": false,
+            "value": {
+              "type": "Literal",
+              "value": 1,
+              "raw": "1"
+            },
+            "kind": "init",
+            "method": false,
+            "shorthand": false
+          }]
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "var x = a ? b : c;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "VariableDeclaration",
+      "declarations": [{
+        "type": "VariableDeclarator",
+        "id": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "init": {
+          "type": "ConditionalExpression",
+          "test": {
+            "type": "Identifier",
+            "name": "a"
+          },
+          "consequent": {
+            "type": "Identifier",
+            "name": "b"
+          },
+          "alternate": {
+            "type": "Identifier",
+            "name": "c"
+          }
+        }
+      }],
+      "kind": "var"
+    }]
+  }
+}, {
+  "source": "{}",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "BlockStatement",
+      "body": []
+    }]
+  }
+}, {
+  "source": "({})",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "ObjectExpression",
+        "properties": []
+      }
+    }]
+  }
+}, {
+  "source": "{a:1}",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "BlockStatement",
+      "body": [{
+        "type": "LabeledStatement",
+        "label": {
+          "type": "Identifier",
+          "name": "a"
+        },
+        "body": {
+          "type": "ExpressionStatement",
+          "expression": {
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }
+        }
+      }]
+    }]
+  }
+}, {
+  "source": "({a:1})",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "ObjectExpression",
+        "properties": [{
+          "type": "Property",
+          "key": {
+            "type": "Identifier",
+            "name": "a"
+          },
+          "computed": false,
+          "value": {
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          },
+          "kind": "init",
+          "method": false,
+          "shorthand": false
+        }]
+      }
+    }]
+  }
+}, {
+  "source": "x;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "Identifier",
+        "name": "x"
+      }
+    }]
+  }
+}, {
+  "source": "x.y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "MemberExpression",
+        "computed": false,
+        "object": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "property": {
+          "type": "Identifier",
+          "name": "y"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x.y.z;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "MemberExpression",
+        "computed": false,
+        "object": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "Identifier",
+            "name": "x"
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "property": {
+          "type": "Identifier",
+          "name": "z"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x();",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "CallExpression",
+        "callee": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "arguments": []
+      }
+    }]
+  }
+}, {
+  "source": "x.y();",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "CallExpression",
+        "callee": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "Identifier",
+            "name": "x"
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "arguments": []
+      }
+    }]
+  }
+}, {
+  "source": "x.y.z();",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "CallExpression",
+        "callee": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "MemberExpression",
+            "computed": false,
+            "object": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "y"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "z"
+          }
+        },
+        "arguments": []
+      }
+    }]
+  }
+}, {
+  "source": "x[a];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "MemberExpression",
+        "computed": true,
+        "object": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "property": {
+          "type": "Identifier",
+          "name": "a"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x[a][b];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "MemberExpression",
+        "computed": true,
+        "object": {
+          "type": "MemberExpression",
+          "computed": true,
+          "object": {
+            "type": "Identifier",
+            "name": "x"
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "a"
+          }
+        },
+        "property": {
+          "type": "Identifier",
+          "name": "b"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x[a]();",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "CallExpression",
+        "callee": {
+          "type": "MemberExpression",
+          "computed": true,
+          "object": {
+            "type": "Identifier",
+            "name": "x"
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "a"
+          }
+        },
+        "arguments": []
+      }
+    }]
+  }
+}, {
+  "source": "x[a][b]();",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "CallExpression",
+        "callee": {
+          "type": "MemberExpression",
+          "computed": true,
+          "object": {
+            "type": "MemberExpression",
+            "computed": true,
+            "object": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "a"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "b"
+          }
+        },
+        "arguments": []
+      }
+    }]
+  }
+}, {
+  "source": "x.y.z[a][b]();",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "CallExpression",
+        "callee": {
+          "type": "MemberExpression",
+          "computed": true,
+          "object": {
+            "type": "MemberExpression",
+            "computed": true,
+            "object": {
+              "type": "MemberExpression",
+              "computed": false,
+              "object": {
+                "type": "MemberExpression",
+                "computed": false,
+                "object": {
+                  "type": "Identifier",
+                  "name": "x"
+                },
+                "property": {
+                  "type": "Identifier",
+                  "name": "y"
+                }
+              },
+              "property": {
+                "type": "Identifier",
+                "name": "z"
+              }
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "a"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "b"
+          }
+        },
+        "arguments": []
+      }
+    }]
+  }
+}, {
+  "source": "x().y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "MemberExpression",
+        "computed": false,
+        "object": {
+          "type": "CallExpression",
+          "callee": {
+            "type": "Identifier",
+            "name": "x"
+          },
+          "arguments": []
+        },
+        "property": {
+          "type": "Identifier",
+          "name": "y"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x().y.z;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "MemberExpression",
+        "computed": false,
+        "object": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "CallExpression",
+            "callee": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "arguments": []
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "property": {
+          "type": "Identifier",
+          "name": "z"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x()[a];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "MemberExpression",
+        "computed": true,
+        "object": {
+          "type": "CallExpression",
+          "callee": {
+            "type": "Identifier",
+            "name": "x"
+          },
+          "arguments": []
+        },
+        "property": {
+          "type": "Identifier",
+          "name": "a"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x()[a][b];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "MemberExpression",
+        "computed": true,
+        "object": {
+          "type": "MemberExpression",
+          "computed": true,
+          "object": {
+            "type": "CallExpression",
+            "callee": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "arguments": []
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "a"
+          }
+        },
+        "property": {
+          "type": "Identifier",
+          "name": "b"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x()[a].y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "MemberExpression",
+        "computed": false,
+        "object": {
+          "type": "MemberExpression",
+          "computed": true,
+          "object": {
+            "type": "CallExpression",
+            "callee": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "arguments": []
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "a"
+          }
+        },
+        "property": {
+          "type": "Identifier",
+          "name": "y"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x()[a].y.z;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "MemberExpression",
+        "computed": false,
+        "object": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "MemberExpression",
+            "computed": true,
+            "object": {
+              "type": "CallExpression",
+              "callee": {
+                "type": "Identifier",
+                "name": "x"
+              },
+              "arguments": []
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "a"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "property": {
+          "type": "Identifier",
+          "name": "z"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x()[a][b].y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "MemberExpression",
+        "computed": false,
+        "object": {
+          "type": "MemberExpression",
+          "computed": true,
+          "object": {
+            "type": "MemberExpression",
+            "computed": true,
+            "object": {
+              "type": "CallExpression",
+              "callee": {
+                "type": "Identifier",
+                "name": "x"
+              },
+              "arguments": []
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "a"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "b"
+          }
+        },
+        "property": {
+          "type": "Identifier",
+          "name": "y"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x()[a][b].y.z;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "MemberExpression",
+        "computed": false,
+        "object": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "MemberExpression",
+            "computed": true,
+            "object": {
+              "type": "MemberExpression",
+              "computed": true,
+              "object": {
+                "type": "CallExpression",
+                "callee": {
+                  "type": "Identifier",
+                  "name": "x"
+                },
+                "arguments": []
+              },
+              "property": {
+                "type": "Identifier",
+                "name": "a"
+              }
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "b"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "property": {
+          "type": "Identifier",
+          "name": "z"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x++;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "UpdateExpression",
+        "operator": "++",
+        "argument": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "prefix": false
+      }
+    }]
+  }
+}, {
+  "source": "x.y++;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "UpdateExpression",
+        "operator": "++",
+        "argument": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "Identifier",
+            "name": "x"
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "prefix": false
+      }
+    }]
+  }
+}, {
+  "source": "x.y.z++;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "UpdateExpression",
+        "operator": "++",
+        "argument": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "MemberExpression",
+            "computed": false,
+            "object": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "y"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "z"
+          }
+        },
+        "prefix": false
+      }
+    }]
+  }
+}, {
+  "source": "x[a]++;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "UpdateExpression",
+        "operator": "++",
+        "argument": {
+          "type": "MemberExpression",
+          "computed": true,
+          "object": {
+            "type": "Identifier",
+            "name": "x"
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "a"
+          }
+        },
+        "prefix": false
+      }
+    }]
+  }
+}, {
+  "source": "x[a][b]++;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "UpdateExpression",
+        "operator": "++",
+        "argument": {
+          "type": "MemberExpression",
+          "computed": true,
+          "object": {
+            "type": "MemberExpression",
+            "computed": true,
+            "object": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "a"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "b"
+          }
+        },
+        "prefix": false
+      }
+    }]
+  }
+}, {
+  "source": "x().y++;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "UpdateExpression",
+        "operator": "++",
+        "argument": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "CallExpression",
+            "callee": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "arguments": []
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "prefix": false
+      }
+    }]
+  }
+}, {
+  "source": "x().y.z++;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "UpdateExpression",
+        "operator": "++",
+        "argument": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "MemberExpression",
+            "computed": false,
+            "object": {
+              "type": "CallExpression",
+              "callee": {
+                "type": "Identifier",
+                "name": "x"
+              },
+              "arguments": []
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "y"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "z"
+          }
+        },
+        "prefix": false
+      }
+    }]
+  }
+}, {
+  "source": "x()[a]++;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "UpdateExpression",
+        "operator": "++",
+        "argument": {
+          "type": "MemberExpression",
+          "computed": true,
+          "object": {
+            "type": "CallExpression",
+            "callee": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "arguments": []
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "a"
+          }
+        },
+        "prefix": false
+      }
+    }]
+  }
+}, {
+  "source": "x()[a][b]++;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "UpdateExpression",
+        "operator": "++",
+        "argument": {
+          "type": "MemberExpression",
+          "computed": true,
+          "object": {
+            "type": "MemberExpression",
+            "computed": true,
+            "object": {
+              "type": "CallExpression",
+              "callee": {
+                "type": "Identifier",
+                "name": "x"
+              },
+              "arguments": []
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "a"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "b"
+          }
+        },
+        "prefix": false
+      }
+    }]
+  }
+}, {
+  "source": "x()[a].y++;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "UpdateExpression",
+        "operator": "++",
+        "argument": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "MemberExpression",
+            "computed": true,
+            "object": {
+              "type": "CallExpression",
+              "callee": {
+                "type": "Identifier",
+                "name": "x"
+              },
+              "arguments": []
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "a"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "prefix": false
+      }
+    }]
+  }
+}, {
+  "source": "x()[a].y.z++;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "UpdateExpression",
+        "operator": "++",
+        "argument": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "MemberExpression",
+            "computed": false,
+            "object": {
+              "type": "MemberExpression",
+              "computed": true,
+              "object": {
+                "type": "CallExpression",
+                "callee": {
+                  "type": "Identifier",
+                  "name": "x"
+                },
+                "arguments": []
+              },
+              "property": {
+                "type": "Identifier",
+                "name": "a"
+              }
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "y"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "z"
+          }
+        },
+        "prefix": false
+      }
+    }]
+  }
+}, {
+  "source": "x()[a][b].y++;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "UpdateExpression",
+        "operator": "++",
+        "argument": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "MemberExpression",
+            "computed": true,
+            "object": {
+              "type": "MemberExpression",
+              "computed": true,
+              "object": {
+                "type": "CallExpression",
+                "callee": {
+                  "type": "Identifier",
+                  "name": "x"
+                },
+                "arguments": []
+              },
+              "property": {
+                "type": "Identifier",
+                "name": "a"
+              }
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "b"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "prefix": false
+      }
+    }]
+  }
+}, {
+  "source": "x()[a][b].y.z++;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "UpdateExpression",
+        "operator": "++",
+        "argument": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "MemberExpression",
+            "computed": false,
+            "object": {
+              "type": "MemberExpression",
+              "computed": true,
+              "object": {
+                "type": "MemberExpression",
+                "computed": true,
+                "object": {
+                  "type": "CallExpression",
+                  "callee": {
+                    "type": "Identifier",
+                    "name": "x"
+                  },
+                  "arguments": []
+                },
+                "property": {
+                  "type": "Identifier",
+                  "name": "a"
+                }
+              },
+              "property": {
+                "type": "Identifier",
+                "name": "b"
+              }
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "y"
+            }
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "z"
+          }
+        },
+        "prefix": false
+      }
+    }]
+  }
+}, {
+  "source": "x in y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "BinaryExpression",
+        "operator": "in",
+        "left": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "right": {
+          "type": "Identifier",
+          "name": "y"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "switch (1) { case x in y: }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "SwitchStatement",
+      "discriminant": {
+        "type": "Literal",
+        "value": 1,
+        "raw": "1"
+      },
+      "cases": [{
+        "type": "SwitchCase",
+        "test": {
+          "type": "BinaryExpression",
+          "operator": "in",
+          "left": {
+            "type": "Identifier",
+            "name": "x"
+          },
+          "right": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "consequent": []
+      }]
+    }]
+  }
+}, {
+  "source": "function f() { return x in y; }",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "FunctionDeclaration",
+      "id": {
+        "type": "Identifier",
+        "name": "f"
+      },
+      "params": [],
+      "defaults": [],
+      "body": {
+        "type": "BlockStatement",
+        "body": [{
+          "type": "ReturnStatement",
+          "argument": {
+            "type": "BinaryExpression",
+            "operator": "in",
+            "left": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "right": {
+              "type": "Identifier",
+              "name": "y"
+            }
+          }
+        }]
+      },
+      "generator": false,
+      "expression": false
+    }]
+  }
+}, {
+  "source": "throw x in y;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ThrowStatement",
+      "argument": {
+        "type": "BinaryExpression",
+        "operator": "in",
+        "left": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "right": {
+          "type": "Identifier",
+          "name": "y"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "[x in y];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "ArrayExpression",
+        "elements": [{
+          "type": "BinaryExpression",
+          "operator": "in",
+          "left": {
+            "type": "Identifier",
+            "name": "x"
+          },
+          "right": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        }]
+      }
+    }]
+  }
+}, {
+  "source": "({ x: a in b })",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "ObjectExpression",
+        "properties": [{
+          "type": "Property",
+          "key": {
+            "type": "Identifier",
+            "name": "x"
+          },
+          "computed": false,
+          "value": {
+            "type": "BinaryExpression",
+            "operator": "in",
+            "left": {
+              "type": "Identifier",
+              "name": "a"
+            },
+            "right": {
+              "type": "Identifier",
+              "name": "b"
+            }
+          },
+          "kind": "init",
+          "method": false,
+          "shorthand": false
+        }]
+      }
+    }]
+  }
+}, {
+  "source": "f(a in b);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "CallExpression",
+        "callee": {
+          "type": "Identifier",
+          "name": "f"
+        },
+        "arguments": [{
+          "type": "BinaryExpression",
+          "operator": "in",
+          "left": {
+            "type": "Identifier",
+            "name": "a"
+          },
+          "right": {
+            "type": "Identifier",
+            "name": "b"
+          }
+        }]
+      }
+    }]
+  }
+}, {
+  "source": "new C(a in b);",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "NewExpression",
+        "callee": {
+          "type": "Identifier",
+          "name": "C"
+        },
+        "arguments": [{
+          "type": "BinaryExpression",
+          "operator": "in",
+          "left": {
+            "type": "Identifier",
+            "name": "a"
+          },
+          "right": {
+            "type": "Identifier",
+            "name": "b"
+          }
+        }]
+      }
+    }]
+  }
+}, {
+  "source": "x[a in b];",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "MemberExpression",
+        "computed": true,
+        "object": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "property": {
+          "type": "BinaryExpression",
+          "operator": "in",
+          "left": {
+            "type": "Identifier",
+            "name": "a"
+          },
+          "right": {
+            "type": "Identifier",
+            "name": "b"
+          }
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x ? a in b : c;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "ConditionalExpression",
+        "test": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "consequent": {
+          "type": "BinaryExpression",
+          "operator": "in",
+          "left": {
+            "type": "Identifier",
+            "name": "a"
+          },
+          "right": {
+            "type": "Identifier",
+            "name": "b"
+          }
+        },
+        "alternate": {
+          "type": "Identifier",
+          "name": "c"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x = 1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "AssignmentExpression",
+        "operator": "=",
+        "left": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "right": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x += 1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "AssignmentExpression",
+        "operator": "+=",
+        "left": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "right": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x -= 1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "AssignmentExpression",
+        "operator": "-=",
+        "left": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "right": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x *= 1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "AssignmentExpression",
+        "operator": "*=",
+        "left": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "right": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x /= 1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "AssignmentExpression",
+        "operator": "/=",
+        "left": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "right": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x %= 1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "AssignmentExpression",
+        "operator": "%=",
+        "left": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "right": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x <<= 1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "AssignmentExpression",
+        "operator": "<<=",
+        "left": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "right": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x >>= 1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "AssignmentExpression",
+        "operator": ">>=",
+        "left": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "right": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x >>>= 1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "AssignmentExpression",
+        "operator": ">>>=",
+        "left": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "right": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x |= 1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "AssignmentExpression",
+        "operator": "|=",
+        "left": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "right": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x ^= 1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "AssignmentExpression",
+        "operator": "^=",
+        "left": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "right": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x &= 1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "AssignmentExpression",
+        "operator": "&=",
+        "left": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "right": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x().y = 1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "AssignmentExpression",
+        "operator": "=",
+        "left": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "CallExpression",
+            "callee": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "arguments": []
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "right": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x().y += 1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "AssignmentExpression",
+        "operator": "+=",
+        "left": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "CallExpression",
+            "callee": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "arguments": []
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "right": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x().y -= 1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "AssignmentExpression",
+        "operator": "-=",
+        "left": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "CallExpression",
+            "callee": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "arguments": []
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "right": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x().y *= 1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "AssignmentExpression",
+        "operator": "*=",
+        "left": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "CallExpression",
+            "callee": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "arguments": []
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "right": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x().y /= 1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "AssignmentExpression",
+        "operator": "/=",
+        "left": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "CallExpression",
+            "callee": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "arguments": []
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "right": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x().y %= 1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "AssignmentExpression",
+        "operator": "%=",
+        "left": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "CallExpression",
+            "callee": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "arguments": []
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "right": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x().y <<= 1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "AssignmentExpression",
+        "operator": "<<=",
+        "left": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "CallExpression",
+            "callee": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "arguments": []
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "right": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x().y >>= 1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "AssignmentExpression",
+        "operator": ">>=",
+        "left": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "CallExpression",
+            "callee": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "arguments": []
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "right": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x().y >>>= 1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "AssignmentExpression",
+        "operator": ">>>=",
+        "left": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "CallExpression",
+            "callee": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "arguments": []
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "right": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x().y |= 1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "AssignmentExpression",
+        "operator": "|=",
+        "left": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "CallExpression",
+            "callee": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "arguments": []
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "right": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x().y ^= 1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "AssignmentExpression",
+        "operator": "^=",
+        "left": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "CallExpression",
+            "callee": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "arguments": []
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "right": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x().y &= 1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "AssignmentExpression",
+        "operator": "&=",
+        "left": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "CallExpression",
+            "callee": {
+              "type": "Identifier",
+              "name": "x"
+            },
+            "arguments": []
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "right": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1"
+        }
+      }
+    }]
+  }
+}]
