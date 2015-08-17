@@ -294,6 +294,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn skip_block_comment(&mut self) -> Lex<bool> {
+        self.skip2();
         let mut found_newline = false;
         loop {
             match self.peek2() {
@@ -659,7 +660,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 }
                 (Some('/'), Some('/')) => { self.skip_line_comment(); }
                 (Some('/'), Some('*')) => {
-                    found_newline = found_newline || try!(self.skip_block_comment());
+                    found_newline = try!(self.skip_block_comment()) || found_newline;
                 }
                 _ => { break; }
             }
