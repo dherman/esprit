@@ -243,7 +243,7 @@ enum Postfix {
 
 enum Deref {
     Brack(Expr, Token),
-    Dot(Id)
+    Dot(DotKey)
 }
 
 impl Deref {
@@ -253,9 +253,9 @@ impl Deref {
                 let location = span(&expr, &end);
                 ExprData::Brack(Box::new(expr), Box::new(deref)).tracked(location)
             }
-            Deref::Dot(id) => {
-                let location = span(&expr, &id);
-                ExprData::Dot(Box::new(expr), id).tracked(location)
+            Deref::Dot(key) => {
+                let location = span(&expr, &key);
+                ExprData::Dot(Box::new(expr), key).tracked(location)
             }
         }
     }
@@ -1519,10 +1519,20 @@ impl<I> Parser<I>
         Ok(Deref::Brack(expr, end))
     }
 
+    fn id_name(&mut self) -> Parse<DotKey> {
+        let token = try!(self.read());
+        let location = Some(token.location);
+        Ok((match token.value {
+            TokenData::Identifier(name) => DotKeyData(name.into_string()),
+            TokenData::Reserved(word) => DotKeyData(word.into_string()),
+            _ => { return Err(ParseError::UnexpectedToken(token)); }
+        }).tracked(location))
+    }
+
     fn deref_dot(&mut self) -> Parse<Deref> {
         self.reread(TokenData::Dot);
-        let name = try!(self.id()); // FIXME: need id_name, modelled after property_key_opt logic
-        Ok(Deref::Dot(name))
+        let key = try!(self.id_name());
+        Ok(Deref::Dot(key))
     }
 
     // MemberBaseExpression . Suffix*

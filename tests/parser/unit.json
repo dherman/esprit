@@ -7761,4 +7761,24 @@
       }
     }]
   }
+}, {
+  "source": "x.null;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "MemberExpression",
+        "computed": false,
+        "object": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "property": {
+          "type": "Identifier",
+          "name": "null"
+        }
+      }
+    }]
+  }
 }]

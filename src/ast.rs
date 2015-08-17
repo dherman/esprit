@@ -521,7 +521,7 @@ pub enum ExprData {
     Cond(Box<Expr>, Box<Expr>, Box<Expr>),
     Call(Box<Expr>, Vec<Expr>),
     New(Box<Expr>, Option<Vec<Expr>>),
-    Dot(Box<Expr>, Id),
+    Dot(Box<Expr>, DotKey),
     Brack(Box<Expr>, Box<Expr>),
     NewTarget,
     True,
@@ -555,7 +555,7 @@ impl PartialEq for ExprData {
             (&ExprData::New(ref callee_l, None), &ExprData::New(ref callee_r, Some(ref args_r))) => callee_l.eq(callee_r) && args_r.is_empty(),
             (&ExprData::New(ref callee_l, Some(ref args_l)), &ExprData::New(ref callee_r, None)) => callee_l.eq(callee_r) && args_l.is_empty(),
             (&ExprData::New(ref callee_l, Some(ref args_l)), &ExprData::New(ref callee_r, Some(ref args_r))) => callee_l.eq(callee_r) && args_l.eq(args_r),
-            (&ExprData::Dot(ref obj_l, ref id_l), &ExprData::Dot(ref obj_r, ref id_r)) => obj_l.eq(obj_r) && id_l.eq(id_r),
+            (&ExprData::Dot(ref obj_l, ref key_l), &ExprData::Dot(ref obj_r, ref key_r)) => obj_l.eq(obj_r) && key_l.eq(key_r),
             (&ExprData::Brack(ref obj_l, ref prop_l), &ExprData::Brack(ref obj_r, ref prop_r)) => obj_l.eq(obj_r) && prop_l.eq(prop_r),
             (&ExprData::NewTarget, &ExprData::NewTarget) => true,
             (&ExprData::True, &ExprData::True) => true,
@@ -575,7 +575,7 @@ impl Expr {
     pub fn into_assignment_pattern(self) -> Result<APatt, Option<Span>> {
         match self.value {
             ExprData::Id(id) => Ok(APatt::Simple(AssignTargetData::Id(id).tracked(self.location))),
-            ExprData::Dot(obj, prop) => Ok(APatt::Simple(AssignTargetData::Dot(obj, prop).tracked(self.location))),
+            ExprData::Dot(obj, key) => Ok(APatt::Simple(AssignTargetData::Dot(obj, key).tracked(self.location))),
             ExprData::Brack(obj, prop) => Ok(APatt::Simple(AssignTargetData::Brack(obj, prop).tracked(self.location))),
             ExprData::Obj(props) => {
                 let mut prop_patts = Vec::with_capacity(props.len());
@@ -619,7 +619,7 @@ impl Untrack for ExprData {
             ExprData::Cond(ref mut test, ref mut cons, ref mut alt)  => { test.untrack(); cons.untrack(); alt.untrack(); }
             ExprData::Call(ref mut callee, ref mut args)             => { callee.untrack(); args.untrack(); }
             ExprData::New(ref mut ctor, ref mut args)                => { ctor.untrack(); args.untrack(); }
-            ExprData::Dot(ref mut obj, ref mut prop)                 => { obj.untrack(); prop.untrack(); }
+            ExprData::Dot(ref mut obj, ref mut key)                  => { obj.untrack(); key.untrack(); }
             ExprData::Brack(ref mut obj, ref mut prop)               => { obj.untrack(); prop.untrack(); }
             ExprData::NewTarget                                      => { }
             ExprData::True                                           => { }
@@ -633,6 +633,15 @@ impl Untrack for ExprData {
 }
 
 pub type Expr = Tracked<ExprData>;
+
+#[derive(Debug, PartialEq)]
+pub struct DotKeyData(pub String);
+
+pub type DotKey = Tracked<DotKeyData>;
+
+impl Untrack for DotKeyData {
+    fn untrack(&mut self) { }
+}
 
 #[derive(Debug, PartialEq)]
 pub struct PropData {
@@ -786,7 +795,7 @@ impl Untrack for APatt {
 #[derive(Debug, PartialEq)]
 pub enum AssignTargetData {
     Id(Id),
-    Dot(Box<Expr>, Id),
+    Dot(Box<Expr>, DotKey),
     Brack(Box<Expr>, Box<Expr>)
 }
 

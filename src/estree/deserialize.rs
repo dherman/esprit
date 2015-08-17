@@ -488,6 +488,7 @@ pub trait IntoNode {
     fn into_identifier(self) -> Deserialize<Id>;
     fn into_property(self) -> Deserialize<Prop>;
     fn into_property_key(self) -> Deserialize<PropKey>;
+    fn into_dot_key(self) -> Deserialize<DotKey>;
     fn into_literal(self) -> Deserialize<Expr>;
     fn into_function(self) -> Deserialize<Fun>;
     fn into_pattern(self) -> Deserialize<Patt>;
@@ -738,8 +739,8 @@ impl IntoNode for Object {
             let prop = Box::new(try!(self.extract_expression("property")));
             Ok(ExprData::Brack(obj, prop).tracked(None))
         } else {
-            let prop = try!(self.extract_id("property"));
-            Ok(ExprData::Dot(obj, prop).tracked(None))
+            let key = try!(try!(self.extract_object("property")).into_dot_key());
+            Ok(ExprData::Dot(obj, key).tracked(None))
         }
     }
 
@@ -835,6 +836,11 @@ impl IntoNode for Object {
             ExprData::String(val) => Ok(PropKeyData::String(val).tracked(None)),
             _ => { return type_error("identifier, number literal, or string literal", JsonType::Object); }
         }
+    }
+
+    fn into_dot_key(mut self) -> Deserialize<DotKey> {
+        let id = try!(self.into_identifier());
+        Ok(DotKeyData(id.value.name.into_string()).tracked(None))
     }
 
     fn into_literal(mut self) -> Deserialize<Expr> {
