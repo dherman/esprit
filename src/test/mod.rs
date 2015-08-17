@@ -8,6 +8,7 @@ use ast::*;
 use estree::deserialize::{Deserialize, ExtractField, IntoNode, IntoToken, MatchJson};
 
 pub struct ParserTest {
+    pub filename: Option<String>,
     pub source: String,
     pub expected: Option<Script>,
     pub options: Option<Json>
@@ -60,6 +61,11 @@ impl IntoTestSuite for Json {
 impl IntoTest for Object {
     fn into_parser_test(mut self) -> Deserialize<ParserTest> {
         Ok(ParserTest {
+            filename: if self.contains_key("filename") {
+                Some(try!(self.extract_string("filename")))
+            } else {
+                None
+            },
             source: try!(self.extract_string("source")),
             expected: match try!(self.extract_object_opt("expected")) {
                 None => None,

@@ -419,6 +419,7 @@ impl<I> Parser<I>
     fn statement_list(&mut self) -> Parse<Vec<StmtListItem>> {
         let mut items = Vec::new();
         while !try!(self.peek()).follow_statement_list() {
+            //println!("statement at: {:?}", try!(self.peek()).location().unwrap().start);
             match try!(self.declaration_opt()) {
                 Some(decl) => { items.push(StmtListItem::Decl(decl)); }
                 None       => { items.push(StmtListItem::Stmt(try!(self.statement()))); }
@@ -1520,7 +1521,7 @@ impl<I> Parser<I>
 
     fn deref_dot(&mut self) -> Parse<Deref> {
         self.reread(TokenData::Dot);
-        let name = try!(self.id());
+        let name = try!(self.id()); // FIXME: need id_name, modelled after property_key_opt logic
         Ok(Deref::Dot(name))
     }
 
@@ -1765,7 +1766,6 @@ mod tests {
 
     #[test]
     pub fn go() {
-        //let integration_tests = deserialize_parser_tests(include_str!("../tests/parser/integrations.json"));
         let unit_tests = deserialize_parser_tests(include_str!("../tests/parser/unit.json"));
         for ParserTest { source, expected, .. } in unit_tests {
             let result = parse(&source);
@@ -1793,7 +1793,32 @@ mod tests {
                     println!("test:         {}", source);
                     println!("expected AST: {:?}", expected_ast);
                     println!("actual error: {:?}", actual_err);
-                    panic!("unexpected error")
+                    panic!("unexpected error");
+                }
+            }
+        }
+
+        let integration_tests = deserialize_parser_tests(include_str!("../tests/parser/integration.json"));
+        for ParserTest { filename, source, expected, .. } in integration_tests {
+            let expected_ast = expected.unwrap();
+            let filename = filename.unwrap();
+            println!("integration test: {}", filename);
+            match parse(&source) {
+                Ok(mut actual_ast) => {
+                    actual_ast.untrack();
+                    if actual_ast != expected_ast {
+                        println!("");
+                        println!("test: {}", filename);
+                        println!("integration test parsed incorrectly");
+                    }
+                    assert!(actual_ast == expected_ast);
+                }
+                Err(actual_err) => {
+                    println!("");
+                    println!("test: {}", filename);
+                    println!("integration test failed to parse");
+                    println!("actual error: {:?}", actual_err);
+                    panic!("unexpected error");
                 }
             }
         }

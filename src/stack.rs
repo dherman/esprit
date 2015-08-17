@@ -18,6 +18,18 @@ impl Infix {
             Infix::Cond(_)       => format!("? _ :")
         }
     }
+
+    fn right_associative(&self) -> bool {
+        match *self {
+            Infix::Assop(_) => true,
+            _ => false
+        }
+    }
+
+    fn groups_left(&self, right: &Infix) -> bool {
+        self.precedence() >= right.precedence() &&
+            !(self.precedence() == right.precedence() && self.right_associative())
+    }
 }
 
 impl Precedence for Infix {
@@ -113,7 +125,7 @@ impl Stack {
 
     pub fn extend(&mut self, mut left: Expr, op: Infix) -> Result<(), Option<Span>> {
         let mut len;
-        while { len = self.frames.len(); len > 0 } && (op.precedence() <= self.frames[len - 1].precedence()) {
+        while { len = self.frames.len(); len > 0 } && self.frames[len - 1].op.groups_left(&op) {
             left = try!(self.frames.pop().unwrap().fill(left));
         }
         self.frames.push(Frame { left: left, op: op });

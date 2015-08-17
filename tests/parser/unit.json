@@ -7658,4 +7658,107 @@
       }
     }]
   }
+}, {
+  "source": "x.y = 1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "AssignmentExpression",
+        "operator": "=",
+        "left": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "Identifier",
+            "name": "x"
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "right": {
+          "type": "Literal",
+          "value": 1,
+          "raw": "1"
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x = y = 1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "AssignmentExpression",
+        "operator": "=",
+        "left": {
+          "type": "Identifier",
+          "name": "x"
+        },
+        "right": {
+          "type": "AssignmentExpression",
+          "operator": "=",
+          "left": {
+            "type": "Identifier",
+            "name": "y"
+          },
+          "right": {
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }
+        }
+      }
+    }]
+  }
+}, {
+  "source": "x.y = w.q = 1;",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "AssignmentExpression",
+        "operator": "=",
+        "left": {
+          "type": "MemberExpression",
+          "computed": false,
+          "object": {
+            "type": "Identifier",
+            "name": "x"
+          },
+          "property": {
+            "type": "Identifier",
+            "name": "y"
+          }
+        },
+        "right": {
+          "type": "AssignmentExpression",
+          "operator": "=",
+          "left": {
+            "type": "MemberExpression",
+            "computed": false,
+            "object": {
+              "type": "Identifier",
+              "name": "w"
+            },
+            "property": {
+              "type": "Identifier",
+              "name": "q"
+            }
+          },
+          "right": {
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          }
+        }
+      }
+    }]
+  }
 }]

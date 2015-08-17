@@ -330,6 +330,10 @@
   "x().y >>>= 1;": true,
   "x().y |= 1;": true,
   "x().y ^= 1;": true,
-  "x().y &= 1;": true
+  "x().y &= 1;": true,
+
+  "x.y = 1;": true,
+  "x = y = 1;": true,
+  "x.y = w.q = 1;": true
 
 }
