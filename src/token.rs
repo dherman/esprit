@@ -337,10 +337,26 @@ pub enum TokenData {
     EOF
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum StringDelimiter {
     Single,
     Double
+}
+
+impl StringDelimiter {
+    pub fn opposite(self) -> StringDelimiter {
+        match self {
+            StringDelimiter::Single => StringDelimiter::Double,
+            StringDelimiter::Double => StringDelimiter::Single
+        }
+    }
+
+    pub fn to_char(self) -> char {
+        match self {
+            StringDelimiter::Single => '\'',
+            StringDelimiter::Double => '"'
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -351,17 +367,19 @@ pub struct StringLiteral {
 
 impl PartialEq for StringLiteral {
     fn eq(&self, other: &Self) -> bool {
+        let ql = self.delimiter.opposite().to_char();
+        let qr = other.delimiter.opposite().to_char();
         let mut l = self.source.chars();
         let mut r = other.source.chars();
         let mut ocl = l.next();
         let mut ocr = r.next();
         loop {
             match (ocl, ocr) {
-                (None,       None)                 => { return true; }
-                (Some(cl),   Some(cr)) if cl == cr => { ocl = l.next(); ocr = r.next(); }
-                (Some('\\'), Some(_))              => { ocl = l.next(); }
-                (Some(_),    Some('\\'))           => { ocr = r.next(); }
-                _                                  => { return false; }
+                (None,       None)                   => { return true; }
+                (Some(cl),   Some(cr)) if cl == cr   => { ocl = l.next(); ocr = r.next(); }
+                (Some('\\'), Some(cr)) if cr == qr   => { ocl = l.next(); }
+                (Some(cl),   Some('\\')) if cl == ql => { ocr = r.next(); }
+                _                                    => { return false; }
             }
         }
     }
