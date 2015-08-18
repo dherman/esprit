@@ -7820,4 +7820,38 @@
       }
     }]
   }
+}, {
+  "source": "a ? b : c ? d : e",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "ConditionalExpression",
+        "test": {
+          "type": "Identifier",
+          "name": "a"
+        },
+        "consequent": {
+          "type": "Identifier",
+          "name": "b"
+        },
+        "alternate": {
+          "type": "ConditionalExpression",
+          "test": {
+            "type": "Identifier",
+            "name": "c"
+          },
+          "consequent": {
+            "type": "Identifier",
+            "name": "d"
+          },
+          "alternate": {
+            "type": "Identifier",
+            "name": "e"
+          }
+        }
+      }
+    }]
+  }
 }]

@@ -21,7 +21,7 @@ impl Infix {
 
     fn right_associative(&self) -> bool {
         match *self {
-            Infix::Assop(_) => true,
+            Infix::Assop(_) | Infix::Cond(_) => true,
             _ => false
         }
     }
