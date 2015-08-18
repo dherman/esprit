@@ -336,6 +336,10 @@
   "x = y = 1;": true,
   "x.y = w.q = 1;": true,
 
-  "x.null;": true
+  "x.null;": true,
+
+  "\"it's\"": true,
+  "\"it\\'s\"": true,
+  "'it\\'s'": true
 
 }

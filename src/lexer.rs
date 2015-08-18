@@ -3,11 +3,11 @@ use std::char;
 
 use track::*;
 use token::{Token, TokenData, Exp, CharCase, Sign, NumberLiteral, Radix};
+use token::{Reserved, Atom, Name, StringLiteral, StringDelimiter};
 
 use std::cell::Cell;
 use std::rc::Rc;
 use context::SharedContext;
-use token::{Reserved, Atom, Name};
 use eschar::ESCharExt;
 use reader::Reader;
 use tokbuf::TokenBuffer;
@@ -508,7 +508,15 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 None => return Err(LexError::UnexpectedEOF)
             }
         }
-        Ok(span.end(self, TokenData::String(s)))
+        let delimiter = if quote == '\'' {
+            StringDelimiter::Single
+        } else {
+            StringDelimiter::Double
+        };
+        Ok(span.end(self, TokenData::String(StringLiteral {
+            source: s,
+            delimiter: delimiter
+        })))
     }
 
     fn read_unicode_escape_seq(&mut self, s: &mut String) -> Lex<u32> {

@@ -329,12 +329,42 @@ pub enum TokenData {
 
     Number(NumberLiteral),
 
-    String(String),
+    String(StringLiteral),
     RegExp(String, Vec<char>),
 
     Identifier(Name),
 
     EOF
+}
+
+#[derive(Debug, PartialEq)]
+pub enum StringDelimiter {
+    Single,
+    Double
+}
+
+#[derive(Debug)]
+pub struct StringLiteral {
+    pub source: String,
+    pub delimiter: StringDelimiter
+}
+
+impl PartialEq for StringLiteral {
+    fn eq(&self, other: &Self) -> bool {
+        let mut l = self.source.chars();
+        let mut r = other.source.chars();
+        let mut ocl = l.next();
+        let mut ocr = r.next();
+        loop {
+            match (ocl, ocr) {
+                (None,       None)                 => { return true; }
+                (Some(cl),   Some(cr)) if cl == cr => { ocl = l.next(); ocr = r.next(); }
+                (Some('\\'), Some(_))              => { ocl = l.next(); }
+                (Some(_),    Some('\\'))           => { ocr = r.next(); }
+                _                                  => { return false; }
+            }
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]

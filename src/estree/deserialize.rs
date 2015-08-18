@@ -1,6 +1,6 @@
 use rustc_serialize::json;
 use rustc_serialize::json::{Json, Object, Array};
-use token::{TokenData, Reserved, Exp, CharCase, Sign, NumberLiteral, Radix, Name};
+use token::{TokenData, Reserved, Exp, CharCase, Sign, NumberLiteral, Radix, Name, StringLiteral, StringDelimiter};
 use ast::*;
 use track::*;
 
@@ -330,7 +330,13 @@ impl IntoToken for Json {
                 let exp = try!(exp.into_exp_opt());
                 TokenData::Number(NumberLiteral::Float(int, frac, exp))
             }
-            "String"        => TokenData::String(try!(arr.remove(0).into_string())),
+            "String"        => {
+                let source = try!(arr.remove(0).into_string());
+                TokenData::String(StringLiteral {
+                    source: source,
+                    delimiter: StringDelimiter::Double
+                })
+            }
             "RegExp"        => {
                 let (pattern, flags) = tuplify!(arr, ((), ()));
                 let pattern = try!(pattern.into_string());
@@ -833,7 +839,7 @@ impl IntoNode for Object {
         }
         match try!(self.into_literal()).value {
             ExprData::Number(lit) => Ok(PropKeyData::Number(lit).tracked(None)),
-            ExprData::String(val) => Ok(PropKeyData::String(val).tracked(None)),
+            ExprData::String(lit) => Ok(PropKeyData::String(lit).tracked(None)),
             _ => { return type_error("identifier, number literal, or string literal", JsonType::Object); }
         }
     }
@@ -848,7 +854,12 @@ impl IntoNode for Object {
         Ok((match json {
             Json::Null => ExprData::Null,
             Json::Boolean(val) => if val { ExprData::True } else { ExprData::False },
-            Json::String(val) => ExprData::String(val),
+            Json::String(source) => {
+                ExprData::String(StringLiteral {
+                    source: source,
+                    delimiter: StringDelimiter::Double
+                })
+            }
             Json::I64(val) => ExprData::Number(NumberLiteral::DecimalInt(format!("{}", val), None)),
             Json::U64(val) => ExprData::Number(NumberLiteral::DecimalInt(format!("{}", val), None)),
             Json::F64(val) => {

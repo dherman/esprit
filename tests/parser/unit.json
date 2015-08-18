@@ -7781,4 +7781,43 @@
       }
     }]
   }
+}, {
+  "source": "\"it's\"",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "Literal",
+        "value": "it's",
+        "raw": "\"it's\""
+      }
+    }]
+  }
+}, {
+  "source": "\"it\\'s\"",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "Literal",
+        "value": "it's",
+        "raw": "\"it\\'s\""
+      }
+    }]
+  }
+}, {
+  "source": "'it\\'s'",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "Literal",
+        "value": "it's",
+        "raw": "'it\\'s'"
+      }
+    }]
+  }
 }]

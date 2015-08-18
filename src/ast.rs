@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use track::*;
-use token::{NumberLiteral, Name};
+use token::{NumberLiteral, Name, StringLiteral, StringDelimiter};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Semi {
@@ -529,7 +529,7 @@ pub enum ExprData {
     Null,
     Number(NumberLiteral),
     RegExp(String, Vec<char>),
-    String(String)
+    String(StringLiteral)
 }
 
 impl PartialEq for ExprData {
@@ -672,7 +672,7 @@ impl Prop {
 #[derive(Debug, PartialEq)]
 pub enum PropKeyData {
     Id(String),
-    String(String),
+    String(StringLiteral),
     Number(NumberLiteral)
 }
 
