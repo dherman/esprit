@@ -1,6 +1,6 @@
 use rustc_serialize::json;
 use rustc_serialize::json::{Json, Object, Array};
-use token::{TokenData, Reserved, Exp, CharCase, Sign, NumberLiteral, Radix, Name, StringLiteral, StringDelimiter};
+use token::{TokenData, Reserved, Exp, CharCase, Sign, NumberLiteral, Radix, Name, StringLiteral};
 use ast::*;
 use track::*;
 
@@ -331,10 +331,10 @@ impl IntoToken for Json {
                 TokenData::Number(NumberLiteral::Float(int, frac, exp))
             }
             "String"        => {
-                let source = try!(arr.remove(0).into_string());
+                let value = try!(arr.remove(0).into_string());
                 TokenData::String(StringLiteral {
-                    source: source,
-                    delimiter: StringDelimiter::Double
+                    source: format!("{}", Json::String(format!("{}", value)).pretty()),
+                    value: value
                 })
             }
             "RegExp"        => {
@@ -854,11 +854,11 @@ impl IntoNode for Object {
         Ok((match json {
             Json::Null => ExprData::Null,
             Json::Boolean(val) => if val { ExprData::True } else { ExprData::False },
-            Json::String(source) => {
-                let encoded = format!("{}", Json::String(source).pretty());
+            Json::String(value) => {
+                let source = format!("{}", Json::String(format!("{}", value)).pretty()); // FIXME: deal with \u2028, \u2029
                 ExprData::String(StringLiteral {
-                    source: String::from(&encoded[1..encoded.len() - 1]),
-                    delimiter: StringDelimiter::Double
+                    source: source,
+                    value: value
                 })
             }
             Json::I64(val) => ExprData::Number(NumberLiteral::DecimalInt(format!("{}", val), None)),

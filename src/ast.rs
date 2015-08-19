@@ -1,7 +1,8 @@
 #![allow(dead_code)]
 
+use std::fmt;
 use track::*;
-use token::{NumberLiteral, Name, StringLiteral, StringDelimiter};
+use token::{NumberLiteral, Name, StringLiteral};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Semi {
@@ -502,7 +503,6 @@ impl Untrack for Assop {
     }
 }
 
-#[derive(Debug)]
 pub enum ExprData {
     This,
     Id(Id),
@@ -565,6 +565,43 @@ impl PartialEq for ExprData {
             (&ExprData::RegExp(ref src_l, ref flags_l), &ExprData::RegExp(ref src_r, ref flags_r)) => src_l.eq(src_r) && flags_l.eq(flags_r),
             (&ExprData::String(ref lit_l), &ExprData::String(ref lit_r)) => lit_l.eq(lit_r),
             (_, _) => false
+        }
+    }
+}
+
+impl fmt::Debug for ExprData {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &ExprData::This => fmt.write_str("This"),
+            &ExprData::Id(ref id) => fmt.debug_tuple("Id").field(id).finish(),
+            &ExprData::Arr(ref elts) => fmt.debug_tuple("Arr").field(elts).finish(),
+            &ExprData::Obj(ref props) => fmt.debug_tuple("Obj").field(props).finish(),
+            &ExprData::Fun(ref fun) => fmt.debug_tuple("Fun").field(fun).finish(),
+            &ExprData::Seq(ref exprs) => fmt.debug_tuple("Seq").field(exprs).finish(),
+            &ExprData::Unop(ref op, ref arg) => fmt.debug_tuple("Unop").field(op).field(arg).finish(),
+            &ExprData::Binop(ref op, ref left, ref right) => fmt.debug_tuple("Binop").field(op).field(left).field(right).finish(),
+            &ExprData::Logop(ref op, ref left, ref right) => fmt.debug_tuple("Logop").field(op).field(left).field(right).finish(),
+            &ExprData::PreInc(ref arg) => fmt.debug_tuple("PreInc").field(arg).finish(),
+            &ExprData::PostInc(ref arg) => fmt.debug_tuple("PostInc").field(arg).finish(),
+            &ExprData::PreDec(ref arg) => fmt.debug_tuple("PreDec").field(arg).finish(),
+            &ExprData::PostDec(ref arg) => fmt.debug_tuple("PostDec").field(arg).finish(),
+            &ExprData::Assign(ref op, ref left, ref right) => fmt.debug_tuple("Assign").field(op).field(left).field(right).finish(),
+            &ExprData::Cond(ref test, ref cons, ref alt) => fmt.debug_tuple("Cond").field(test).field(cons).field(alt).finish(),
+            &ExprData::Call(ref callee, ref args) => fmt.debug_tuple("Call").field(callee).field(args).finish(),
+            &ExprData::New(ref ctor, None) => {
+                let args: Vec<Expr> = vec![];
+                fmt.debug_tuple("New").field(ctor).field(&args).finish()
+            }
+            &ExprData::New(ref ctor, Some(ref args)) => fmt.debug_tuple("New").field(ctor).field(args).finish(),
+            &ExprData::Dot(ref expr, ref key) => fmt.debug_tuple("Dot").field(expr).field(key).finish(),
+            &ExprData::Brack(ref expr, ref prop) => fmt.debug_tuple("Brack").field(expr).field(prop).finish(),
+            &ExprData::NewTarget => fmt.write_str("NewTarget"),
+            &ExprData::True => fmt.write_str("True"),
+            &ExprData::False => fmt.write_str("False"),
+            &ExprData::Null => fmt.write_str("Null"),
+            &ExprData::Number(ref lit) => fmt.debug_tuple("Number").field(lit).finish(),
+            &ExprData::RegExp(ref source, ref flags) => fmt.debug_tuple("RegExp").field(source).field(flags).finish(),
+            &ExprData::String(ref lit) => fmt.debug_tuple("String").field(lit).finish()
         }
     }
 }

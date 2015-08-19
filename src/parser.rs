@@ -1805,9 +1805,9 @@ mod tests {
     }
 
     #[test]
-    pub fn go() {
-        let unit_tests = deserialize_parser_tests(include_str!("../tests/parser/unit.json"));
-        for ParserTest { source, expected, .. } in unit_tests {
+    pub fn unit_tests() {
+        let tests = deserialize_parser_tests(include_str!("../tests/parser/unit.json"));
+        for ParserTest { source, expected, .. } in tests {
             let result = parse(&source);
             match (result, expected) {
                 (Ok(mut actual_ast), Some(expected_ast)) => {
@@ -1815,8 +1815,8 @@ mod tests {
                     if actual_ast != expected_ast {
                         println!("");
                         println!("test:         {}", source);
-                        println!("expected AST: {:?}", expected_ast);
-                        println!("actual AST:   {:?}", actual_ast);
+                        println!("expected AST: {:#?}", expected_ast);
+                        println!("actual AST:   {:#?}", actual_ast);
                     }
                     assert!(actual_ast == expected_ast);
                 }
@@ -1837,19 +1837,26 @@ mod tests {
                 }
             }
         }
+    }
 
-        let integration_tests = deserialize_parser_tests(include_str!("../tests/parser/integration.json"));
-        for ParserTest { filename, source, expected, .. } in integration_tests {
+    #[test]
+    pub fn integration_tests() {
+        let tests = deserialize_parser_tests(include_str!("../tests/parser/integration.json"));
+        for ParserTest { filename, source, expected, .. } in tests {
             let expected_ast = expected.unwrap();
             let filename = filename.unwrap();
-            println!("integration test: {}", filename);
+            //println!("integration test: {}", filename);
             match parse(&source) {
                 Ok(mut actual_ast) => {
                     actual_ast.untrack();
                     if actual_ast != expected_ast {
                         println!("");
                         println!("test: {}", filename);
-                        println!("integration test parsed incorrectly");
+                        //println!("expected AST:");
+                        //println!("{:#?}", expected_ast);
+                        //println!("actual AST:");
+                        //println!("{:#?}", actual_ast);
+                        println!("integration test got wrong result");
                     }
                     assert!(actual_ast == expected_ast);
                 }

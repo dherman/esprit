@@ -127,16 +127,16 @@
 
 {"source": "'foo'",                       "context": [], "expected": ["String", "foo"]},
 {"source": "'\"foo\"'",                   "context": [], "expected": ["String", "\"foo\""]},
-{"source": "'\\\"foo\\\"'",               "context": [], "expected": ["String", "\\\"foo\\\""]},
+{"source": "'\\\"foo\\\"'",               "context": [], "expected": ["String", "\"foo\""]},
 
 {"source": "\"foo\"",                     "context": [], "expected": ["String", "foo"]},
 {"source": "\"'foo'\"",                   "context": [], "expected": ["String", "'foo'"]},
-{"source": "\"\\'foo\\'\"",               "context": [], "expected": ["String", "\\'foo\\'"]},
+{"source": "\"\\'foo\\'\"",               "context": [], "expected": ["String", "'foo'"]},
 
-{"source": "'\\u0066\\u006f\\u006f'",       "context": [], "expected": ["String", "\\u0066\\u006f\\u006f"]},
-{"source": "'\\u{0066}\\u{006f}\\u{006f}'", "context": [], "expected": ["String", "\\u{0066}\\u{006f}\\u{006f}"]},
-{"source": "'\\u{66}\\u{6f}\\u{6f}'",       "context": [], "expected": ["String", "\\u{66}\\u{6f}\\u{6f}"]},
-{"source": "'\\146\\157\\157'",             "context": [], "expected": ["String", "\\146\\157\\157"]},
+{"source": "'\\u0066\\u006f\\u006f'",       "context": [], "expected": ["String", "foo"]},
+{"source": "'\\u{0066}\\u{006f}\\u{006f}'", "context": [], "expected": ["String", "foo"]},
+{"source": "'\\u{66}\\u{6f}\\u{6f}'",       "context": [], "expected": ["String", "foo"]},
+{"source": "'\\146\\157\\157'",             "context": [], "expected": ["String", "foo"]},
 
 {"source": "null",  "context": [], "expected": ["Reserved", "Null"]}
 ]

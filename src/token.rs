@@ -1,5 +1,7 @@
+use std::fmt;
 use track::*;
 use ast::{Binop, BinopTag, Logop, LogopTag, Assop, AssopTag};
+use rustc_serialize::json::Json;
 
 // Unconditionally reserved words.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -337,59 +339,40 @@ pub enum TokenData {
     EOF
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum StringDelimiter {
-    Single,
-    Double
-}
+// FIXME: make saving source optional for memory savings
 
-impl StringDelimiter {
-    pub fn opposite(self) -> StringDelimiter {
-        match self {
-            StringDelimiter::Single => StringDelimiter::Double,
-            StringDelimiter::Double => StringDelimiter::Single
-        }
-    }
-
-    pub fn to_char(self) -> char {
-        match self {
-            StringDelimiter::Single => '\'',
-            StringDelimiter::Double => '"'
-        }
-    }
-}
-
-#[derive(Debug)]
 pub struct StringLiteral {
     pub source: String,
-    pub delimiter: StringDelimiter
+    pub value: String
+}
+
+impl fmt::Debug for StringLiteral {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_struct("StringLiteral")
+            .field("value", &self.value)
+            .finish()
+    }
 }
 
 impl PartialEq for StringLiteral {
     fn eq(&self, other: &Self) -> bool {
-        let ql = self.delimiter.opposite().to_char();
-        let qr = other.delimiter.opposite().to_char();
-        let mut l = self.source.chars();
-        let mut r = other.source.chars();
-        let mut ocl = l.next();
-        let mut ocr = r.next();
-        loop {
-            match (ocl, ocr) {
-                (None,       None)                   => { return true; }
-                (Some(cl),   Some(cr)) if cl == cr   => { ocl = l.next(); ocr = r.next(); }
-                (Some('\\'), Some(cr)) if cr == qr   => { ocl = l.next(); }
-                (Some(cl),   Some('\\')) if cl == ql => { ocr = r.next(); }
-                _                                    => { return false; }
-            }
-        }
+        self.value.eq(&other.value)
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(PartialEq)]
 pub enum NumberLiteral {
     DecimalInt(String, Option<Exp>),
     RadixInt(Radix, String),
     Float(Option<String>, Option<String>, Option<Exp>)
+}
+
+impl fmt::Debug for NumberLiteral {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_tuple("NumberLiteral")
+            .field(&self.value())
+            .finish()
+    }
 }
 
 fn format_sign(sign: &Option<Sign>) -> String {

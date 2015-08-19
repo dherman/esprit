@@ -1,3 +1,5 @@
+use std::fmt;
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct Posn {
     pub offset: u32,
@@ -57,10 +59,18 @@ impl<T> Track for Option<T>
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct Tracked<T> {
     pub location: Option<Span>,
     pub value: T
+}
+
+impl<T: fmt::Debug> fmt::Debug for Tracked<T> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_struct("Tracked")
+            .field("value", &self.value)
+            .finish()
+    }
 }
 
 pub trait IntoTracked {

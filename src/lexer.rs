@@ -3,7 +3,7 @@ use std::char;
 
 use track::*;
 use token::{Token, TokenData, Exp, CharCase, Sign, NumberLiteral, Radix};
-use token::{Reserved, Atom, Name, StringLiteral, StringDelimiter};
+use token::{Reserved, Atom, Name, StringLiteral};
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -224,6 +224,22 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             match self.peek() {
                 Some(ch) if pred(ch) => return,
                 Some(ch) => { s.push(self.reread(ch)); }
+                None => return,
+            }
+        }
+    }
+
+    fn read_into2_until<F>(&mut self, s1: &mut String, s2: &mut String, pred: &F)
+      where F: Fn(char) -> bool
+    {
+        loop {
+            match self.peek() {
+                Some(ch) if pred(ch) => return,
+                Some(ch) => {
+                    self.reread(ch);
+                    s1.push(ch);
+                    s2.push(ch);
+                }
                 None => return,
             }
         }
@@ -491,31 +507,34 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     fn read_string(&mut self) -> Lex<Token> {
         debug_assert!(self.peek().is_some());
         let span = self.start();
-        let mut s = String::new();
+        let mut source = String::new();
+        let mut value = String::new();
         let quote = self.read();
+        source.push(quote);
         loop {
-            self.read_into_until(&mut s, &|ch| {
+            self.read_into2_until(&mut source, &mut value, &|ch| {
                 ch == quote ||
                 ch == '\\' ||
                 ch.is_es_newline()
             });
             match self.peek() {
-                Some('\\') => { try!(self.read_string_escape(&mut s)); }
+                Some('\\') => {
+                    try!(self.read_string_escape(&mut source, &mut value));
+                }
                 Some(ch) if ch.is_es_newline() => {
                     return Err(LexError::UnexpectedChar(ch));
                 }
-                Some(_) => { self.skip(); break; }
+                Some(_) => {
+                    source.push(quote);
+                    self.skip();
+                    break;
+                }
                 None => return Err(LexError::UnexpectedEOF)
             }
         }
-        let delimiter = if quote == '\'' {
-            StringDelimiter::Single
-        } else {
-            StringDelimiter::Double
-        };
         Ok(span.end(self, TokenData::String(StringLiteral {
-            source: s,
-            delimiter: delimiter
+            source: source,
+            value: value
         })))
     }
 
@@ -541,37 +560,47 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }
     }
 
-    fn read_string_escape(&mut self, s: &mut String) -> Lex<()> {
-        s.push(self.read());
+    fn read_string_escape(&mut self, source: &mut String, value: &mut String) -> Lex<()> {
+        source.push(self.read());
         match self.peek() {
-            Some('0') => {
-                self.skip();
+            Some(ch) if ch.is_digit(8) => {
+                let mut code = 0;
                 for _ in 0..3 {
                     match self.peek() {
-                        Some(ch) if ch.is_digit(8) => { s.push(ch); },
+                        Some(ch) if ch.is_digit(8) => {
+                            source.push(self.reread(ch));
+                            code = (code << 3) + ch.to_digit(8).unwrap();
+                        },
                         _ => { break; }
                     }
                 }
+                value.push(char::from_u32(code).unwrap_or('?'));
             }
             Some(ch) if ch.is_es_single_escape_char() => {
-                s.push(self.read());
+                source.push(self.reread(ch));
+                value.push(ch.unescape());
             }
             Some('x') => {
-                s.push(self.reread('x'));
-                try!(self.read_hex_digit_into(s));
-                try!(self.read_hex_digit_into(s));
+                source.push(self.reread('x'));
+                let mut code = 0;
+                code += try!(self.read_hex_digit_into(source)) << 4;
+                code += try!(self.read_hex_digit_into(source));
+                value.push(char::from_u32(code).unwrap_or('?'));
             }
             Some('u') => {
-                s.push(self.reread('u'));
-                try!(self.read_unicode_escape_seq(s));
+                source.push(self.reread('u'));
+                let code = try!(self.read_unicode_escape_seq(source));
+                value.push(char::from_u32(code).unwrap_or('?'));
             }
             Some(ch) if ch.is_es_newline() => {
-                self.read_newline_into(s);
+                self.read_newline_into(source);
+                value.push('\n'); // FIXME: does this need to avoid canonicalizing the newline? look it up in the spec
             }
             Some(ch) => {
-                s.push(self.reread(ch));
+                source.push(self.reread(ch));
+                value.push(ch);
             }
-            None => () // error will be reported from caller
+            None => { } // error will be reported from caller
         }
         Ok(())
     }
