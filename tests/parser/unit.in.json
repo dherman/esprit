@@ -342,6 +342,11 @@
   "\"it\\'s\"": true,
   "'it\\'s'": true,
 
-  "a ? b : c ? d : e": true
+  "a ? b : c ? d : e": true,
+  "a ? b : c = d": true,
+  "a = b ? c : d": true,
+
+  "\"\\\\x20\"": true,
+  "\"\\\\t\"": true
 
 }

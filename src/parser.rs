@@ -1679,19 +1679,60 @@ impl<I> Parser<I>
         Ok(None)
     }
 
+    // ConditionalExpression ::=
+    //   UnaryExpression (Infix UnaryExpression)* ("?" AssignmentExpression ":" AssignmentExpression)?
+    fn conditional_expression(&mut self) -> Parse<Expr> {
+        let left = try!(self.unary_expression());
+        let test = try!(self.more_infix_expressions(left));
+        self.more_conditional(test)
+    }
+
+    // IDConditionalExpression ::=
+    //   IDUnaryExpression (Infix UnaryExpression)* ("?" AssignmentExpression ":" AssignmentExpression)?
+    fn id_conditional_expression(&mut self, id: Id) -> Parse<Expr> {
+        let left = try!(self.id_unary_expression(id));
+        let test = try!(self.more_infix_expressions(left));
+        self.more_conditional(test)
+    }
+
+    fn more_conditional(&mut self, left: Expr) -> Parse<Expr> {
+        if try!(self.matches_op(TokenData::Question)) {
+            let cons = try!(self.allow_in(true, |this| this.assignment_expression()));
+            try!(self.expect(TokenData::Colon));
+            let alt = try!(self.assignment_expression());
+            let location = span(&cons, &alt);
+            return Ok(ExprData::Cond(Box::new(left), Box::new(cons), Box::new(alt)).tracked(location));
+        }
+        Ok(left)
+    }
+
     // AssignmentExpression ::=
     //   YieldPrefix* "yield"
-    //   YieldPrefix* UnaryExpression (Infix UnaryExpression)*
+    //   YieldPrefix* ConditionalExpression (("=" | AssignmentOperator) AssignmentExpression)?
     fn assignment_expression(&mut self) -> Parse<Expr> {
-        let left = try!(self.unary_expression());
-        self.more_infix_expressions(left)
+        let left = try!(self.conditional_expression());
+        self.more_assignment(left)
     }
 
     // IDAssignmentExpression ::=
-    //   IDUnaryExpression (Infix UnaryExpression)*
+    //   YieldPrefix* "yield"
+    //   YieldPrefix+ ConditionalExpression (("=" | AssignmentOperator) AssignmentExpression)?
+    //   IDConditionalExpression (("=" | AssignmentOperator) AssignmentExpression)?
     fn id_assignment_expression(&mut self, id: Id) -> Parse<Expr> {
-        let left = try!(self.id_unary_expression(id));
-        self.more_infix_expressions(left)
+        let left = try!(self.id_conditional_expression(id));
+        self.more_assignment(left)
+    }
+
+    fn more_assignment(&mut self, left: Expr) -> Parse<Expr> {
+        let token = try!(self.read_op());
+        if let Some(op) = token.to_assop() {
+            let left = try!(left.into_assignment_pattern().map_err(ParseError::InvalidLHS));
+            let right = try!(self.assignment_expression());
+            let location = span(&left, &right);
+            return Ok(ExprData::Assign(op, left, Box::new(right)).tracked(location));
+        }
+        self.lexer.unread_token(token);
+        Ok(left)
     }
 
     fn more_infix_expressions(&mut self, left: Expr) -> Parse<Expr> {
@@ -1706,20 +1747,9 @@ impl<I> Parser<I>
     }
 
     fn match_infix(&mut self) -> Parse<Option<Infix>> {
-        if try!(self.matches_op(TokenData::Question)) {
-            let cons = try!(self.allow_in(true, |this| this.assignment_expression()));
-            try!(self.expect(TokenData::Colon));
-            return Ok(Some(Infix::Cond(cons)));
-        }
-        self.match_binary_infix()
-    }
-
-    fn match_binary_infix(&mut self) -> Parse<Option<Infix>> {
         let token = try!(self.read_op());
         let result = token.to_binop(self.parser_cx.allow_in).map_or_else(|| {
-            token.to_logop().map_or_else(|| {
-                token.to_assop().map(Infix::Assop)
-            }, |op| Some(Infix::Logop(op)))
+            token.to_logop().map(Infix::Logop)
         }, |op| Some(Infix::Binop(op)));
         if result.is_none() {
             self.lexer.unread_token(token);

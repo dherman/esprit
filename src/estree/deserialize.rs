@@ -855,8 +855,9 @@ impl IntoNode for Object {
             Json::Null => ExprData::Null,
             Json::Boolean(val) => if val { ExprData::True } else { ExprData::False },
             Json::String(source) => {
+                let encoded = format!("{}", Json::String(source).pretty());
                 ExprData::String(StringLiteral {
-                    source: source,
+                    source: String::from(&encoded[1..encoded.len() - 1]),
                     delimiter: StringDelimiter::Double
                 })
             }

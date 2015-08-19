@@ -4,31 +4,19 @@ use track::*;
 #[derive(Debug)]
 pub enum Infix {
     Binop(Binop),
-    Assop(Assop),
-    Logop(Logop),
-    Cond(Expr)
+    Logop(Logop)
 }
 
 impl Infix {
     fn debug(&self) -> String {
         match *self {
             Infix::Binop(ref op) => op.pretty(),
-            Infix::Assop(ref op) => op.pretty(),
-            Infix::Logop(ref op) => op.pretty(),
-            Infix::Cond(_)       => format!("? _ :")
-        }
-    }
-
-    fn right_associative(&self) -> bool {
-        match *self {
-            Infix::Assop(_) | Infix::Cond(_) => true,
-            _ => false
+            Infix::Logop(ref op) => op.pretty()
         }
     }
 
     fn groups_left(&self, right: &Infix) -> bool {
-        self.precedence() >= right.precedence() &&
-            !(self.precedence() == right.precedence() && self.right_associative())
+        self.precedence() >= right.precedence()
     }
 }
 
@@ -36,9 +24,7 @@ impl Precedence for Infix {
     fn precedence(&self) -> u32 {
         match *self {
             Infix::Binop(ref op) => op.precedence(),
-            Infix::Assop(ref op) => op.precedence(),
-            Infix::Logop(ref op) => op.precedence(),
-            Infix::Cond(_)       => 1
+            Infix::Logop(ref op) => op.precedence()
         }
     }
 }
@@ -59,10 +45,8 @@ impl Frame {
     fn fill(self, right: Expr) -> Result<Expr, Option<Span>> {
         let location = span(&self.left, &right);
         Ok((match self.op {
-            Infix::Binop(op)  => ExprData::Binop(op, Box::new(self.left), Box::new(right)),
-            Infix::Assop(op)  => ExprData::Assign(op, try!(self.left.into_assignment_pattern()), Box::new(right)),
-            Infix::Logop(op)  => ExprData::Logop(op, Box::new(self.left), Box::new(right)),
-            Infix::Cond(cons) => ExprData::Cond(Box::new(self.left), Box::new(cons), Box::new(right))
+            Infix::Binop(op) => ExprData::Binop(op, Box::new(self.left), Box::new(right)),
+            Infix::Logop(op) => ExprData::Logop(op, Box::new(self.left), Box::new(right))
         }).tracked(location))
     }
 
@@ -100,14 +84,8 @@ fn debug_expr(expr: &Expr) -> String {
         ExprData::Binop(ref op, ref left, ref right) => {
             format!("({} {} {})", debug_expr(left), op.pretty(), debug_expr(right))
         }
-        ExprData::Assign(ref op, _, ref right) => {
-            format!("(_ {} {})", op.pretty(), debug_expr(right))
-        }
         ExprData::Logop(ref op, ref left, ref right) => {
             format!("({} {} {})", debug_expr(left), op.pretty(), debug_expr(right))
-        }
-        ExprData::Cond(ref test, ref cons, ref alt) => {
-            format!("({} ? {} : {})", debug_expr(test), debug_expr(cons), debug_expr(alt))
         }
         _ => format!("_")
     }

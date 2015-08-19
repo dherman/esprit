@@ -7854,4 +7854,92 @@
       }
     }]
   }
+}, {
+  "source": "a ? b : c = d",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "ConditionalExpression",
+        "test": {
+          "type": "Identifier",
+          "name": "a"
+        },
+        "consequent": {
+          "type": "Identifier",
+          "name": "b"
+        },
+        "alternate": {
+          "type": "AssignmentExpression",
+          "operator": "=",
+          "left": {
+            "type": "Identifier",
+            "name": "c"
+          },
+          "right": {
+            "type": "Identifier",
+            "name": "d"
+          }
+        }
+      }
+    }]
+  }
+}, {
+  "source": "a = b ? c : d",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "AssignmentExpression",
+        "operator": "=",
+        "left": {
+          "type": "Identifier",
+          "name": "a"
+        },
+        "right": {
+          "type": "ConditionalExpression",
+          "test": {
+            "type": "Identifier",
+            "name": "b"
+          },
+          "consequent": {
+            "type": "Identifier",
+            "name": "c"
+          },
+          "alternate": {
+            "type": "Identifier",
+            "name": "d"
+          }
+        }
+      }
+    }]
+  }
+}, {
+  "source": "\"\\\\x20\"",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "Literal",
+        "value": "\\x20",
+        "raw": "\"\\\\x20\""
+      }
+    }]
+  }
+}, {
+  "source": "\"\\\\t\"",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "Literal",
+        "value": "\\t",
+        "raw": "\"\\\\t\""
+      }
+    }]
+  }
 }]
