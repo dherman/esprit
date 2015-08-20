@@ -97,31 +97,31 @@ Expression ::=
 
 The following are the precedence levels for the Infix operators. Higher precedence values bind more tightly than lower precedence values.
 
-Operator     | Precednce
---------     | ---------
-"*"          | 11
-"/"          | 11
-"%"          | 11
-"+"          | 10
-"-"          | 10
-"<<"         | 9
-">>"         | 9
-">>>"        | 9
-"<"          | 8
-">"          | 8
-"<="         | 8
-">="         | 8
-"instanceof" | 8
-"in"         | 8
-"=="         | 7
-"!="         | 7
-"==="        | 7
-"!=="        | 7
-"&"          | 6
-"^"          | 5
-"|"          | 4
-"&&"         | 3
-"||"         | 2
+Operator       | Precednce
+--------       | ---------
+`"*"`          | 11
+`"/"`          | 11
+`"%"`          | 11
+`"+"`          | 10
+`"-"`          | 10
+`"<<"`         | 9
+`">>"`         | 9
+`">>>"`        | 9
+`"<"`          | 8
+`">"`          | 8
+`"<="`         | 8
+`">="`         | 8
+`"instanceof"` | 8
+`"in"`         | 8
+`"=="`         | 7
+`"!="`         | 7
+`"==="`        | 7
+`"!=="`        | 7
+`"&"`          | 6
+`"^"`          | 5
+`"|"`          | 4
+`"&&"`         | 3
+`"||"`         | 2
 
 
 # Avoiding Extra Lookahead
