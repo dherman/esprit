@@ -1,8 +1,9 @@
 #![allow(dead_code)]
 
 use std::fmt;
+use std::fmt::{Debug, Display, Formatter};
 use track::*;
-use token::{NumberLiteral, Name, StringLiteral};
+use token::{NumberLiteral, Name, StringLiteral, TokenData, Token, Reserved};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Semi {
@@ -390,31 +391,31 @@ impl Precedence for BinopTag {
 
 pub type Binop = Tracked<BinopTag>;
 
-impl Binop {
-    pub fn pretty(&self) -> String {
-        match self.value {
-            BinopTag::Eq => format!("=="),
-            BinopTag::NEq => format!("!="),
-            BinopTag::StrictEq => format!("==="),
-            BinopTag::StrictNEq => format!("!=="),
-            BinopTag::Lt => format!("<"),
-            BinopTag::LEq => format!("<="),
-            BinopTag::Gt => format!(">"),
-            BinopTag::GEq => format!(">="),
-            BinopTag::LShift => format!("<<"),
-            BinopTag::RShift => format!(">>"),
-            BinopTag::URShift => format!(">>>"),
-            BinopTag::Plus => format!("+"),
-            BinopTag::Minus => format!("-"),
-            BinopTag::Times => format!("*"),
-            BinopTag::Div => format!("/"),
-            BinopTag::Mod => format!("%"),
-            BinopTag::BitOr => format!("|"),
-            BinopTag::BitXor => format!("^"),
-            BinopTag::BitAnd => format!("&"),
-            BinopTag::In => format!("in"),
-            BinopTag::Instanceof => format!("instanceof")
-        }
+impl Display for Binop {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        fmt.write_str(match self.value {
+            BinopTag::Eq         => "==",
+            BinopTag::NEq        => "!=",
+            BinopTag::StrictEq   => "===",
+            BinopTag::StrictNEq  => "!==",
+            BinopTag::Lt         => "<",
+            BinopTag::LEq        => "<=",
+            BinopTag::Gt         => ">",
+            BinopTag::GEq        => ">=",
+            BinopTag::LShift     => "<<",
+            BinopTag::RShift     => ">>",
+            BinopTag::URShift    => ">>>",
+            BinopTag::Plus       => "+",
+            BinopTag::Minus      => "-",
+            BinopTag::Times      => "*",
+            BinopTag::Div        => "/",
+            BinopTag::Mod        => "%",
+            BinopTag::BitOr      => "|",
+            BinopTag::BitXor     => "^",
+            BinopTag::BitAnd     => "&",
+            BinopTag::In         => "in",
+            BinopTag::Instanceof => "instanceof"
+        })
     }
 }
 
@@ -441,12 +442,12 @@ impl Precedence for LogopTag {
 
 pub type Logop = Tracked<LogopTag>;
 
-impl Logop {
-    pub fn pretty(&self) -> String {
-        match self.value {
-            LogopTag::Or => format!("||"),
-            LogopTag::And => format!("&&")
-        }
+impl Display for Logop {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        fmt.write_str(match self.value {
+            LogopTag::Or  => "||",
+            LogopTag::And => "&&"
+        })
     }
 }
 
@@ -478,28 +479,89 @@ impl Precedence for AssopTag {
 
 pub type Assop = Tracked<AssopTag>;
 
-impl Assop {
-    pub fn pretty(&self) -> String {
-        match self.value {
-            AssopTag::Eq => format!("="),
-            AssopTag::PlusEq => format!("+="),
-            AssopTag::MinusEq => format!("-="),
-            AssopTag::TimesEq => format!("*="),
-            AssopTag::DivEq => format!("/="),
-            AssopTag::ModEq => format!("%="),
-            AssopTag::LShiftEq => format!("<<="),
-            AssopTag::RShiftEq => format!(">>="),
-            AssopTag::URShiftEq => format!(">>>="),
-            AssopTag::BitOrEq => format!("|="),
-            AssopTag::BitXorEq => format!("^="),
-            AssopTag::BitAndEq => format!("&=")
-        }
+impl Display for Assop {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        fmt.write_str(match self.value {
+            AssopTag::Eq        => "=",
+            AssopTag::PlusEq    => "+=",
+            AssopTag::MinusEq   => "-=",
+            AssopTag::TimesEq   => "*=",
+            AssopTag::DivEq     => "/=",
+            AssopTag::ModEq     => "%=",
+            AssopTag::LShiftEq  => "<<=",
+            AssopTag::RShiftEq  => ">>=",
+            AssopTag::URShiftEq => ">>>=",
+            AssopTag::BitOrEq   => "|=",
+            AssopTag::BitXorEq  => "^=",
+            AssopTag::BitAndEq  => "&="
+        })
     }
 }
 
 impl Untrack for Assop {
     fn untrack(&mut self) {
         self.location = None;
+    }
+}
+
+pub trait ToOp {
+    fn to_binop(&self, bool) -> Option<Binop>;
+    fn to_logop(&self) -> Option<Logop>;
+    fn to_assop(&self) -> Option<Assop>;
+}
+
+impl ToOp for Token {
+    fn to_binop(&self, allow_in: bool) -> Option<Binop> {
+        Some(match self.value {
+            TokenData::Star                               => BinopTag::Times,
+            TokenData::Slash                              => BinopTag::Div,
+            TokenData::Mod                                => BinopTag::Mod,
+            TokenData::Plus                               => BinopTag::Plus,
+            TokenData::Minus                              => BinopTag::Minus,
+            TokenData::LShift                             => BinopTag::LShift,
+            TokenData::RShift                             => BinopTag::RShift,
+            TokenData::URShift                            => BinopTag::URShift,
+            TokenData::LAngle                             => BinopTag::Lt,
+            TokenData::RAngle                             => BinopTag::Gt,
+            TokenData::LEq                                => BinopTag::LEq,
+            TokenData::GEq                                => BinopTag::GEq,
+            TokenData::Reserved(Reserved::Instanceof)     => BinopTag::Instanceof,
+            TokenData::Reserved(Reserved::In) if allow_in => BinopTag::In,
+            TokenData::Eq                                 => BinopTag::Eq,
+            TokenData::NEq                                => BinopTag::NEq,
+            TokenData::StrictEq                           => BinopTag::StrictEq,
+            TokenData::StrictNEq                          => BinopTag::StrictNEq,
+            TokenData::BitAnd                             => BinopTag::BitAnd,
+            TokenData::BitXor                             => BinopTag::BitXor,
+            TokenData::BitOr                              => BinopTag::BitOr,
+            _ => { return None; }
+        }.tracked(self.location()))
+    }
+
+    fn to_logop(&self) -> Option<Logop> {
+        Some(match self.value {
+            TokenData::LogicalAnd => LogopTag::And,
+            TokenData::LogicalOr  => LogopTag::Or,
+            _ => { return None; }
+        }.tracked(self.location()))
+    }
+
+    fn to_assop(&self) -> Option<Assop> {
+        Some(match self.value {
+            TokenData::Assign        => AssopTag::Eq,
+            TokenData::PlusAssign    => AssopTag::PlusEq,
+            TokenData::MinusAssign   => AssopTag::MinusEq,
+            TokenData::StarAssign    => AssopTag::TimesEq,
+            TokenData::SlashAssign   => AssopTag::DivEq,
+            TokenData::ModAssign     => AssopTag::ModEq,
+            TokenData::LShiftAssign  => AssopTag::LShiftEq,
+            TokenData::RShiftAssign  => AssopTag::RShiftEq,
+            TokenData::URShiftAssign => AssopTag::URShiftEq,
+            TokenData::BitAndAssign  => AssopTag::BitAndEq,
+            TokenData::BitOrAssign   => AssopTag::BitOrEq,
+            TokenData::BitXorAssign  => AssopTag::BitXorEq,
+            _ => { return None; }
+        }.tracked(self.location()))
     }
 }
 
@@ -535,73 +597,82 @@ pub enum ExprData {
 impl PartialEq for ExprData {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (&ExprData::This, &ExprData::This) => true,
-            (&ExprData::Id(ref id_l), &ExprData::Id(ref id_r)) => id_l.eq(id_r),
-            (&ExprData::Arr(ref elts_l), &ExprData::Arr(ref elts_r)) => elts_l.eq(elts_r),
-            (&ExprData::Obj(ref props_l), &ExprData::Obj(ref props_r)) => props_l.eq(props_r),
-            (&ExprData::Fun(ref fun_l), &ExprData::Fun(ref fun_r)) => fun_l.eq(fun_r),
-            (&ExprData::Seq(ref exprs_l), &ExprData::Seq(ref exprs_r)) => exprs_l.eq(exprs_r),
-            (&ExprData::Unop(ref op_l, ref arg_l), &ExprData::Unop(ref op_r, ref arg_r)) => op_l.eq(op_r) && arg_l.eq(arg_r),
-            (&ExprData::Binop(ref op_l, ref arg1_l, ref arg2_l), &ExprData::Binop(ref op_r, ref arg1_r, ref arg2_r)) => op_l.eq(op_r) && arg1_l.eq(arg1_r) && arg2_l.eq(arg2_r),
-            (&ExprData::Logop(ref op_l, ref arg1_l, ref arg2_l), &ExprData::Logop(ref op_r, ref arg1_r, ref arg2_r)) => op_l.eq(op_r) && arg1_l.eq(arg1_r) && arg2_l.eq(arg2_r),
-            (&ExprData::PreInc(ref arg_l), &ExprData::PreInc(ref arg_r))
-          | (&ExprData::PostInc(ref arg_l), &ExprData::PostInc(ref arg_r))
-          | (&ExprData::PreDec(ref arg_l), &ExprData::PreDec(ref arg_r))
-          | (&ExprData::PostDec(ref arg_l), &ExprData::PostDec(ref arg_r)) => arg_l.eq(arg_r),
-            (&ExprData::Assign(ref op_l, ref patt_l, ref arg_l), &ExprData::Assign(ref op_r, ref patt_r, ref arg_r)) => op_l.eq(op_r) && patt_l.eq(patt_r) && arg_l.eq(arg_r),
-            (&ExprData::Cond(ref test_l, ref cons_l, ref alt_l), &ExprData::Cond(ref test_r, ref cons_r, ref alt_r)) => test_l.eq(test_r) && cons_l.eq(cons_r) && alt_l.eq(alt_r),
-            (&ExprData::Call(ref callee_l, ref args_l), &ExprData::Call(ref callee_r, ref args_r)) => callee_l.eq(callee_r) && args_l.eq(args_r),
-            (&ExprData::New(ref callee_l, None), &ExprData::New(ref callee_r, None)) => callee_l.eq(callee_r),
-            (&ExprData::New(ref callee_l, None), &ExprData::New(ref callee_r, Some(ref args_r))) => callee_l.eq(callee_r) && args_r.is_empty(),
-            (&ExprData::New(ref callee_l, Some(ref args_l)), &ExprData::New(ref callee_r, None)) => callee_l.eq(callee_r) && args_l.is_empty(),
-            (&ExprData::New(ref callee_l, Some(ref args_l)), &ExprData::New(ref callee_r, Some(ref args_r))) => callee_l.eq(callee_r) && args_l.eq(args_r),
-            (&ExprData::Dot(ref obj_l, ref key_l), &ExprData::Dot(ref obj_r, ref key_r)) => obj_l.eq(obj_r) && key_l.eq(key_r),
-            (&ExprData::Brack(ref obj_l, ref prop_l), &ExprData::Brack(ref obj_r, ref prop_r)) => obj_l.eq(obj_r) && prop_l.eq(prop_r),
-            (&ExprData::NewTarget, &ExprData::NewTarget) => true,
-            (&ExprData::True, &ExprData::True) => true,
-            (&ExprData::False, &ExprData::False) => true,
-            (&ExprData::Null, &ExprData::Null) => true,
-            (&ExprData::Number(ref lit_l), &ExprData::Number(ref lit_r)) => lit_l.value() == lit_r.value(),
-            (&ExprData::RegExp(ref src_l, ref flags_l), &ExprData::RegExp(ref src_r, ref flags_r)) => src_l.eq(src_r) && flags_l.eq(flags_r),
-            (&ExprData::String(ref lit_l), &ExprData::String(ref lit_r)) => lit_l.eq(lit_r),
-            (_, _) => false
+            (&ExprData::This,                      &ExprData::This)                      => true,
+            (&ExprData::Id(ref id_l),              &ExprData::Id(ref id_r))              => id_l == id_r,
+            (&ExprData::Arr(ref elts_l),           &ExprData::Arr(ref elts_r))           => elts_l == elts_r,
+            (&ExprData::Obj(ref props_l),          &ExprData::Obj(ref props_r))          => props_l == props_r,
+            (&ExprData::Fun(ref fun_l),            &ExprData::Fun(ref fun_r))            => fun_l == fun_r,
+            (&ExprData::Seq(ref exprs_l),          &ExprData::Seq(ref exprs_r))          => exprs_l == exprs_r,
+            (&ExprData::Unop(ref op_l, ref arg_l), &ExprData::Unop(ref op_r, ref arg_r)) => (op_l, arg_l) == (op_r, arg_r),
+            (&ExprData::Binop(ref op_l, ref arg1_l, ref arg2_l),
+             &ExprData::Binop(ref op_r, ref arg1_r, ref arg2_r))                         => (op_l, arg1_l, arg2_l) == (op_r, arg1_r, arg2_r),
+            (&ExprData::Logop(ref op_l, ref arg1_l, ref arg2_l),
+             &ExprData::Logop(ref op_r, ref arg1_r, ref arg2_r))                         => (op_l, arg1_l, arg2_l) == (op_r, arg1_r, arg2_r),
+            (&ExprData::PreInc(ref arg_l),         &ExprData::PreInc(ref arg_r))
+          | (&ExprData::PostInc(ref arg_l),        &ExprData::PostInc(ref arg_r))
+          | (&ExprData::PreDec(ref arg_l),         &ExprData::PreDec(ref arg_r))
+          | (&ExprData::PostDec(ref arg_l),        &ExprData::PostDec(ref arg_r))        => arg_l == arg_r,
+            (&ExprData::Assign(ref op_l, ref patt_l, ref arg_l),
+             &ExprData::Assign(ref op_r, ref patt_r, ref arg_r))                         => (op_l, patt_l, arg_l) == (op_r, patt_r, arg_r),
+            (&ExprData::Cond(ref test_l, ref cons_l, ref alt_l),
+             &ExprData::Cond(ref test_r, ref cons_r, ref alt_r))                         => (test_l, cons_l, alt_l) == (test_r, cons_r, alt_r),
+            (&ExprData::Call(ref callee_l, ref args_l),
+             &ExprData::Call(ref callee_r, ref args_r))                                  => (callee_l, args_l) == (callee_r, args_r),
+            (&ExprData::New(ref callee_l, None),   &ExprData::New(ref callee_r, None))   => callee_l == callee_r,
+            (&ExprData::New(ref callee_l, None),   &ExprData::New(ref callee_r, Some(ref args)))
+          | (&ExprData::New(ref callee_l, Some(ref args)),
+             &ExprData::New(ref callee_r, None))                                         => (callee_l == callee_r) && args.is_empty(),
+            (&ExprData::New(ref callee_l, Some(ref args_l)),
+             &ExprData::New(ref callee_r, Some(ref args_r)))                             => (callee_l, args_l) == (callee_r, args_r),
+            (&ExprData::Dot(ref obj_l, ref key_l), &ExprData::Dot(ref obj_r, ref key_r)) => (obj_l, key_l) == (obj_r, key_r),
+            (&ExprData::Brack(ref obj_l, ref prop_l),
+             &ExprData::Brack(ref obj_r, ref prop_r))                                    => (obj_l, prop_l) == (obj_r, prop_r),
+            (&ExprData::NewTarget,          &ExprData::NewTarget)                        => true,
+            (&ExprData::True,               &ExprData::True)                             => true,
+            (&ExprData::False,              &ExprData::False)                            => true,
+            (&ExprData::Null,               &ExprData::Null)                             => true,
+            (&ExprData::Number(ref lit_l),  &ExprData::Number(ref lit_r))                => lit_l.value() == lit_r.value(),
+            (&ExprData::RegExp(ref src_l, ref flags_l),
+             &ExprData::RegExp(ref src_r, ref flags_r))                                  => (src_l, flags_l) == (src_r, flags_r),
+            (&ExprData::String(ref lit_l),  &ExprData::String(ref lit_r))                => lit_l == lit_r,
+            _ => false
         }
     }
 }
 
-impl fmt::Debug for ExprData {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+impl Debug for ExprData {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         match self {
-            &ExprData::This => fmt.write_str("This"),
-            &ExprData::Id(ref id) => fmt.debug_tuple("Id").field(id).finish(),
-            &ExprData::Arr(ref elts) => fmt.debug_tuple("Arr").field(elts).finish(),
-            &ExprData::Obj(ref props) => fmt.debug_tuple("Obj").field(props).finish(),
-            &ExprData::Fun(ref fun) => fmt.debug_tuple("Fun").field(fun).finish(),
-            &ExprData::Seq(ref exprs) => fmt.debug_tuple("Seq").field(exprs).finish(),
-            &ExprData::Unop(ref op, ref arg) => fmt.debug_tuple("Unop").field(op).field(arg).finish(),
-            &ExprData::Binop(ref op, ref left, ref right) => fmt.debug_tuple("Binop").field(op).field(left).field(right).finish(),
-            &ExprData::Logop(ref op, ref left, ref right) => fmt.debug_tuple("Logop").field(op).field(left).field(right).finish(),
-            &ExprData::PreInc(ref arg) => fmt.debug_tuple("PreInc").field(arg).finish(),
-            &ExprData::PostInc(ref arg) => fmt.debug_tuple("PostInc").field(arg).finish(),
-            &ExprData::PreDec(ref arg) => fmt.debug_tuple("PreDec").field(arg).finish(),
-            &ExprData::PostDec(ref arg) => fmt.debug_tuple("PostDec").field(arg).finish(),
+            &ExprData::This                                => fmt.write_str("This"),
+            &ExprData::Id(ref id)                          => fmt.debug_tuple("Id").field(id).finish(),
+            &ExprData::Arr(ref elts)                       => fmt.debug_tuple("Arr").field(elts).finish(),
+            &ExprData::Obj(ref props)                      => fmt.debug_tuple("Obj").field(props).finish(),
+            &ExprData::Fun(ref fun)                        => fmt.debug_tuple("Fun").field(fun).finish(),
+            &ExprData::Seq(ref exprs)                      => fmt.debug_tuple("Seq").field(exprs).finish(),
+            &ExprData::Unop(ref op, ref arg)               => fmt.debug_tuple("Unop").field(op).field(arg).finish(),
+            &ExprData::Binop(ref op, ref left, ref right)  => fmt.debug_tuple("Binop").field(op).field(left).field(right).finish(),
+            &ExprData::Logop(ref op, ref left, ref right)  => fmt.debug_tuple("Logop").field(op).field(left).field(right).finish(),
+            &ExprData::PreInc(ref arg)                     => fmt.debug_tuple("PreInc").field(arg).finish(),
+            &ExprData::PostInc(ref arg)                    => fmt.debug_tuple("PostInc").field(arg).finish(),
+            &ExprData::PreDec(ref arg)                     => fmt.debug_tuple("PreDec").field(arg).finish(),
+            &ExprData::PostDec(ref arg)                    => fmt.debug_tuple("PostDec").field(arg).finish(),
             &ExprData::Assign(ref op, ref left, ref right) => fmt.debug_tuple("Assign").field(op).field(left).field(right).finish(),
-            &ExprData::Cond(ref test, ref cons, ref alt) => fmt.debug_tuple("Cond").field(test).field(cons).field(alt).finish(),
-            &ExprData::Call(ref callee, ref args) => fmt.debug_tuple("Call").field(callee).field(args).finish(),
+            &ExprData::Cond(ref test, ref cons, ref alt)   => fmt.debug_tuple("Cond").field(test).field(cons).field(alt).finish(),
+            &ExprData::Call(ref callee, ref args)          => fmt.debug_tuple("Call").field(callee).field(args).finish(),
             &ExprData::New(ref ctor, None) => {
                 let args: Vec<Expr> = vec![];
                 fmt.debug_tuple("New").field(ctor).field(&args).finish()
             }
-            &ExprData::New(ref ctor, Some(ref args)) => fmt.debug_tuple("New").field(ctor).field(args).finish(),
-            &ExprData::Dot(ref expr, ref key) => fmt.debug_tuple("Dot").field(expr).field(key).finish(),
-            &ExprData::Brack(ref expr, ref prop) => fmt.debug_tuple("Brack").field(expr).field(prop).finish(),
-            &ExprData::NewTarget => fmt.write_str("NewTarget"),
-            &ExprData::True => fmt.write_str("True"),
-            &ExprData::False => fmt.write_str("False"),
-            &ExprData::Null => fmt.write_str("Null"),
-            &ExprData::Number(ref lit) => fmt.debug_tuple("Number").field(lit).finish(),
-            &ExprData::RegExp(ref source, ref flags) => fmt.debug_tuple("RegExp").field(source).field(flags).finish(),
-            &ExprData::String(ref lit) => fmt.debug_tuple("String").field(lit).finish()
+            &ExprData::New(ref ctor, Some(ref args))       => fmt.debug_tuple("New").field(ctor).field(args).finish(),
+            &ExprData::Dot(ref expr, ref key)              => fmt.debug_tuple("Dot").field(expr).field(key).finish(),
+            &ExprData::Brack(ref expr, ref prop)           => fmt.debug_tuple("Brack").field(expr).field(prop).finish(),
+            &ExprData::NewTarget                           => fmt.write_str("NewTarget"),
+            &ExprData::True                                => fmt.write_str("True"),
+            &ExprData::False                               => fmt.write_str("False"),
+            &ExprData::Null                                => fmt.write_str("Null"),
+            &ExprData::Number(ref lit)                     => fmt.debug_tuple("Number").field(lit).finish(),
+            &ExprData::RegExp(ref source, ref flags)       => fmt.debug_tuple("RegExp").field(source).field(flags).finish(),
+            &ExprData::String(ref lit)                     => fmt.debug_tuple("String").field(lit).finish()
         }
     }
 }
@@ -610,16 +681,16 @@ impl fmt::Debug for ExprData {
 
 impl Expr {
     pub fn into_assignment_pattern(self) -> Result<APatt, Option<Span>> {
-        match self.value {
-            ExprData::Id(id) => Ok(APatt::Simple(AssignTargetData::Id(id).tracked(self.location))),
-            ExprData::Dot(obj, key) => Ok(APatt::Simple(AssignTargetData::Dot(obj, key).tracked(self.location))),
-            ExprData::Brack(obj, prop) => Ok(APatt::Simple(AssignTargetData::Brack(obj, prop).tracked(self.location))),
+        Ok(match self.value {
+            ExprData::Id(id)           => APatt::Simple(AssignTargetData::Id(id).tracked(self.location)),
+            ExprData::Dot(obj, key)    => APatt::Simple(AssignTargetData::Dot(obj, key).tracked(self.location)),
+            ExprData::Brack(obj, prop) => APatt::Simple(AssignTargetData::Brack(obj, prop).tracked(self.location)),
             ExprData::Obj(props) => {
                 let mut prop_patts = Vec::with_capacity(props.len());
                 for prop in props {
                     prop_patts.push(try!(prop.into_assignment_property()));
                 }
-                Ok(APatt::Compound(CompoundAPattData::Obj(prop_patts).tracked(self.location)))
+                APatt::Compound(CompoundAPattData::Obj(prop_patts).tracked(self.location))
             }
             ExprData::Arr(exprs) => {
                 let mut patts = Vec::with_capacity(exprs.len());
@@ -629,10 +700,10 @@ impl Expr {
                         None => None
                     });
                 }
-                Ok(APatt::Compound(CompoundAPattData::Arr(patts).tracked(self.location)))
+                APatt::Compound(CompoundAPattData::Arr(patts).tracked(self.location))
             }
-            _ => Err(self.location)
-        }
+            _ => { return Err(self.location); }
+        })
     }
 }
 
@@ -662,7 +733,7 @@ impl Untrack for ExprData {
             ExprData::True                                           => { }
             ExprData::False                                          => { }
             ExprData::Null                                           => { }
-            ExprData::Number(_)                                      => { } // FIXME: lit.untrack()
+            ExprData::Number(_)                                      => { }
             ExprData::RegExp(_, _)                                   => { }
             ExprData::String(_)                                      => { }
         }

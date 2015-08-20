@@ -1,4 +1,5 @@
 use std::fmt;
+use std::fmt::{Debug, Formatter};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct Posn {
@@ -65,8 +66,8 @@ pub struct Tracked<T> {
     pub value: T
 }
 
-impl<T: fmt::Debug> fmt::Debug for Tracked<T> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+impl<T: Debug> Debug for Tracked<T> {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         fmt.debug_struct("Tracked")
             .field("value", &self.value)
             .finish()

@@ -1352,7 +1352,7 @@ impl<I> Parser<I>
                     // FIXME: TokenData::LParen => unimplemented!(),
                     TokenData::Colon => {
                         let key_location = Some(first.location);
-                        self.more_prop_init(PropKeyData::Id(format!("get")).tracked(key_location))
+                        self.more_prop_init(PropKeyData::Id("get".to_string()).tracked(key_location))
                     }
                     // FIXME: treat as elided optional initializer
                     _ => { return Err(ParseError::UnexpectedToken(try!(self.read()))); }
@@ -1379,7 +1379,7 @@ impl<I> Parser<I>
                     // FIXME: TokenData::LParen => unimplemented!(),
                     TokenData::Colon => {
                         let key_location = Some(first.location);
-                        self.more_prop_init(PropKeyData::Id(format!("set")).tracked(key_location))
+                        self.more_prop_init(PropKeyData::Id("set".to_string()).tracked(key_location))
                     }
                     // FIXME: treat as elided optional initializer
                     _ => { return Err(ParseError::UnexpectedToken(try!(self.read()))); }
@@ -1740,7 +1740,7 @@ impl<I> Parser<I>
         let mut operand = left;
         while let Some(op) = try!(self.match_infix()) {
             try!(stack.extend(operand, op).map_err(ParseError::InvalidLHS));
-            //println!("{}\n", stack.debug());
+            //println!("{}\n", stack);
             operand = try!(self.unary_expression());
         }
         stack.finish(operand).map_err(ParseError::InvalidLHS)

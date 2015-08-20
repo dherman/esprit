@@ -1,5 +1,8 @@
 use ast::*;
 use track::*;
+use std::fmt;
+use std::fmt::{Display, Formatter};
+use std::{cmp, usize};
 
 #[derive(Debug)]
 pub enum Infix {
@@ -10,13 +13,22 @@ pub enum Infix {
 impl Infix {
     fn debug(&self) -> String {
         match *self {
-            Infix::Binop(ref op) => op.pretty(),
-            Infix::Logop(ref op) => op.pretty()
+            Infix::Binop(ref op) => op.to_string(),
+            Infix::Logop(ref op) => op.to_string()
         }
     }
 
     fn groups_left(&self, right: &Infix) -> bool {
         self.precedence() >= right.precedence()
+    }
+}
+
+impl Display for Infix {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        match *self {
+            Infix::Binop(ref op) => op.fmt(fmt),
+            Infix::Logop(ref op) => op.fmt(fmt)
+        }
     }
 }
 
@@ -49,9 +61,17 @@ impl Frame {
             Infix::Logop(op) => ExprData::Logop(op, Box::new(self.left), Box::new(right))
         }).tracked(location))
     }
+}
 
-    fn debug(&self) -> String {
-        format!("{} {} []", debug_expr(&self.left), self.op.debug())
+impl Frame {
+    fn width(&self) -> usize {
+        FrameExpr(&self.left).width() + 1 + self.op.to_string().len() + 1 + 2
+    }
+}
+
+impl Display for Frame {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        fmt.write_fmt(format_args!("{} {} []", FrameExpr(&self.left), self.op))
     }
 }
 
@@ -70,24 +90,33 @@ impl StringExt for String {
     }
 }
 
-use std::{cmp,usize};
-fn max_len(x: &Vec<String>) -> usize {
-    let mut result = usize::MIN;
-    for s in x {
-        result = cmp::max(s.len(), result);
+struct FrameExpr<'a>(&'a Expr);
+
+impl<'a> FrameExpr<'a> {
+    fn width(&self) -> usize {
+        match *self {
+            FrameExpr(&Expr { value: ExprData::Binop(ref op, ref left, ref right), .. }) => {
+                1 + FrameExpr(left).width() + 1 + op.to_string().len() + 1 + FrameExpr(right).width() + 1
+            }
+            FrameExpr(&Expr { value: ExprData::Logop(ref op, ref left, ref right), .. }) => {
+                1 + FrameExpr(left).width() + 1 + op.to_string().len() + 1 + FrameExpr(right).width() + 1
+            }
+            _ => 1
+        }
     }
-    result
 }
 
-fn debug_expr(expr: &Expr) -> String {
-    match expr.value {
-        ExprData::Binop(ref op, ref left, ref right) => {
-            format!("({} {} {})", debug_expr(left), op.pretty(), debug_expr(right))
+impl<'a> Display for FrameExpr<'a> {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        match *self {
+            FrameExpr(&Expr { value: ExprData::Binop(ref op, ref left, ref right), .. }) => {
+                fmt.write_fmt(format_args!("({} {} {})", FrameExpr(left), op, FrameExpr(right)))
+            }
+            FrameExpr(&Expr { value: ExprData::Logop(ref op, ref left, ref right), .. }) => {
+                fmt.write_fmt(format_args!("({} {} {})", FrameExpr(left), op, FrameExpr(right)))
+            }
+            _ => fmt.write_str("_")
         }
-        ExprData::Logop(ref op, ref left, ref right) => {
-            format!("({} {} {})", debug_expr(left), op.pretty(), debug_expr(right))
-        }
-        _ => format!("_")
     }
 }
 
@@ -116,27 +145,21 @@ impl Stack {
         }
         Ok(right)
     }
+}
 
-    pub fn debug(&self) -> String {
-        let len = self.frames.len();
-        if len == 0 {
-            return format!("[]");
+impl Display for Stack {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        if self.frames.is_empty() {
+            return fmt.write_str("[]");
         }
-
-        let mut frames = Vec::with_capacity(self.frames.len());
+        let width = self.frames.iter().fold(usize::MIN, |max, f| cmp::max(max, f.width()));
+        let border = format!("+{}+", "-".to_string().repeat(width + 2));
         for frame in self.frames.iter() {
-            frames.push(frame.debug());
+            try!(fmt.write_str(&border[..]));
+            try!(fmt.write_fmt(format_args!("\n| {}{} |\n", frame, " ".to_string().repeat(width - frame.width()))));
         }
-        let width = max_len(&frames);
-        let border = format!("+{}+", format!("-").repeat(width + 2));
-        let mut result = String::new();
-        for frame in frames {
-            result.push_str(&border[..]);
-            result.push_str("\n");
-            result.push_str(&format!("| {}{} |\n", frame, format!(" ").repeat(width - frame.len()))[..]);
-        }
-        result.push_str(&border[..]);
-        result.push_str("\n");
-        result
+        try!(fmt.write_str(&border[..]));
+        try!(fmt.write_str("\n"));
+        Ok(())
     }
 }

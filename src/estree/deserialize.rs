@@ -333,7 +333,7 @@ impl IntoToken for Json {
             "String"        => {
                 let value = try!(arr.remove(0).into_string());
                 TokenData::String(StringLiteral {
-                    source: format!("{}", Json::String(format!("{}", value)).pretty()),
+                    source: Json::String(value.to_string()).pretty().to_string(),
                     value: value
                 })
             }
@@ -855,16 +855,16 @@ impl IntoNode for Object {
             Json::Null => ExprData::Null,
             Json::Boolean(val) => if val { ExprData::True } else { ExprData::False },
             Json::String(value) => {
-                let source = format!("{}", Json::String(format!("{}", value)).pretty()); // FIXME: deal with \u2028, \u2029
+                let source = Json::String(value.to_string()).pretty().to_string(); // FIXME: deal with \u2028, \u2029
                 ExprData::String(StringLiteral {
                     source: source,
                     value: value
                 })
             }
-            Json::I64(val) => ExprData::Number(NumberLiteral::DecimalInt(format!("{}", val), None)),
-            Json::U64(val) => ExprData::Number(NumberLiteral::DecimalInt(format!("{}", val), None)),
+            Json::I64(val) => ExprData::Number(NumberLiteral::DecimalInt(val.to_string(), None)),
+            Json::U64(val) => ExprData::Number(NumberLiteral::DecimalInt(val.to_string(), None)),
             Json::F64(val) => {
-                let s = format!("{}", val);
+                let s = val.to_string();
                 let v: Vec<&str> = s.split('.').collect();
                 let int_part = Some(v[0].to_owned());
                 let fract_part = if v.len() > 1 { Some(v[1].to_owned()) } else { None };
