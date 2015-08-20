@@ -97,8 +97,8 @@ Expression ::=
 
 The following are the precedence levels for the Infix operators. Higher precedence values bind more tightly than lower precedence values.
 
-Operator       | Precednce
---------       | ---------
+Operator       | Precedence
+--------       | ----------
 `"*"`          | 11
 `"/"`          | 11
 `"%"`          | 11
