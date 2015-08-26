@@ -1,7 +1,6 @@
 use std::fmt;
 use std::fmt::{Debug, Formatter};
 use track::*;
-use rustc_serialize::json::Json;
 
 // Unconditionally reserved words.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -212,7 +211,6 @@ impl Token {
 }
 
 #[derive(Debug, PartialEq)]
-#[allow(dead_code)]
 pub enum TokenData {
     Reserved(Reserved),
 

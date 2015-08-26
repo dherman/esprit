@@ -1,0 +1,12 @@
+[package]
+
+name = "joker"
+version = "0.0.1"
+authors = ["Dave Herman <dherman@mozilla.com>"]
+license = "MIT"
+description = "A JavaScript tokenizer."
+repository = "https://github.com/dherman/esprit"
+
+[dependencies]
+serde_json = "0.5.1"
+unjson = { version = "0.0.1", path = "../unjson" }

@@ -1,8 +1,9 @@
-use ast::*;
-use track::*;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::{cmp, usize};
+use joker::track::{Span, span, IntoTracked};
+use easter::expr::{Expr, ExprData};
+use easter::punc::{Binop, Logop, Precedence};
 
 #[derive(Debug)]
 pub enum Infix {
@@ -11,13 +12,6 @@ pub enum Infix {
 }
 
 impl Infix {
-    fn debug(&self) -> String {
-        match *self {
-            Infix::Binop(ref op) => op.to_string(),
-            Infix::Logop(ref op) => op.to_string()
-        }
-    }
-
     fn groups_left(&self, right: &Infix) -> bool {
         self.precedence() >= right.precedence()
     }

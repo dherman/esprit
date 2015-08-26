@@ -1,7 +1,7 @@
 UNIT_IN = unit.in.json
-UNIT_OUT = unit.json
+UNIT_OUT = build/unit.json
 
-INTEGRATION_OUT = integration.json
+INTEGRATION_OUT = build/integration.json
 
 all: $(INTEGRATION_OUT) $(UNIT_OUT)
 .PHONY: all

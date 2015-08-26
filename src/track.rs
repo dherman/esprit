@@ -1,164 +1,97 @@
-use std::fmt;
-use std::fmt::{Debug, Formatter};
+use joker::track::{Track, Tracked, Posn, Span, span};
+use joker::token::{Token, TokenData};
+use easter::punc::Semi;
+use parser::Parser;
+use error::Error;
+use result::Result;
+use state::State;
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub struct Posn {
-    pub offset: u32,
-    pub line: u32,
-    pub column: u32
+pub trait Tracking {
+    fn vec_span<T: Track>(&self, v: &Vec<T>) -> Option<Span>;
+    fn posn(&self) -> Posn;
+    fn start(&self) -> SpanTracker;
+    fn span<F, T>(&mut self, parse: &mut F) -> Result<Tracked<T>>
+      where F: FnMut(&mut Self) -> Result<T>;
 }
 
-impl Posn {
-    pub fn origin() -> Posn {
-        Posn {
-            offset: 0,
-            line: 0,
-            column: 0
+impl<I> Tracking for Parser<I> where I: Iterator<Item=char> {
+    fn vec_span<T: Track>(&self, v: &Vec<T>) -> Option<Span> {
+        let len = v.len();
+        if len == 0 {
+            let here = self.posn();
+            return Some(Span { start: here, end: here });
         }
+        span(&v[0], &v[len - 1])
     }
-}
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub struct Span {
-    pub start: Posn,
-    pub end: Posn
-}
-
-pub trait Track {
-    fn location(&self) -> Option<Span>;
-    fn track<U>(&self, other: U) -> Tracked<U> {
-        Tracked {
-            location: self.location(),
-            value: other
-        }
+    fn posn(&self) -> Posn {
+        self.lexer.posn()
     }
-}
 
-impl Track for Posn {
-    fn location(&self) -> Option<Span> {
-        Some(Span {
-            start: *self,
-            end: *self
-        })
+    fn start(&self) -> SpanTracker {
+        SpanTracker { start: self.posn() }
     }
-}
 
-impl Track for Span {
-    fn location(&self) -> Option<Span> {
-        Some(*self)
-    }
-}
-
-impl<T> Track for Option<T>
-  where T: Track
-{
-    fn location(&self) -> Option<Span> {
-        match self {
-            &Some(ref x) => x.location(),
-            &None        => None
-        }
-    }
-}
-
-#[derive(PartialEq, Eq)]
-pub struct Tracked<T> {
-    pub location: Option<Span>,
-    pub value: T
-}
-
-impl<T: Debug> Debug for Tracked<T> {
-    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        fmt.debug_struct("Tracked")
-            .field("value", &self.value)
-            .finish()
-    }
-}
-
-pub trait IntoTracked {
-    fn tracked(self, Option<Span>) -> Tracked<Self>;
-    //fn tracked<T: Track>(self, T) -> Tracked<Self>;
-}
-
-impl<T> IntoTracked for T {
-    fn tracked(self, location: Option<Span>) -> Tracked<T> {
-        Tracked { value: self, location: location }
-    }
-    // fn tracked<U: Track>(self, track: U) -> Tracked<T> {
-    //     Tracked { value: self, location: track.location() }
-    // }
-}
-
-pub trait Untrack {
-    fn untrack(&mut self);
-}
-
-impl<T> Untrack for Tracked<T>
-  where T: Untrack
-{
-    fn untrack(&mut self) {
-        self.location = None;
-        self.value.untrack();
-    }
-}
-
-impl<T> Untrack for Box<T>
-  where T: Untrack
-{
-    fn untrack(&mut self) {
-        (**self).untrack();
-    }
-}
-
-impl<T> Untrack for Option<T>
-  where T: Untrack
-{
-    fn untrack(&mut self) {
-        match *self {
-            Some(ref mut x) => { x.untrack(); }
-            None => { }
-        }
-    }
-}
-
-impl<T> Untrack for Vec<T>
-  where T: Untrack
-{
-    fn untrack(&mut self) {
-        for x in self {
-            x.untrack();
-        }
-    }
-}
-
-impl<T> Tracked<T> {
-    pub fn map<U, F>(self, op: F) -> Tracked<U>
-      where F: FnOnce(T) -> U
+    fn span<F, T>(&mut self, parse: &mut F) -> Result<Tracked<T>>
+      where F: FnMut(&mut Self) -> Result<T>
     {
-        let Tracked { location, value } = self;
-        Tracked { location: location, value: op(value) }
+        let start = self.posn();
+        let value = try!(parse(self));
+        let end = self.posn();
+        Ok(Tracked { value: value, location: Some(Span { start: start, end: end }) })
     }
+}
 
-    pub fn map_self<U, F>(self, op: F) -> Tracked<U>
-      where F: FnOnce(Tracked<T>) -> U
+#[derive(Eq, PartialEq)]
+pub enum Newline {
+    Required,
+    Optional
+}
+
+pub struct SpanTracker {
+    start: Posn
+}
+
+impl SpanTracker {
+/*
+    pub fn end<I, T>(&self, parser: &Parser<I>, value: T) -> Tracked<T>
+      where I: Iterator<Item=char>
     {
-        let location = self.location;
-        Tracked { location: location, value: op(self) }
-
+        Tracked { value: value, location: Some(Span { start: self.start, end: parser.posn() }) }
     }
-}
+*/
 
-impl<T> Track for Tracked<T> {
-    fn location(&self) -> Option<Span> {
-        self.location
-    }
-}
-
-pub fn span<T, U>(left: &T, right: &U) -> Option<Span>
-  where T: Track,
-        U: Track
-{
-    match (left.location(), right.location()) {
-        (Some(l), Some(r)) => Some(Span { start: l.start, end: r.end }),
-        _ => None
+    pub fn end_with_auto_semi<I, T, F>(&self, parser: &mut Parser<I>, newline: Newline, cons: F)
+        -> Result<Tracked<T>>
+      where I: Iterator<Item=char>,
+            F: FnOnce(Semi) -> T
+    {
+        let before = parser.posn();
+        match try!(parser.peek()) {
+            &Token { value: TokenData::Semi, location, .. } => {
+                parser.reread(TokenData::Semi);
+                Ok(Tracked {
+                    value: cons(Semi::Explicit(Some(location.start))),
+                    location: Some(Span { start: self.start, end: parser.posn() })
+                })
+            }
+            &Token { value: TokenData::RBrace, .. }
+          | &Token { value: TokenData::EOF, .. } => {
+                Ok(Tracked {
+                    value: cons(Semi::Inserted),
+                    location: Some(Span { start: self.start, end: before })
+                })
+            }
+            &Token { newline: found_newline, .. } => {
+                if newline == Newline::Required && !found_newline {
+                    let token = try!(parser.read());
+                    return Err(Error::FailedASI(token));
+                }
+                Ok(Tracked {
+                    value: cons(Semi::Inserted),
+                    location: Some(Span { start: self.start, end: before })
+                })
+            }
+        }
     }
 }

@@ -1,0 +1,12 @@
+[package]
+
+name = "easter"
+version = "0.0.1"
+authors = ["Dave Herman <dherman@mozilla.com>"]
+license = "MIT"
+description = "Type definitions for ECMAScript abstract syntax trees."
+repository = "https://github.com/dherman/esprit"
+
+[dependencies]
+# serde_json = "0.5.1"
+joker = { version = "0.0.1", path = "../joker" }

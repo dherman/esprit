@@ -8,20 +8,11 @@ use token::{Reserved, Atom, Name, StringLiteral};
 use std::cell::Cell;
 use std::rc::Rc;
 use context::SharedContext;
-use eschar::ESCharExt;
+use char::ESCharExt;
 use reader::Reader;
-use tokbuf::TokenBuffer;
-
-pub type Lex<T> = Result<T, LexError>;
-
-#[derive(Debug, PartialEq)]
-pub enum LexError {
-    UnexpectedEOF,
-    // FIXME: split this up into specific situational errors
-    UnexpectedChar(char),
-    InvalidDigit(char),
-    IllegalUnicode(u32)
-}
+use lookahead::Buffer;
+use error::Error;
+use result::Result;
 
 macro_rules! wordmap {
     ($ns:ident, [ $( ( $key:expr, $val:ident ) ),* ]) => {
@@ -62,7 +53,7 @@ impl SpanTracker {
 pub struct Lexer<I> {
     reader: Reader<I>,
     cx: Rc<Cell<SharedContext>>,
-    lookahead: TokenBuffer,
+    lookahead: Buffer,
     reserved: HashMap<&'static str, Reserved>,
     contextual: HashMap<&'static str, Atom>
 }
@@ -74,7 +65,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         Lexer {
             reader: Reader::new(chars),
             cx: cx,
-            lookahead: TokenBuffer::new(),
+            lookahead: Buffer::new(),
             reserved: wordmap!(Reserved, [
                 // ReservedWord
                 ("null",       Null),       ("true",       True),       ("false",     False),
@@ -118,7 +109,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     // public methods
 
-    pub fn peek_token(&mut self) -> Lex<&Token> {
+    pub fn peek_token(&mut self) -> Result<&Token> {
         if self.lookahead.is_empty() {
             let token = try!(self.read_next_token());
             self.lookahead.push_token(token);
@@ -131,7 +122,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         self.lookahead.peek_token()
     }
 
-    pub fn skip_token(&mut self) -> Lex<()> {
+    pub fn skip_token(&mut self) -> Result<()> {
         try!(self.read_token());
         Ok(())
     }
@@ -141,7 +132,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         self.lookahead.read_token()
     }
 
-    pub fn read_token(&mut self) -> Lex<Token> {
+    pub fn read_token(&mut self) -> Result<Token> {
         if self.lookahead.is_empty() {
             self.read_next_token()
         } else {
@@ -245,9 +236,9 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }
     }
 
-    fn read_until_with<F, G>(&mut self, pred: &F, read: &mut G) -> Lex<()>
+    fn read_until_with<F, G>(&mut self, pred: &F, read: &mut G) -> Result<()>
       where F: Fn(char) -> bool,
-            G: FnMut(&mut Self) -> Lex<()>
+            G: FnMut(&mut Self) -> Result<()>
     {
         loop {
             match self.peek() {
@@ -258,20 +249,20 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }
     }
 
-    fn fail_if<F>(&mut self, pred: &F) -> Lex<()>
+    fn fail_if<F>(&mut self, pred: &F) -> Result<()>
       where F: Fn(char) -> bool
     {
         match self.peek() {
-            Some(ch) if pred(ch) => Err(LexError::UnexpectedChar(ch)),
+            Some(ch) if pred(ch) => Err(Error::UnexpectedChar(ch)),
             _ => Ok(())
         }
     }
 
-    fn expect(&mut self, expected: char) -> Lex<()> {
+    fn expect(&mut self, expected: char) -> Result<()> {
         match self.peek() {
             Some(ch) if ch == expected => (),
-            Some(ch) => return Err(LexError::UnexpectedChar(ch)),
-            None => return Err(LexError::UnexpectedEOF)
+            Some(ch) => return Err(Error::UnexpectedChar(ch)),
+            None => return Err(Error::UnexpectedEOF)
         }
         self.skip();
         Ok(())
@@ -309,12 +300,12 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         self.skip_until(&|ch| ch.is_es_newline());
     }
 
-    fn skip_block_comment(&mut self) -> Lex<bool> {
+    fn skip_block_comment(&mut self) -> Result<bool> {
         self.skip2();
         let mut found_newline = false;
         loop {
             match self.peek2() {
-                (None, _) | (_, None)  => { return Err(LexError::UnexpectedEOF); }
+                (None, _) | (_, None)  => { return Err(Error::UnexpectedEOF); }
                 (Some('*'), Some('/')) => { self.skip2(); break; }
                 (Some(ch), _) => {
                     if ch.is_es_newline() {
@@ -327,7 +318,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         Ok(found_newline)
     }
 
-    fn read_regexp(&mut self) -> Lex<Token> {
+    fn read_regexp(&mut self) -> Result<Token> {
         let span = self.start();
         let mut s = String::new();
         self.reread('/');
@@ -337,57 +328,57 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         Ok(span.end(self, TokenData::RegExp(s, flags.chars().collect())))
     }
 
-    fn read_regexp_char(&mut self, s: &mut String) -> Lex<()> {
+    fn read_regexp_char(&mut self, s: &mut String) -> Result<()> {
         match self.peek() {
             Some('\\') => self.read_regexp_backslash(s),
             Some('[') => self.read_regexp_class(s),
-            Some(ch) if ch.is_es_newline() => Err(LexError::UnexpectedChar(ch)),
+            Some(ch) if ch.is_es_newline() => Err(Error::UnexpectedChar(ch)),
             Some(ch) => { s.push(self.reread(ch)); Ok(()) }
-            None => Err(LexError::UnexpectedEOF)
+            None => Err(Error::UnexpectedEOF)
         }
     }
 
-    fn read_regexp_backslash(&mut self, s: &mut String) -> Lex<()> {
+    fn read_regexp_backslash(&mut self, s: &mut String) -> Result<()> {
         s.push(self.reread('\\'));
         match self.peek() {
-            Some(ch) if ch.is_es_newline() => Err(LexError::UnexpectedChar(ch)),
+            Some(ch) if ch.is_es_newline() => Err(Error::UnexpectedChar(ch)),
             Some(ch) => { s.push(self.reread(ch)); Ok(()) }
-            None => Err(LexError::UnexpectedEOF)
+            None => Err(Error::UnexpectedEOF)
         }
     }
 
-    fn read_regexp_class(&mut self, s: &mut String) -> Lex<()> {
+    fn read_regexp_class(&mut self, s: &mut String) -> Result<()> {
         s.push(self.reread('['));
         try!(self.read_until_with(&|ch| ch == ']', &mut |this| { this.read_regexp_class_char(s) }));
         s.push(self.reread(']'));
         Ok(())
     }
 
-    fn read_regexp_class_char(&mut self, s: &mut String) -> Lex<()> {
+    fn read_regexp_class_char(&mut self, s: &mut String) -> Result<()> {
         match self.peek() {
             Some('\\') => self.read_regexp_backslash(s),
             Some(ch) => { s.push(self.reread(ch)); Ok(()) }
-            None => Err(LexError::UnexpectedEOF)
+            None => Err(Error::UnexpectedEOF)
         }
     }
 
-    fn read_decimal_digits_into(&mut self, s: &mut String) -> Lex<()> {
+    fn read_decimal_digits_into(&mut self, s: &mut String) -> Result<()> {
         match self.peek() {
-            Some(ch) if !ch.is_digit(10) => return Err(LexError::UnexpectedChar(ch)),
-            None => return Err(LexError::UnexpectedEOF),
+            Some(ch) if !ch.is_digit(10) => return Err(Error::UnexpectedChar(ch)),
+            None => return Err(Error::UnexpectedEOF),
             _ => ()
         }
         self.read_into_until(s, &|ch| !ch.is_digit(10));
         Ok(())
     }
 
-    fn read_decimal_digits(&mut self) -> Lex<String> {
+    fn read_decimal_digits(&mut self) -> Result<String> {
         let mut s = String::new();
         try!(self.read_decimal_digits_into(&mut s));
         Ok(s)
     }
 
-    fn read_exp_part(&mut self) -> Lex<Option<Exp>> {
+    fn read_exp_part(&mut self) -> Result<Option<Exp>> {
         let e = match self.peek() {
             Some('e') => CharCase::LowerCase,
             Some('E') => CharCase::UpperCase,
@@ -404,19 +395,19 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         Ok(Some(Exp { e: e, sign: sign, value: value }))
     }
 
-    fn read_decimal_int(&mut self) -> Lex<String> {
+    fn read_decimal_int(&mut self) -> Result<String> {
         let mut s = String::new();
         match self.peek() {
             Some('0') => { s.push(self.reread('0')); return Ok(s); }
             Some(ch) if ch.is_digit(10) => { s.push(self.reread(ch)); }
-            Some(ch) => return Err(LexError::UnexpectedChar(ch)),
-            None => return Err(LexError::UnexpectedEOF)
+            Some(ch) => return Err(Error::UnexpectedChar(ch)),
+            None => return Err(Error::UnexpectedEOF)
         }
         self.read_into_until(&mut s, &|ch| !ch.is_digit(10));
         Ok(s)
     }
 
-    fn read_radix_int<F, G>(&mut self, radix: u32, pred: &F, cons: &G) -> Lex<Token>
+    fn read_radix_int<F, G>(&mut self, radix: u32, pred: &F, cons: &G) -> Result<Token>
       where F: Fn(char) -> bool,
             G: Fn(CharCase, String) -> TokenData
     {
@@ -435,19 +426,19 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         Ok(span.end(self, cons(flag, s)))
     }
 
-    fn read_hex_int(&mut self) -> Lex<Token> {
+    fn read_hex_int(&mut self) -> Result<Token> {
         self.read_radix_int(16, &|ch| ch.is_es_hex_digit(), &|cc, s| {
             TokenData::Number(NumberLiteral::RadixInt(Radix::Hex(cc), s))
         })
     }
 
-    fn read_oct_int(&mut self) -> Lex<Token> {
+    fn read_oct_int(&mut self) -> Result<Token> {
         self.read_radix_int(8, &|ch| ch.is_es_oct_digit(), &|cc, s| {
             TokenData::Number(NumberLiteral::RadixInt(Radix::Oct(Some(cc)), s))
         })
     }
 
-    fn read_bin_int(&mut self) -> Lex<Token> {
+    fn read_bin_int(&mut self) -> Result<Token> {
         self.read_radix_int(2, &|ch| ch.is_es_bin_digit(), &|cc, s| {
             TokenData::Number(NumberLiteral::RadixInt(Radix::Bin(cc), s))
         })
@@ -465,7 +456,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }))
     }
 
-    fn read_number(&mut self) -> Lex<Token> {
+    fn read_number(&mut self) -> Result<Token> {
         let result = try!(match self.peek2() {
             (Some('0'), Some('x')) | (Some('0'), Some('X')) => self.read_hex_int(),
             (Some('0'), Some('o')) | (Some('0'), Some('O')) => self.read_oct_int(),
@@ -497,14 +488,14 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                     NumberLiteral::DecimalInt(pos, exp)
                 })))
             }
-            (Some(ch), _) => Err(LexError::UnexpectedChar(ch)),
-            (None, _) => Err(LexError::UnexpectedEOF)
+            (Some(ch), _) => Err(Error::UnexpectedChar(ch)),
+            (None, _) => Err(Error::UnexpectedEOF)
         });
         try!(self.fail_if(&|ch| ch.is_es_identifier_start() || ch.is_digit(10)));
         Ok(result)
     }
 
-    fn read_string(&mut self) -> Lex<Token> {
+    fn read_string(&mut self) -> Result<Token> {
         debug_assert!(self.peek().is_some());
         let span = self.start();
         let mut source = String::new();
@@ -522,14 +513,14 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                     try!(self.read_string_escape(&mut source, &mut value));
                 }
                 Some(ch) if ch.is_es_newline() => {
-                    return Err(LexError::UnexpectedChar(ch));
+                    return Err(Error::UnexpectedChar(ch));
                 }
                 Some(_) => {
                     source.push(quote);
                     self.skip();
                     break;
                 }
-                None => return Err(LexError::UnexpectedEOF)
+                None => return Err(Error::UnexpectedEOF)
             }
         }
         Ok(span.end(self, TokenData::String(StringLiteral {
@@ -538,7 +529,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         })))
     }
 
-    fn read_unicode_escape_seq(&mut self, s: &mut String) -> Lex<u32> {
+    fn read_unicode_escape_seq(&mut self, s: &mut String) -> Result<u32> {
         if self.matches('{') {
             s.push('{');
             let mut digits = Vec::with_capacity(8);
@@ -560,7 +551,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }
     }
 
-    fn read_string_escape(&mut self, source: &mut String, value: &mut String) -> Lex<()> {
+    fn read_string_escape(&mut self, source: &mut String, value: &mut String) -> Result<()> {
         source.push(self.read());
         match self.peek() {
             Some(ch) if ch.is_digit(8) => {
@@ -605,7 +596,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         Ok(())
     }
 
-    fn read_digit_into<F>(&mut self, s: &mut String, radix: u32, pred: &F) -> Lex<u32>
+    fn read_digit_into<F>(&mut self, s: &mut String, radix: u32, pred: &F) -> Result<u32>
       where F: Fn(char) -> bool
     {
         match self.peek() {
@@ -614,16 +605,16 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 debug_assert!(ch.is_digit(radix));
                 Ok(ch.to_digit(radix).unwrap())
             },
-            Some(ch) => Err(LexError::InvalidDigit(ch)),
-            None => Err(LexError::UnexpectedEOF)
+            Some(ch) => Err(Error::InvalidDigit(ch)),
+            None => Err(Error::UnexpectedEOF)
         }
     }
 
-    fn read_hex_digit_into(&mut self, s: &mut String) -> Lex<u32> {
+    fn read_hex_digit_into(&mut self, s: &mut String) -> Result<u32> {
         self.read_digit_into(s, 16, &|ch| ch.is_es_hex_digit())
     }
 
-    fn read_word_parts(&mut self) -> Lex<String> {
+    fn read_word_parts(&mut self) -> Result<String> {
         let mut s = String::new();
         try!(self.read_until_with(&|ch| ch != '\\' && !ch.is_es_identifier_continue(), &mut |this| {
             match this.read() {
@@ -634,14 +625,14 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         Ok(s)
     }
 
-    fn read_word(&mut self) -> Lex<Token> {
+    fn read_word(&mut self) -> Result<Token> {
         debug_assert!(self.peek().map_or(false, |ch| ch == '\\' || ch.is_es_identifier_start()));
         let span = self.start();
         let s = try!(self.read_word_parts());
         if s.len() == 0 {
             match self.peek() {
-                Some(ch) => { return Err(LexError::UnexpectedChar(ch)); }
-                None => { return Err(LexError::UnexpectedEOF); }
+                Some(ch) => { return Err(Error::UnexpectedChar(ch)); }
+                None => { return Err(Error::UnexpectedEOF); }
             }
         }
         Ok(span.end(self, match self.reserved.get(&s[..]) {
@@ -653,13 +644,13 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }))
     }
 
-    fn read_word_escape(&mut self, s: &mut String) -> Lex<()> {
+    fn read_word_escape(&mut self, s: &mut String) -> Result<()> {
         try!(self.expect('u'));
         let mut dummy = String::new();
         let code_point = try!(self.read_unicode_escape_seq(&mut dummy));
         match char::from_u32(code_point) {
             Some(ch) => { s.push(ch); Ok(()) }
-            None => Err(LexError::IllegalUnicode(code_point))
+            None => Err(Error::IllegalUnicode(code_point))
         }
     }
 
@@ -682,7 +673,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         span.end(self, value)
     }
 
-    fn read_next_token(&mut self) -> Lex<Token> {
+    fn read_next_token(&mut self) -> Result<Token> {
         let mut pair;
         let mut found_newline = false;
 
@@ -788,7 +779,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             (Some(ch), _) if ch.is_digit(10)             => self.read_number(),
             (Some(ch), _) if ch.is_es_identifier_start() => self.read_word(),
             (Some('\\'), _)                              => self.read_word(),
-            (Some(ch), _)                                => Err(LexError::UnexpectedChar(ch)),
+            (Some(ch), _)                                => Err(Error::UnexpectedChar(ch)),
             (None, _)                                    => {
                 let here = self.posn();
                 Ok(Token::new(here, here, TokenData::EOF))
@@ -815,27 +806,29 @@ impl<I> Iterator for Lexer<I> where I: Iterator<Item=char> {
 mod tests {
 
     use test::{deserialize_lexer_tests, LexerTest};
-    use lexer::{Lexer, Lex};
+    use lexer::Lexer;
+    use result::Result;
     use context::SharedContext;
     use token::{Token, TokenData};
     use std::cell::Cell;
     use std::rc::Rc;
+    use std;
 
-    fn lex2(source: &String, context: SharedContext) -> Lex<(Token, Token)> {
+    fn lex2(source: &String, context: SharedContext) -> Result<(Token, Token)> {
         let chars = source.chars();
         let cx = Rc::new(Cell::new(context));
         let mut lexer = Lexer::new(chars, cx.clone());
         Ok((try!(lexer.read_token()), try!(lexer.read_token())))
     }
 
-    fn assert_test2(expected: &Result<TokenData, String>, expected_next: TokenData, actual: Lex<(Token, Token)>) {
+    fn assert_test2(expected: &std::result::Result<TokenData, String>, expected_next: TokenData, actual: Result<(Token, Token)>) {
         match (expected, &actual) {
             (&Ok(ref expected), &Ok((Token { value: ref actual, .. }, Token { value: ref actual_next, .. }))) => {
                 assert_eq!(expected, actual);
                 assert_eq!(&expected_next, actual_next);
             }
             (&Ok(_), &Err(ref err)) => {
-                panic!("unexpected lexer error: {:?}", err);
+                panic!("unexpected lexer error: {}", err);
             }
             (&Err(_), &Ok(_)) => {
                 panic!("unexpected token, expected error");
@@ -846,7 +839,7 @@ mod tests {
 
     #[test]
     pub fn go() {
-        let tests = deserialize_lexer_tests(include_str!("../tests/lexer/tests.json"));
+        let tests = deserialize_lexer_tests(include_str!("../tests/unit.json"));
         for LexerTest { source, context, expected } in tests {
             assert_test2(&expected, TokenData::EOF, lex2(&source, context));
             assert_test2(&expected, TokenData::EOF, lex2(&format!("{} ", source), context));
