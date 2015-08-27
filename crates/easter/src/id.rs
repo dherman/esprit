@@ -1,4 +1,4 @@
-use joker::token::Name;
+use joker::word::Name;
 use joker::track::*;
 
 use expr::{Expr, ExprData};

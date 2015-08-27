@@ -1,4 +1,5 @@
-use joker::token::{Token, TokenData, Reserved};
+use joker::token::{Token, TokenData};
+use joker::word::Reserved;
 use context::LabelType;
 
 pub trait First {

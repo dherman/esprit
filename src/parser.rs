@@ -1,5 +1,6 @@
 use joker::track::*;
-use joker::token::{Token, TokenData, Reserved, Atom, Name};
+use joker::token::{Token, TokenData};
+use joker::word::{Atom, Name, Reserved};
 use joker::lexer::Lexer;
 use joker::context::SharedContext;
 use easter::prog::{Script, ScriptData};
@@ -33,8 +34,9 @@ pub struct Parser<I> {
     pub parser_cx: ParserContext
 }
 
+// FIXME: impl From for various types (Iterator, Lexer, String, str)
+
 impl<I: Iterator<Item=char>> Parser<I> {
-    // FIXME: various from_<type> constructors (Iterator, Lexer, String, str)
     pub fn new(lexer: Lexer<I>, cx: Rc<Cell<SharedContext>>) -> Parser<I> {
         Parser { lexer: lexer, shared_cx: cx, parser_cx: ParserContext::new() }
     }
@@ -113,7 +115,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
     }
 
     fn binding_pattern(&mut self) -> Result<CompoundPatt> {
-        unimplemented!()
+        Err(Error::UnsupportedFeature("destructuring"))
     }
 
     fn function(&mut self) -> Result<Fun> {
@@ -340,7 +342,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             match try!(this.peek()).value {
                 TokenData::Reserved(Reserved::Var)           => this.for_var(),
                 TokenData::Identifier(Name::Atom(Atom::Let)) => this.for_let(),
-                TokenData::Reserved(Reserved::Const)         => unimplemented!(),
+                TokenData::Reserved(Reserved::Const)         => { return Err(Error::UnsupportedFeature("const")); }
                 TokenData::Semi                              => {
                     this.reread(TokenData::Semi);
                     this.more_for(None)
@@ -937,16 +939,16 @@ impl<I: Iterator<Item=char>> Parser<I> {
     fn object_property(&mut self) -> Result<Prop> {
         let first = try!(self.read());
         match first.value {
-            // FIXME: test getter and setter syntax
             TokenData::Identifier(Name::Atom(Atom::Get)) => {
                 if let Some(key) = try!(self.property_key_opt()) {
                     let paren = try!(self.expect(TokenData::LParen));
                     try!(self.expect(TokenData::RParen));
-                    let end = try!(self.expect(TokenData::LBrace));
+                    try!(self.expect(TokenData::LBrace));
                     let outer_cx = replace(&mut self.parser_cx, ParserContext::new_function());
                     let body = self.statement_list();
                     replace(&mut self.parser_cx, outer_cx);
                     let body = try!(body);
+                    let end = try!(self.expect(TokenData::RBrace));
                     let val_location = span(&paren, &end);
                     let prop_location = span(&key, &end);
                     return Ok((PropData {
@@ -969,11 +971,12 @@ impl<I: Iterator<Item=char>> Parser<I> {
                     let paren = try!(self.expect(TokenData::LParen));
                     let param = try!(self.pattern());
                     try!(self.expect(TokenData::RParen));
-                    let end = try!(self.expect(TokenData::LBrace));
+                    try!(self.expect(TokenData::LBrace));
                     let outer_cx = replace(&mut self.parser_cx, ParserContext::new_function());
                     let body = self.statement_list();
                     replace(&mut self.parser_cx, outer_cx);
                     let body = try!(body);
+                    let end = try!(self.expect(TokenData::RBrace));
                     let val_location = span(&paren, &end);
                     let prop_location = span(&key, &end);
                     return Ok((PropData {

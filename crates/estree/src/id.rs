@@ -1,7 +1,7 @@
 use easter::id::{IdData, Id};
 use unjson::ExtractField;
 use unjson::ty::Object;
-use joker::token::Name;
+use joker::word::Name;
 use joker::track::*;
 
 use tag::{Tag, TagOf};
@@ -19,7 +19,7 @@ impl IntoId for Object {
             return node_type_error("identifier", tag);
         }
         Ok(IdData {
-            name: Name::new(try!(self.extract_string("name").map_err(Error::Json)))
+            name: Name::from(try!(self.extract_string("name").map_err(Error::Json)))
         }.tracked(None))
     }
 }

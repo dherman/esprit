@@ -1,5 +1,5 @@
 use joker::context::Mode;
-use joker::token::{Atom, Name};
+use joker::word::{Atom, Name};
 
 pub trait AtomExt {
     fn is_reserved(&self, Mode) -> bool;

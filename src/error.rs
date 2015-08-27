@@ -20,5 +20,6 @@ pub enum Error {
     StrictWith(Token),
     ThrowArgument(Token),
     OrphanTry(Token),
-    InvalidLHS(Option<Span>)
+    InvalidLHS(Option<Span>),
+    UnsupportedFeature(&'static str)
 }

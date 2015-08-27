@@ -8,6 +8,7 @@ use unjson::error::*;
 use unjson::result::Result;
 use unjson::ty::*;
 use token::*;
+use word::{Reserved, Name};
 use context::{SharedContext, Mode};
 use std;
 
@@ -101,7 +102,7 @@ pub trait IntoName {
 
 impl IntoName for Value {
     fn into_name(self) -> Result<Name> {
-        Ok(Name::new(try!(self.into_string())))
+        Ok(Name::from(try!(self.into_string())))
     }
 }
 

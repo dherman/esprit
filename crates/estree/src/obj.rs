@@ -8,9 +8,10 @@ use joker::track::*;
 use tag::{Tag, TagOf};
 use id::IntoId;
 use result::Result;
-use error::{Error, type_error};
+use error::{Error, type_error, array_error};
 use node::ExtractNode;
 use expr::IntoExpr;
+use fun::IntoFun;
 
 pub trait IntoObj {
     fn into_prop(self) -> Result<Prop>;
@@ -26,7 +27,13 @@ impl IntoObj for Object {
             "init" => PropValData::Init(try!(val.into_expr())),
             "get" => PropValData::Get(try!(try!(val.extract_object("body").map_err(Error::Json)).extract_stmt_list("body"))),
             "set" => {
-                unimplemented!()
+                let fun = try!(val.into_fun()).value;
+                let params = fun.params.value.list;
+                if params.len() != 1 {
+                    return array_error(1, params.len());
+                }
+                let param = params.into_iter().next().unwrap();
+                PropValData::Set(param, fun.body)
             }
             _ => { return type_error("'init', 'get', or 'set'", Ty::String); }
         }).tracked(None);

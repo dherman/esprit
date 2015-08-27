@@ -7942,4 +7942,408 @@
       }
     }]
   }
+}, {
+  "source": "({ get foo() { } })",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "ObjectExpression",
+        "properties": [{
+          "type": "Property",
+          "key": {
+            "type": "Identifier",
+            "name": "foo"
+          },
+          "computed": false,
+          "value": {
+            "type": "FunctionExpression",
+            "id": null,
+            "params": [],
+            "defaults": [],
+            "body": {
+              "type": "BlockStatement",
+              "body": []
+            },
+            "generator": false,
+            "expression": false
+          },
+          "kind": "get",
+          "method": false,
+          "shorthand": false
+        }]
+      }
+    }]
+  }
+}, {
+  "source": "({ get foo() { }, bar: 1 })",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "ObjectExpression",
+        "properties": [{
+          "type": "Property",
+          "key": {
+            "type": "Identifier",
+            "name": "foo"
+          },
+          "computed": false,
+          "value": {
+            "type": "FunctionExpression",
+            "id": null,
+            "params": [],
+            "defaults": [],
+            "body": {
+              "type": "BlockStatement",
+              "body": []
+            },
+            "generator": false,
+            "expression": false
+          },
+          "kind": "get",
+          "method": false,
+          "shorthand": false
+        }, {
+          "type": "Property",
+          "key": {
+            "type": "Identifier",
+            "name": "bar"
+          },
+          "computed": false,
+          "value": {
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          },
+          "kind": "init",
+          "method": false,
+          "shorthand": false
+        }]
+      }
+    }]
+  }
+}, {
+  "source": "({ foo: 1, get bar() { } })",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "ObjectExpression",
+        "properties": [{
+          "type": "Property",
+          "key": {
+            "type": "Identifier",
+            "name": "foo"
+          },
+          "computed": false,
+          "value": {
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          },
+          "kind": "init",
+          "method": false,
+          "shorthand": false
+        }, {
+          "type": "Property",
+          "key": {
+            "type": "Identifier",
+            "name": "bar"
+          },
+          "computed": false,
+          "value": {
+            "type": "FunctionExpression",
+            "id": null,
+            "params": [],
+            "defaults": [],
+            "body": {
+              "type": "BlockStatement",
+              "body": []
+            },
+            "generator": false,
+            "expression": false
+          },
+          "kind": "get",
+          "method": false,
+          "shorthand": false
+        }]
+      }
+    }]
+  }
+}, {
+  "source": "({ foo: 1, get bar() { }, baz: 2 })",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "ObjectExpression",
+        "properties": [{
+          "type": "Property",
+          "key": {
+            "type": "Identifier",
+            "name": "foo"
+          },
+          "computed": false,
+          "value": {
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          },
+          "kind": "init",
+          "method": false,
+          "shorthand": false
+        }, {
+          "type": "Property",
+          "key": {
+            "type": "Identifier",
+            "name": "bar"
+          },
+          "computed": false,
+          "value": {
+            "type": "FunctionExpression",
+            "id": null,
+            "params": [],
+            "defaults": [],
+            "body": {
+              "type": "BlockStatement",
+              "body": []
+            },
+            "generator": false,
+            "expression": false
+          },
+          "kind": "get",
+          "method": false,
+          "shorthand": false
+        }, {
+          "type": "Property",
+          "key": {
+            "type": "Identifier",
+            "name": "baz"
+          },
+          "computed": false,
+          "value": {
+            "type": "Literal",
+            "value": 2,
+            "raw": "2"
+          },
+          "kind": "init",
+          "method": false,
+          "shorthand": false
+        }]
+      }
+    }]
+  }
+}, {
+  "source": "({ set foo(x) { } })",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "ObjectExpression",
+        "properties": [{
+          "type": "Property",
+          "key": {
+            "type": "Identifier",
+            "name": "foo"
+          },
+          "computed": false,
+          "value": {
+            "type": "FunctionExpression",
+            "id": null,
+            "params": [{
+              "type": "Identifier",
+              "name": "x"
+            }],
+            "defaults": [],
+            "body": {
+              "type": "BlockStatement",
+              "body": []
+            },
+            "generator": false,
+            "expression": false
+          },
+          "kind": "set",
+          "method": false,
+          "shorthand": false
+        }]
+      }
+    }]
+  }
+}, {
+  "source": "({ set foo(x) { }, bar: 1 })",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "ObjectExpression",
+        "properties": [{
+          "type": "Property",
+          "key": {
+            "type": "Identifier",
+            "name": "foo"
+          },
+          "computed": false,
+          "value": {
+            "type": "FunctionExpression",
+            "id": null,
+            "params": [{
+              "type": "Identifier",
+              "name": "x"
+            }],
+            "defaults": [],
+            "body": {
+              "type": "BlockStatement",
+              "body": []
+            },
+            "generator": false,
+            "expression": false
+          },
+          "kind": "set",
+          "method": false,
+          "shorthand": false
+        }, {
+          "type": "Property",
+          "key": {
+            "type": "Identifier",
+            "name": "bar"
+          },
+          "computed": false,
+          "value": {
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          },
+          "kind": "init",
+          "method": false,
+          "shorthand": false
+        }]
+      }
+    }]
+  }
+}, {
+  "source": "({ foo: 1, set bar(x) { } })",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "ObjectExpression",
+        "properties": [{
+          "type": "Property",
+          "key": {
+            "type": "Identifier",
+            "name": "foo"
+          },
+          "computed": false,
+          "value": {
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          },
+          "kind": "init",
+          "method": false,
+          "shorthand": false
+        }, {
+          "type": "Property",
+          "key": {
+            "type": "Identifier",
+            "name": "bar"
+          },
+          "computed": false,
+          "value": {
+            "type": "FunctionExpression",
+            "id": null,
+            "params": [{
+              "type": "Identifier",
+              "name": "x"
+            }],
+            "defaults": [],
+            "body": {
+              "type": "BlockStatement",
+              "body": []
+            },
+            "generator": false,
+            "expression": false
+          },
+          "kind": "set",
+          "method": false,
+          "shorthand": false
+        }]
+      }
+    }]
+  }
+}, {
+  "source": "({ foo: 1, set bar(x) { }, baz: 2 })",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "ObjectExpression",
+        "properties": [{
+          "type": "Property",
+          "key": {
+            "type": "Identifier",
+            "name": "foo"
+          },
+          "computed": false,
+          "value": {
+            "type": "Literal",
+            "value": 1,
+            "raw": "1"
+          },
+          "kind": "init",
+          "method": false,
+          "shorthand": false
+        }, {
+          "type": "Property",
+          "key": {
+            "type": "Identifier",
+            "name": "bar"
+          },
+          "computed": false,
+          "value": {
+            "type": "FunctionExpression",
+            "id": null,
+            "params": [{
+              "type": "Identifier",
+              "name": "x"
+            }],
+            "defaults": [],
+            "body": {
+              "type": "BlockStatement",
+              "body": []
+            },
+            "generator": false,
+            "expression": false
+          },
+          "kind": "set",
+          "method": false,
+          "shorthand": false
+        }, {
+          "type": "Property",
+          "key": {
+            "type": "Identifier",
+            "name": "baz"
+          },
+          "computed": false,
+          "value": {
+            "type": "Literal",
+            "value": 2,
+            "raw": "2"
+          },
+          "kind": "init",
+          "method": false,
+          "shorthand": false
+        }]
+      }
+    }]
+  }
 }]

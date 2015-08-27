@@ -347,6 +347,16 @@
   "a = b ? c : d": true,
 
   "\"\\\\x20\"": true,
-  "\"\\\\t\"": true
+  "\"\\\\t\"": true,
+
+  "({ get foo() { } })": true,
+  "({ get foo() { }, bar: 1 })": true,
+  "({ foo: 1, get bar() { } })": true,
+  "({ foo: 1, get bar() { }, baz: 2 })": true,
+
+  "({ set foo(x) { } })": true,
+  "({ set foo(x) { }, bar: 1 })": true,
+  "({ foo: 1, set bar(x) { } })": true,
+  "({ foo: 1, set bar(x) { }, baz: 2 })": true
 
 }

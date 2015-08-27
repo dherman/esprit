@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::mem::replace;
-use joker::token::Name;
+use joker::word::Name;
 use joker::track::{IntoTracked, span};
 use easter::stmt::{StmtData, Stmt};
 use easter::id::Id;

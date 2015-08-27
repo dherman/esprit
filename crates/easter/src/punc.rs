@@ -2,7 +2,8 @@ use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 use joker::track::*;
-use joker::token::{TokenData, Token, Reserved};
+use joker::token::{TokenData, Token};
+use joker::word::Reserved;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Semi {

@@ -1,9 +1,8 @@
-use std::collections::HashMap;
 use std::char;
 
 use track::*;
-use token::{Token, TokenData, Exp, CharCase, Sign, NumberLiteral, Radix};
-use token::{Reserved, Atom, Name, StringLiteral};
+use token::{Token, TokenData, Exp, CharCase, Sign, NumberLiteral, Radix, StringLiteral};
+use word::Map as WordMap;
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -13,19 +12,6 @@ use reader::Reader;
 use lookahead::Buffer;
 use error::Error;
 use result::Result;
-
-macro_rules! wordmap {
-    ($ns:ident, [ $( ( $key:expr, $val:ident ) ),* ]) => {
-        {
-            let mut temp_map = HashMap::new();
-            $(
-                temp_map.insert($key, $ns::$val);
-            )*
-            temp_map
-        }
-    };
-}
-
 
 fn add_digits(digits: Vec<u32>, radix: u32) -> u32 {
     let mut place = 1;
@@ -54,8 +40,7 @@ pub struct Lexer<I> {
     reader: Reader<I>,
     cx: Rc<Cell<SharedContext>>,
     lookahead: Buffer,
-    reserved: HashMap<&'static str, Reserved>,
-    contextual: HashMap<&'static str, Atom>
+    wordmap: WordMap
 }
 
 impl<I> Lexer<I> where I: Iterator<Item=char> {
@@ -66,44 +51,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             reader: Reader::new(chars),
             cx: cx,
             lookahead: Buffer::new(),
-            reserved: wordmap!(Reserved, [
-                // ReservedWord
-                ("null",       Null),       ("true",       True),       ("false",     False),
-
-                // Keyword
-                ("break",      Break),      ("case",       Case),       ("catch",     Catch),
-                ("class",      Class),      ("const",      Const),      ("continue",  Continue),
-                ("debugger",   Debugger),   ("default",    Default),    ("delete",    Delete),
-                ("do",         Do),         ("else",       Else),       ("export",    Export),
-                ("extends",    Extends),    ("finally",    Finally),    ("for",       For),
-                ("function",   Function),   ("if",         If),         ("import",    Import),
-                ("in",         In),         ("instanceof", Instanceof), ("new",       New),
-                ("return",     Return),     ("super",      Super),      ("switch",    Switch),
-                ("this",       This),       ("throw",      Throw),      ("try",       Try),
-                ("typeof",     Typeof),     ("var",        Var),        ("void",      Void),
-                ("while",      While),      ("with",       With),
-
-                // FutureReservedWord
-                ("enum",       Enum)
-            ]),
-            contextual: wordmap!(Atom, [
-                // Restricted words in strict code
-                ("arguments",  Arguments),  ("eval",       Eval),
-
-                // Reserved in some contexts
-                ("yield",      Yield),
-
-                // Reserved words in module code
-                ("await",      Await),
-
-                // Reserved words in strict code
-                ("implements", Implements), ("interface",  Interface),  ("let",       Let),
-                ("package",    Package),    ("private",    Private),    ("protected", Protected),
-                ("public",     Public),     ("static",     Static),
-
-                // Purely contextual identifier names
-                ("async",      Async),      ("from",       From),       ("of",       Of)
-            ])
+            wordmap: WordMap::new()
         }
     }
 
@@ -635,13 +583,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 None => { return Err(Error::UnexpectedEOF); }
             }
         }
-        Ok(span.end(self, match self.reserved.get(&s[..]) {
-            Some(&word) => TokenData::Reserved(word),
-            None        => match self.contextual.get(&s[..]) {
-                Some(&atom) => TokenData::Identifier(Name::Atom(atom)),
-                None        => TokenData::Identifier(Name::String(s))
-            }
-        }))
+        Ok(span.end(self, self.wordmap.tokenize(s)))
     }
 
     fn read_word_escape(&mut self, s: &mut String) -> Result<()> {

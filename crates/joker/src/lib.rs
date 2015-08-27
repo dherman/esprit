@@ -1,6 +1,7 @@
 extern crate serde_json;
 extern crate unjson;
 
+pub mod word;
 pub mod token;
 pub mod lexer;
 pub mod context;
