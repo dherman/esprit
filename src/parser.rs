@@ -1412,7 +1412,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
 #[cfg(test)]
 mod tests {
 
-    use std::thread;
+    use std::{thread, env};
     use test::{deserialize_parser_tests, ParserTest};
     use joker::track::Untrack;
     use ::script;
@@ -1452,10 +1452,29 @@ mod tests {
         }
     }
 
+    fn read_envvar() -> Option<usize> {
+        match env::var("ESTREE_STACK_SIZE_MB") {
+            Ok(s) => {
+                match s.parse() {
+                    Ok(x) => Some(x),
+                    Err(_) => None
+                }
+            }
+            Err(_) => None
+        }
+    }
+
+    fn stack_size() -> usize {
+        let mb = match read_envvar() {
+            Some(x) => x,
+            None => { println!("warning: invalid ESTREE_STACK_SIZE_MB value; defaulting to 4MB"); 4 }
+        };
+        mb * 1024 * 1024
+    }
+
     #[test]
     pub fn integration_tests() {
-        // FIXME: allow configuring this amount maybe with an envvar
-        let child = thread::Builder::new().stack_size(4 * 1024 * 1024).spawn(|| {
+        let child = thread::Builder::new().stack_size(stack_size()).spawn(|| {
             deserialize_parser_tests(include_str!("../tests/build/integration.json"))
         }).unwrap();
         let tests = child.join().unwrap();
