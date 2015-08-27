@@ -865,7 +865,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                 self.lexer.unread_token(token);
                 return self.paren_expression();
             }
-            // FIXME: ES6 cases
+            // ES6: more cases
             _ => { return Err(Error::UnexpectedToken(token)); }
         }).tracked(location))
     }
@@ -894,7 +894,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
         if { let t = try!(self.peek()); t.value == TokenData::Comma || t.value == TokenData::RBrack } {
             return Ok(None);
         }
-        // FIXME: ellipsis
+        // ES6: ellipsis
         self.allow_in(true, |this| this.assignment_expression().map(Some))
     }
 
@@ -971,12 +971,12 @@ impl<I: Iterator<Item=char>> Parser<I> {
                     }).tracked(prop_location));
                 }
                 match try!(self.peek()).value {
-                    // FIXME: TokenData::LParen => unimplemented!(),
+                    // ES6: TokenData::LParen => unimplemented!(),
                     TokenData::Colon => {
                         let key_location = Some(first.location);
                         self.more_prop_init(PropKeyData::Id("get".to_string()).tracked(key_location))
                     }
-                    // FIXME: treat as elided optional initializer
+                    // ES6: treat as elided optional initializer
                     _ => { return Err(Error::UnexpectedToken(try!(self.read()))); }
                 }
             }
@@ -999,23 +999,23 @@ impl<I: Iterator<Item=char>> Parser<I> {
                     }).tracked(prop_location));
                 }
                 match try!(self.peek()).value {
-                    // FIXME: TokenData::LParen => unimplemented!(),
+                    // ES6: TokenData::LParen => unimplemented!(),
                     TokenData::Colon => {
                         let key_location = Some(first.location);
                         self.more_prop_init(PropKeyData::Id("set".to_string()).tracked(key_location))
                     }
-                    // FIXME: treat as elided optional initializer
+                    // ES6: treat as elided optional initializer
                     _ => { return Err(Error::UnexpectedToken(try!(self.read()))); }
                 }
             }
-            // FIXME: TokenData::Star
+            // ES6: TokenData::Star
             _ => {
                 self.lexer.unread_token(first);
                 let key = try!(self.property_key());
                 match try!(self.peek()).value {
                     TokenData::Colon => self.more_prop_init(key),
-                    // FIXME: TokenData::LParen =>
-                    // FIXME: treat as elided optional initializer
+                    // ES6: TokenData::LParen =>
+                    // ES6: treat as elided optional initializer
                     _ => { return Err(Error::UnexpectedToken(try!(self.read()))); }
                 }
             }
@@ -1036,7 +1036,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
 
     // "new"+n . (MemberBaseExpression | "super" Deref) Deref* Arguments<n Suffix*
     fn new_expression(&mut self, news: Vec<Token>) -> Result<Expr> {
-        // FIXME: if let Some(super) = try!(self.match_token(TokenData::Reserved(Reserved::Super))) {
+        // ES6: if let Some(super) = try!(self.match_token(TokenData::Reserved(Reserved::Super))) {
         let base = try!(self.member_base_expression());
         self.more_new_expression(news, base)
     }
@@ -1075,7 +1075,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
     // CallExpression ::=
     //   (MemberBaseExpression | "super" Suffix) Suffix*
     fn call_expression(&mut self) -> Result<Expr> {
-        // FIXME: super
+        // ES6: super
         let base = try!(self.primary_expression());
         self.more_call_expression(base)
     }
@@ -1095,7 +1095,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
 
     // Argument ::= "..."? AssignmentExpression
     fn argument(&mut self) -> Result<Expr> {
-        // FIXME: if let ellipsis = try!(self.matches(TokenData::Ellipsis)) { ... }
+        // ES6: if let ellipsis = try!(self.matches(TokenData::Ellipsis)) { ... }
         self.allow_in(true, |this| this.assignment_expression())
     }
 
