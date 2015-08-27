@@ -129,6 +129,9 @@ impl<I: Iterator<Item=char>> Parser<I> {
     }
 
     fn binding_pattern(&mut self) -> Result<CompoundPatt> {
+        if !try!(self.peek()).first_binding() {
+            return Err(Error::UnexpectedToken(try!(self.read())));
+        }
         Err(Error::UnsupportedFeature("destructuring"))
     }
 
@@ -448,15 +451,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
     fn for_let(&mut self) -> Result<StmtData> {
         let let_token = self.reread(TokenData::Identifier(Name::Atom(Atom::Let)));
         let let_location = let_token.location;
-        // 'for' '(' 'let' . !{id, patt} ==> C-style
-        if !try!(self.peek()).first_binding() {
-            let result = try!(self.for_id_expr(Id::new(Name::Atom(Atom::Let), Some(let_token.location))));
-            if let StmtData::ForOf(_, _, _) = result {
-                // FIXME: this really ought to report the *next* token but that's hard
-                return Err(Error::ForOfLetExpr(let_location));
-            }
-            return Ok(result);
-        }
+        // 'for' '(' 'let' . !{id, patt} ==> error
         let lhs = try!(self.pattern());
         match try!(self.peek()).value {
             // 'for' '(' 'let' id   '=' . ==> C-style
@@ -504,17 +499,8 @@ impl<I: Iterator<Item=char>> Parser<I> {
         }
     }
 
-    fn for_id_expr(&mut self, id: Id) -> Result<StmtData> {
-        let lhs = try!(self.allow_in(false, |this| this.id_expression(id)));
-        self.more_for_expr(lhs)
-    }
-
     fn for_expr(&mut self) -> Result<StmtData> {
         let lhs = try!(self.allow_in(false, |this| this.expression()));
-        self.more_for_expr(lhs)
-    }
-
-    fn more_for_expr(&mut self, lhs: Expr) -> Result<StmtData> {
         match try!(self.peek()).value {
             TokenData::Semi => {
                 let semi_location = self.reread(TokenData::Semi).location;
