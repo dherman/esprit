@@ -2,7 +2,7 @@ use joker::track::*;
 use joker::token::{Token, TokenData};
 use joker::word::{Atom, Name, Reserved};
 use joker::lexer::Lexer;
-use joker::context::SharedContext;
+use joker::context::{SharedContext, Mode};
 use easter::prog::{Script, ScriptData};
 use easter::stmt::{Stmt, StmtData, StmtListItem, ForHead, ForHeadData, ForInHead, ForInHeadData, ForOfHead, ForOfHeadData, Case, CaseData, Catch, CatchData};
 use easter::expr::{Expr, ExprData, IntoAssignmentPattern};
@@ -16,6 +16,8 @@ use easter::punc::{Unop, UnopTag, ToOp};
 use std::cell::Cell;
 use std::rc::Rc;
 use std::mem::replace;
+use std::convert::From;
+use std::str::Chars;
 use context::{ParserContext, LabelType};
 use tokens::{First, Follows, HasLabelType};
 use atom::AtomExt;
@@ -34,7 +36,19 @@ pub struct Parser<I> {
     pub parser_cx: ParserContext
 }
 
-// FIXME: impl From for various types (Iterator, Lexer, String, str)
+impl<'a> From<&'a str> for Parser<Chars<'a>> {
+    fn from(s: &'a str) -> Parser<Chars<'a>> {
+        Parser::from(s.chars())
+    }
+}
+
+impl<I: Iterator<Item=char>> From<I> for Parser<I> {
+    fn from(i: I) -> Parser<I> {
+        let cx = Rc::new(Cell::new(SharedContext::new(Mode::Sloppy)));
+        let lexer = Lexer::new(i, cx.clone());
+        Parser::new(lexer, cx.clone())
+    }
+}
 
 impl<I: Iterator<Item=char>> Parser<I> {
     pub fn new(lexer: Lexer<I>, cx: Rc<Cell<SharedContext>>) -> Parser<I> {
@@ -1407,7 +1421,7 @@ mod tests {
     pub fn unit_tests() {
         let tests = deserialize_parser_tests(include_str!("../tests/build/unit.json"));
         for ParserTest { source, expected, .. } in tests {
-            let result = script(&source);
+            let result = script(&source[..]);
             match (result, expected) {
                 (Ok(mut actual_ast), Some(expected_ast)) => {
                     actual_ast.untrack();
@@ -1449,7 +1463,7 @@ mod tests {
             let expected_ast = expected.unwrap();
             let filename = filename.unwrap();
             println!("integration test: {}", filename);
-            match script(&source) {
+            match script(&source[..]) {
                 Ok(mut actual_ast) => {
                     actual_ast.untrack();
                     if actual_ast != expected_ast {
