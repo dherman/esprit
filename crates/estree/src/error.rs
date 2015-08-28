@@ -52,17 +52,21 @@ pub fn field_error<T>(name: &'static str) -> Result<T> {
     unjson::error::field_error(name).map_err(Error::Json)
 }
 
-pub fn array_error<T>(minimum: usize, actual: usize) -> Result<T> {
-    unjson::error::array_error(minimum, actual).map_err(Error::Json)
+pub fn array_error<T>(expected: usize, actual: usize) -> Result<T> {
+    unjson::error::array_error(expected, actual).map_err(Error::Json)
+}
+
+pub fn index_error<T>(len: usize, index: usize) -> Result<T> {
+    unjson::error::index_error(len, index).map_err(Error::Json)
 }
 
 pub fn string_error<T>(expected: &'static str, actual: String) -> Result<T> {
     unjson::error::string_error(expected, actual).map_err(Error::Json)
 }
 
-// FIXME: tag_error
-
-// FIXME: node_type_error
+pub fn tag_error<T>(actual: String) -> Result<T> {
+    Err(Error::InvalidTypeTag(actual))
+}
 
 pub fn node_type_error<T>(expected: &'static str, actual: Tag) -> Result<T> {
     Err(Error::NodeTypeMismatch(expected, actual))

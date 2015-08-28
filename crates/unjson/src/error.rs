@@ -7,8 +7,8 @@ use result::Result;
 pub enum Error {
     TypeMismatch(&'static str, Ty),
     MissingField(&'static str),
-    // FIXME: need two different errors for out of bounds vs wrong length
-    InvalidArrayLength(usize, usize),
+    IndexOutOfBounds(usize, usize),
+    WrongArrayLength(usize, usize),
     IllegalString(&'static str, String)
 }
 
@@ -21,8 +21,11 @@ impl Display for Error {
             &Error::MissingField(ref name) => {
                 fmt.write_fmt(format_args!("missing object field '{}'", name))
             }
-            &Error::InvalidArrayLength(ref minimum, ref actual) => {
-                fmt.write_fmt(format_args!("expected array of length >= {}, got array of length {}", minimum, actual))
+            &Error::IndexOutOfBounds(ref len, ref index) => {
+                fmt.write_fmt(format_args!("array index {} out of bounds (length {})", index, len))
+            }
+            &Error::WrongArrayLength(ref expected, ref actual) => {
+                fmt.write_fmt(format_args!("expected array of length {}, got array of length {}", expected, actual))
             }
             &Error::IllegalString(ref expected, ref actual) => {
                 fmt.write_fmt(format_args!("expected {}, got {:?}", expected, actual))
@@ -39,8 +42,12 @@ pub fn field_error<T>(name: &'static str) -> Result<T> {
     Err(Error::MissingField(name))
 }
 
-pub fn array_error<T>(minimum: usize, actual: usize) -> Result<T> {
-    Err(Error::InvalidArrayLength(minimum, actual))
+pub fn array_error<T>(expected: usize, actual: usize) -> Result<T> {
+    Err(Error::WrongArrayLength(expected, actual))
+}
+
+pub fn index_error<T>(len: usize, index: usize) -> Result<T> {
+    Err(Error::IndexOutOfBounds(len, index))
 }
 
 pub fn string_error<T>(expected: &'static str, actual: String) -> Result<T> {

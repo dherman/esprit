@@ -163,7 +163,7 @@ pub trait IntoToken {
 
 fn validate_token(arr: Array) -> Result<Array> {
     if arr.len() == 0 {
-        return array_error(1, arr.len());
+        return index_error(0, arr.len());
     }
 
     let expected_len = {
