@@ -1438,6 +1438,8 @@ mod tests {
         }
     }
 
+    const DEFAULT_MB: usize = 4;
+
     fn read_envvar() -> Option<usize> {
         match env::var("ESTREE_STACK_SIZE_MB") {
             Ok(s) => {
@@ -1446,6 +1448,7 @@ mod tests {
                     Err(_) => None
                 }
             }
+            Err(env::VarError::NotPresent) => Some(DEFAULT_MB),
             Err(_) => None
         }
     }
@@ -1453,7 +1456,10 @@ mod tests {
     fn stack_size() -> usize {
         let mb = match read_envvar() {
             Some(x) => x,
-            None => { println!("warning: invalid ESTREE_STACK_SIZE_MB value; defaulting to 4MB"); 4 }
+            None => {
+                println!("warning: invalid ESTREE_STACK_SIZE_MB value; defaulting to 4MB");
+                DEFAULT_MB
+            }
         };
         mb * 1024 * 1024
     }
