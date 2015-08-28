@@ -50,10 +50,10 @@ impl Precedence for Frame {
 impl Frame {
     fn fill(self, right: Expr) -> Result<Expr, Option<Span>> {
         let location = span(&self.left, &right);
-        Ok((match self.op {
+        Ok(match self.op {
             Infix::Binop(op) => ExprData::Binop(op, Box::new(self.left), Box::new(right)),
             Infix::Logop(op) => ExprData::Logop(op, Box::new(self.left), Box::new(right))
-        }).tracked(location))
+        }.tracked(location))
     }
 }
 

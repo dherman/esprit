@@ -275,7 +275,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
         let next = try!(self.read());
         match next.value {
             TokenData::Identifier(name) => {
-                Ok(Some((IdData { name: name }).tracked(Some(next.location))))
+                Ok(Some(IdData { name: name }.tracked(Some(next.location))))
             }
             _                           => { self.lexer.unread_token(next); Ok(None) }
         }
@@ -830,7 +830,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
     fn primary_expression(&mut self) -> Result<Expr> {
         let token = try!(self.read());
         let location = Some(token.location);
-        Ok((match token.value {
+        Ok(match token.value {
             TokenData::Identifier(name)          => ExprData::Id(Id::new(name, location)),
             TokenData::Reserved(Reserved::Null)  => ExprData::Null,
             TokenData::Reserved(Reserved::This)  => ExprData::This,
@@ -853,7 +853,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             }
             // ES6: more cases
             _ => { return Err(Error::UnexpectedToken(token)); }
-        }).tracked(location))
+        }.tracked(location))
     }
 
     fn array_literal(&mut self, start: Token) -> Result<Expr> {
@@ -908,16 +908,16 @@ impl<I: Iterator<Item=char>> Parser<I> {
         let val = try!(self.allow_in(true, |this| this.assignment_expression()));
         let key_location = key.location();
         let val_location = val.location();
-        Ok((PropData {
+        Ok(PropData {
             key: key,
             val: PropValData::Init(val).tracked(val_location)
-        }).tracked(span(&key_location, &val_location)))
+        }.tracked(span(&key_location, &val_location)))
     }
 
     fn property_key_opt(&mut self) -> Result<Option<PropKey>> {
         let token = try!(self.read());
         let location = Some(token.location);
-        Ok(Some((match token.value {
+        Ok(Some(match token.value {
             TokenData::Identifier(name) => PropKeyData::Id(name.into_string()),
             TokenData::Reserved(word) => PropKeyData::Id(word.into_string()),
             TokenData::String(s) => PropKeyData::String(s),
@@ -926,7 +926,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                 self.lexer.unread_token(token);
                 return Ok(None);
             }
-        }).tracked(location)))
+        }.tracked(location)))
     }
 
     fn property_key(&mut self) -> Result<PropKey> {
@@ -951,10 +951,10 @@ impl<I: Iterator<Item=char>> Parser<I> {
                     let end = try!(self.expect(TokenData::RBrace));
                     let val_location = span(&paren, &end);
                     let prop_location = span(&key, &end);
-                    return Ok((PropData {
+                    return Ok(PropData {
                         key: key,
                         val: PropValData::Get(body).tracked(val_location)
-                    }).tracked(prop_location));
+                    }.tracked(prop_location));
                 }
                 match try!(self.peek()).value {
                     // ES6: TokenData::LParen => unimplemented!(),
@@ -979,10 +979,10 @@ impl<I: Iterator<Item=char>> Parser<I> {
                     let end = try!(self.expect(TokenData::RBrace));
                     let val_location = span(&paren, &end);
                     let prop_location = span(&key, &end);
-                    return Ok((PropData {
+                    return Ok(PropData {
                         key: key,
                         val: PropValData::Set(param, body).tracked(val_location)
-                    }).tracked(prop_location));
+                    }.tracked(prop_location));
                 }
                 match try!(self.peek()).value {
                     // ES6: TokenData::LParen => unimplemented!(),
@@ -1133,11 +1133,11 @@ impl<I: Iterator<Item=char>> Parser<I> {
     fn id_name(&mut self) -> Result<DotKey> {
         let token = try!(self.read());
         let location = Some(token.location);
-        Ok((match token.value {
+        Ok(match token.value {
             TokenData::Identifier(name) => DotKeyData(name.into_string()),
             TokenData::Reserved(word) => DotKeyData(word.into_string()),
             _ => { return Err(Error::UnexpectedToken(token)); }
-        }).tracked(location))
+        }.tracked(location))
     }
 
     fn deref_dot(&mut self) -> Result<Deref> {

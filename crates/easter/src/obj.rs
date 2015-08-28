@@ -41,7 +41,7 @@ impl IntoAssignProp for Prop {
             PropValData::Init(expr) => try!(expr.into_assign_patt()),
             _ => { return Err(self.value.val.location); }
         };
-        Ok((PropPattData { key: key, patt: patt }).tracked(self.location))
+        Ok(PropPattData { key: key, patt: patt }.tracked(self.location))
     }
 }
 

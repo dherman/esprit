@@ -37,7 +37,7 @@ impl IntoObj for Object {
             }
             _ => { return type_error("'init', 'get', or 'set'", Ty::String); }
         }).tracked(None);
-        Ok((PropData { key: key, val: val }).tracked(None))
+        Ok(PropData { key: key, val: val }.tracked(None))
     }
 
     fn into_prop_key(self) -> Result<PropKey> {
