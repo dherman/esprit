@@ -1,7 +1,7 @@
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::{cmp, usize};
-use joker::track::{Span, span, IntoTracked};
+use joker::track::{span, IntoTracked};
 use easter::expr::{Expr, ExprData};
 use easter::punc::{Binop, Logop, Precedence};
 
@@ -48,12 +48,12 @@ impl Precedence for Frame {
 }
 
 impl Frame {
-    fn fill(self, right: Expr) -> Result<Expr, Option<Span>> {
+    fn fill(self, right: Expr) -> Expr {
         let location = span(&self.left, &right);
-        Ok(match self.op {
+        match self.op {
             Infix::Binop(op) => ExprData::Binop(op, Box::new(self.left), Box::new(right)),
             Infix::Logop(op) => ExprData::Logop(op, Box::new(self.left), Box::new(right))
-        }.tracked(location))
+        }.tracked(location)
     }
 }
 
@@ -124,20 +124,19 @@ impl Stack {
         Stack { frames: Vec::new() }
     }
 
-    pub fn extend(&mut self, mut left: Expr, op: Infix) -> Result<(), Option<Span>> {
+    pub fn extend(&mut self, mut left: Expr, op: Infix) {
         let mut len;
         while { len = self.frames.len(); len > 0 } && self.frames[len - 1].op.groups_left(&op) {
-            left = try!(self.frames.pop().unwrap().fill(left));
+            left = self.frames.pop().unwrap().fill(left);
         }
         self.frames.push(Frame { left: left, op: op });
-        Ok(())
     }
 
-    pub fn finish(mut self, mut right: Expr) -> Result<Expr, Option<Span>> {
+    pub fn finish(mut self, mut right: Expr) -> Expr {
         while self.frames.len() > 0 {
-            right = try!(self.frames.pop().unwrap().fill(right));
+            right = self.frames.pop().unwrap().fill(right);
         }
-        Ok(right)
+        right
     }
 }
 

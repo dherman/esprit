@@ -3,11 +3,11 @@ use std::fmt::{Debug, Formatter};
 use joker::track::*;
 use joker::token::{NumberLiteral, StringLiteral};
 
-use obj::{DotKey, Prop, IntoAssignProp};
+use obj::{DotKey, Prop};
 use fun::Fun;
 use punc::{Unop, Binop, Assop, Logop};
 use id::Id;
-use patt::{Patt, AssignTarget, AssignTargetData, CompoundPattData};
+use patt::{Patt, AssignTarget};
 
 pub enum ExprData {
     This,
@@ -118,40 +118,6 @@ impl Debug for ExprData {
             &ExprData::RegExp(ref source, ref flags)       => fmt.debug_tuple("RegExp").field(source).field(flags).finish(),
             &ExprData::String(ref lit)                     => fmt.debug_tuple("String").field(lit).finish()
         }
-    }
-}
-
-// FIXME: should produce more detailed error information
-
-pub trait IntoAssignPatt {
-    fn into_assign_patt(self) -> Result<Patt<AssignTarget>, Option<Span>>;
-}
-
-impl IntoAssignPatt for Expr {
-    fn into_assign_patt(self) -> Result<Patt<AssignTarget>, Option<Span>> {
-        Ok(match self.value {
-            ExprData::Id(id)           => Patt::Simple(AssignTargetData::Id(id).tracked(self.location)),
-            ExprData::Dot(obj, key)    => Patt::Simple(AssignTargetData::Dot(obj, key).tracked(self.location)),
-            ExprData::Brack(obj, prop) => Patt::Simple(AssignTargetData::Brack(obj, prop).tracked(self.location)),
-            ExprData::Obj(props) => {
-                let mut prop_patts = Vec::with_capacity(props.len());
-                for prop in props {
-                    prop_patts.push(try!(prop.into_assign_prop()));
-                }
-                Patt::Compound(CompoundPattData::Obj(prop_patts).tracked(self.location))
-            }
-            ExprData::Arr(exprs) => {
-                let mut patts = Vec::with_capacity(exprs.len());
-                for expr in exprs {
-                    patts.push(match expr {
-                        Some(expr) => Some(try!(expr.into_assign_patt())),
-                        None => None
-                    });
-                }
-                Patt::Compound(CompoundPattData::Arr(patts).tracked(self.location))
-            }
-            _ => { return Err(self.location); }
-        })
     }
 }
 

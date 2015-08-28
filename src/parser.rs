@@ -5,13 +5,14 @@ use joker::lexer::Lexer;
 use joker::context::{SharedContext, Mode};
 use easter::prog::{Script, ScriptData};
 use easter::stmt::{Stmt, StmtData, StmtListItem, ForHead, ForHeadData, ForInHead, ForInHeadData, ForOfHead, ForOfHeadData, Case, CaseData, Catch, CatchData};
-use easter::expr::{Expr, ExprData, IntoAssignPatt};
+use easter::expr::{Expr, ExprData};
 use easter::decl::{Decl, DeclData, Dtor, DtorData, DtorExt};
 use easter::patt::{Patt, CompoundPatt};
 use easter::fun::{Fun, FunData, Params, ParamsData};
 use easter::obj::{PropKey, PropKeyData, PropValData, Prop, PropData, DotKey, DotKeyData};
 use easter::id::{Id, IdData, IdExt};
 use easter::punc::{Unop, UnopTag, ToOp};
+use easter::cover::IntoAssignPatt;
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -1337,7 +1338,11 @@ impl<I: Iterator<Item=char>> Parser<I> {
     fn more_assignment(&mut self, left: Expr) -> Result<Expr> {
         let token = try!(self.read_op());
         if let Some(op) = token.to_assop() {
-            let left = try!(left.into_assign_patt().map_err(Error::InvalidLHS));
+            let left_location = left.location();
+            let left = match left.into_assign_patt() {
+                Ok(left) => left,
+                Err(cover_err) => { return Err(Error::InvalidLHS(left_location, cover_err)); }
+            };
             let right = try!(self.assignment_expression());
             let location = span(&left, &right);
             return Ok(ExprData::Assign(op, left, Box::new(right)).tracked(location));
@@ -1350,11 +1355,11 @@ impl<I: Iterator<Item=char>> Parser<I> {
         let mut stack = Stack::new();
         let mut operand = left;
         while let Some(op) = try!(self.match_infix()) {
-            try!(stack.extend(operand, op).map_err(Error::InvalidLHS));
+            stack.extend(operand, op);
             //println!("{}\n", stack);
             operand = try!(self.unary_expression());
         }
-        stack.finish(operand).map_err(Error::InvalidLHS)
+        Ok(stack.finish(operand))
     }
 
     fn match_infix(&mut self) -> Result<Option<Infix>> {

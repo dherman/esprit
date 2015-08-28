@@ -9,3 +9,4 @@ pub mod decl;
 pub mod patt;
 pub mod prog;
 pub mod punc;
+pub mod cover;

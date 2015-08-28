@@ -1,11 +1,12 @@
 use unjson::ty::Object;
 use unjson::{ExtractField, Unjson};
 use easter::id::Id;
-use easter::expr::{Expr, IntoAssignPatt};
+use easter::expr::Expr;
 use easter::stmt::{Stmt, StmtListItem, Case, Catch};
 use easter::patt::{Patt, AssignTarget};
 use easter::obj::Prop;
 use easter::decl::Dtor;
+use easter::cover::IntoAssignPatt;
 
 use error::Error;
 use result::{Result, Map};

@@ -2,9 +2,9 @@ use joker::track::*;
 use joker::token::{StringLiteral, NumberLiteral};
 
 use id::Id;
-use expr::{Expr, IntoAssignPatt};
+use expr::Expr;
 use stmt::StmtListItem;
-use patt::{Patt, PropPatt, PropPattData, AssignTarget};
+use patt::Patt;
 
 #[derive(Debug, PartialEq)]
 pub struct DotKeyData(pub String);
@@ -29,21 +29,6 @@ impl Untrack for PropData {
 }
 
 pub type Prop = Tracked<PropData>;
-
-pub trait IntoAssignProp {
-    fn into_assign_prop(self) -> Result<PropPatt<AssignTarget>, Option<Span>>;
-}
-
-impl IntoAssignProp for Prop {
-    fn into_assign_prop(self) -> Result<PropPatt<AssignTarget>, Option<Span>> {
-        let key = self.value.key;
-        let patt = match self.value.val.value {
-            PropValData::Init(expr) => try!(expr.into_assign_patt()),
-            _ => { return Err(self.value.val.location); }
-        };
-        Ok(PropPattData { key: key, patt: patt }.tracked(self.location))
-    }
-}
 
 #[derive(Debug, PartialEq)]
 pub enum PropKeyData {
