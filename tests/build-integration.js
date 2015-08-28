@@ -27,5 +27,4 @@ function stringify(x) {
              });
 }
 
-// FIXME: remove the .slice(3, 4) when we're done testing underscore
-console.log(beautify(stringify(results/*.slice(3,4)*/), { indent_size: 2 }));
+console.log(beautify(stringify(results), { indent_size: 2 }));

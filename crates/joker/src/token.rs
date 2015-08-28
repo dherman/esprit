@@ -92,8 +92,6 @@ pub enum TokenData {
     EOF
 }
 
-// FIXME: make saving source optional for memory savings
-
 pub struct StringLiteral {
     pub source: String,
     pub value: String
