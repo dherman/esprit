@@ -4,15 +4,13 @@ use id::Id;
 use expr::Expr;
 use obj::{PropKey, DotKey};
 
-// FIXME: abstract Patt and APatt by parameterizing over the leaf node type
-
 #[derive(Debug, PartialEq)]
-pub enum CompoundPattData {
-    Arr(Vec<Option<Patt>>),
-    Obj(Vec<PropPatt>)
+pub enum CompoundPattData<T> {
+    Arr(Vec<Option<Patt<T>>>),
+    Obj(Vec<PropPatt<T>>)
 }
 
-impl Untrack for CompoundPattData {
+impl<T: Untrack> Untrack for CompoundPattData<T> {
     fn untrack(&mut self) {
         match *self {
             CompoundPattData::Arr(ref mut patts) => { patts.untrack(); }
@@ -21,30 +19,30 @@ impl Untrack for CompoundPattData {
     }
 }
 
-pub type CompoundPatt = Tracked<CompoundPattData>;
+pub type CompoundPatt<T> = Tracked<CompoundPattData<T>>;
 
 #[derive(Debug, PartialEq)]
-pub struct PropPattData {
+pub struct PropPattData<T> {
     pub key: PropKey,
-    pub patt: Patt
+    pub patt: Patt<T>
 }
 
-impl Untrack for PropPattData {
+impl<T: Untrack> Untrack for PropPattData<T> {
     fn untrack(&mut self) {
         self.key.untrack();
         self.patt.untrack();
     }
 }
 
-pub type PropPatt = Tracked<PropPattData>;
+pub type PropPatt<T> = Tracked<PropPattData<T>>;
 
 #[derive(Debug, PartialEq)]
-pub enum Patt {
-    Simple(Id),
-    Compound(CompoundPatt)
+pub enum Patt<T> {
+    Simple(T),
+    Compound(CompoundPatt<T>)
 }
 
-impl Patt {
+impl<T> Patt<T> {
     pub fn is_simple(&self) -> bool {
         match *self {
             Patt::Simple(_)   => true,
@@ -53,44 +51,20 @@ impl Patt {
     }
 }
 
-impl Track for Patt {
+impl<T: Track> Track for Patt<T> {
     fn location(&self) -> Option<Span> {
         match *self {
-            Patt::Simple(ref id)     => id.location(),
+            Patt::Simple(ref simple) => simple.location(),
             Patt::Compound(ref patt) => patt.location()
         }
     }
 }
 
-impl Untrack for Patt {
+impl<T: Untrack> Untrack for Patt<T> {
     fn untrack(&mut self) {
         match *self {
-            Patt::Simple(ref mut id)     => { id.untrack(); }
+            Patt::Simple(ref mut simple) => { simple.untrack(); }
             Patt::Compound(ref mut patt) => { patt.untrack(); }
-        }
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub enum APatt {
-    Simple(AssignTarget),
-    Compound(CompoundAPatt)
-}
-
-impl Track for APatt {
-    fn location(&self) -> Option<Span> {
-        match *self {
-            APatt::Simple(ref target) => target.location(),
-            APatt::Compound(ref patt) => patt.location()
-        }
-    }
-}
-
-impl Untrack for APatt {
-    fn untrack(&mut self) {
-        match *self {
-            APatt::Simple(ref mut target) => { target.untrack(); }
-            APatt::Compound(ref mut patt) => { patt.untrack(); }
         }
     }
 }
@@ -113,35 +87,3 @@ impl Untrack for AssignTargetData {
 }
 
 pub type AssignTarget = Tracked<AssignTargetData>;
-
-#[derive(Debug, PartialEq)]
-pub enum CompoundAPattData {
-    Arr(Vec<Option<APatt>>),
-    Obj(Vec<PropAPatt>)
-}
-
-impl Untrack for CompoundAPattData {
-    fn untrack(&mut self) {
-        match *self {
-            CompoundAPattData::Arr(ref mut patts) => { patts.untrack(); }
-            CompoundAPattData::Obj(ref mut props) => { props.untrack(); }
-        }
-    }
-}
-
-pub type CompoundAPatt = Tracked<CompoundAPattData>;
-
-#[derive(Debug, PartialEq)]
-pub struct PropAPattData {
-    pub key: PropKey,
-    pub patt: APatt
-}
-
-impl Untrack for PropAPattData {
-    fn untrack(&mut self) {
-        self.key.untrack();
-        self.patt.untrack();
-    }
-}
-
-pub type PropAPatt = Tracked<PropAPattData>;

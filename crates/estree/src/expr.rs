@@ -73,7 +73,7 @@ impl IntoExpr for Object {
                     Ok(op) => op,
                     Err(_) => { return string_error("assignment operator", str); }
                 };
-                let left = try!(self.extract_apatt("left"));
+                let left = try!(self.extract_assign_patt("left"));
                 let right = try!(self.extract_expr("right"));
                 ExprData::Assign(op, left, Box::new(right))
             }

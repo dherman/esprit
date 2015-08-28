@@ -3,11 +3,11 @@ use std::fmt::{Debug, Formatter};
 use joker::track::*;
 use joker::token::{NumberLiteral, StringLiteral};
 
-use obj::{DotKey, Prop, IntoAssignmentProperty};
+use obj::{DotKey, Prop, IntoAssignProp};
 use fun::Fun;
 use punc::{Unop, Binop, Assop, Logop};
 use id::Id;
-use patt::{APatt, AssignTargetData, CompoundAPattData};
+use patt::{Patt, AssignTarget, AssignTargetData, CompoundPattData};
 
 pub enum ExprData {
     This,
@@ -23,7 +23,7 @@ pub enum ExprData {
     PostInc(Box<Expr>),
     PreDec(Box<Expr>),
     PostDec(Box<Expr>),
-    Assign(Assop, APatt, Box<Expr>),
+    Assign(Assop, Patt<AssignTarget>, Box<Expr>),
     Cond(Box<Expr>, Box<Expr>, Box<Expr>),
     Call(Box<Expr>, Vec<Expr>),
     New(Box<Expr>, Option<Vec<Expr>>),
@@ -123,32 +123,32 @@ impl Debug for ExprData {
 
 // FIXME: should produce more detailed error information
 
-pub trait IntoAssignmentPattern {
-    fn into_assignment_pattern(self) -> Result<APatt, Option<Span>>;
+pub trait IntoAssignPatt {
+    fn into_assign_patt(self) -> Result<Patt<AssignTarget>, Option<Span>>;
 }
 
-impl IntoAssignmentPattern for Expr {
-    fn into_assignment_pattern(self) -> Result<APatt, Option<Span>> {
+impl IntoAssignPatt for Expr {
+    fn into_assign_patt(self) -> Result<Patt<AssignTarget>, Option<Span>> {
         Ok(match self.value {
-            ExprData::Id(id)           => APatt::Simple(AssignTargetData::Id(id).tracked(self.location)),
-            ExprData::Dot(obj, key)    => APatt::Simple(AssignTargetData::Dot(obj, key).tracked(self.location)),
-            ExprData::Brack(obj, prop) => APatt::Simple(AssignTargetData::Brack(obj, prop).tracked(self.location)),
+            ExprData::Id(id)           => Patt::Simple(AssignTargetData::Id(id).tracked(self.location)),
+            ExprData::Dot(obj, key)    => Patt::Simple(AssignTargetData::Dot(obj, key).tracked(self.location)),
+            ExprData::Brack(obj, prop) => Patt::Simple(AssignTargetData::Brack(obj, prop).tracked(self.location)),
             ExprData::Obj(props) => {
                 let mut prop_patts = Vec::with_capacity(props.len());
                 for prop in props {
-                    prop_patts.push(try!(prop.into_assignment_property()));
+                    prop_patts.push(try!(prop.into_assign_prop()));
                 }
-                APatt::Compound(CompoundAPattData::Obj(prop_patts).tracked(self.location))
+                Patt::Compound(CompoundPattData::Obj(prop_patts).tracked(self.location))
             }
             ExprData::Arr(exprs) => {
                 let mut patts = Vec::with_capacity(exprs.len());
                 for expr in exprs {
                     patts.push(match expr {
-                        Some(expr) => Some(try!(expr.into_assignment_pattern())),
+                        Some(expr) => Some(try!(expr.into_assign_patt())),
                         None => None
                     });
                 }
-                APatt::Compound(CompoundAPattData::Arr(patts).tracked(self.location))
+                Patt::Compound(CompoundPattData::Arr(patts).tracked(self.location))
             }
             _ => { return Err(self.location); }
         })

@@ -18,7 +18,7 @@ pub type Id = Tracked<IdData>;
 
 pub trait IdExt {
     fn new(Name, Option<Span>) -> Id;
-    fn into_patt(self) -> Patt;
+    fn into_patt(self) -> Patt<Id>;
     fn into_expr(self) -> Expr;
     fn into_dtor(self) -> Dtor;
 }
@@ -31,7 +31,7 @@ impl IdExt for Id {
         }
     }
 
-    fn into_patt(self) -> Patt {
+    fn into_patt(self) -> Patt<Id> {
         Patt::Simple(self)
     }
 

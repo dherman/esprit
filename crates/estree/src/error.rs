@@ -1,6 +1,7 @@
 use std::fmt;
 use std::fmt::{Display, Formatter};
 
+use easter::id::Id;
 use easter::expr::Expr;
 use easter::patt::CompoundPatt;
 use unjson;
@@ -14,7 +15,7 @@ pub enum Error {
     NodeTypeMismatch(&'static str, Tag),
     UnexpectedInitializer(Expr),
     InvalidLHS(&'static str),
-    UninitializedPattern(CompoundPatt)
+    UninitializedPattern(CompoundPatt<Id>)
 }
 
 impl Display for Error {

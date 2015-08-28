@@ -1,9 +1,10 @@
 use joker::track::*;
 use joker::token::{StringLiteral, NumberLiteral};
 
-use expr::{Expr, IntoAssignmentPattern};
+use id::Id;
+use expr::{Expr, IntoAssignPatt};
 use stmt::StmtListItem;
-use patt::{Patt, PropAPatt, PropAPattData};
+use patt::{Patt, PropPatt, PropPattData, AssignTarget};
 
 #[derive(Debug, PartialEq)]
 pub struct DotKeyData(pub String);
@@ -29,18 +30,18 @@ impl Untrack for PropData {
 
 pub type Prop = Tracked<PropData>;
 
-pub trait IntoAssignmentProperty {
-    fn into_assignment_property(self) -> Result<PropAPatt, Option<Span>>;
+pub trait IntoAssignProp {
+    fn into_assign_prop(self) -> Result<PropPatt<AssignTarget>, Option<Span>>;
 }
 
-impl IntoAssignmentProperty for Prop {
-    fn into_assignment_property(self) -> Result<PropAPatt, Option<Span>> {
+impl IntoAssignProp for Prop {
+    fn into_assign_prop(self) -> Result<PropPatt<AssignTarget>, Option<Span>> {
         let key = self.value.key;
         let patt = match self.value.val.value {
-            PropValData::Init(expr) => try!(expr.into_assignment_pattern()),
+            PropValData::Init(expr) => try!(expr.into_assign_patt()),
             _ => { return Err(self.value.val.location); }
         };
-        Ok((PropAPattData { key: key, patt: patt }).tracked(self.location))
+        Ok((PropPattData { key: key, patt: patt }).tracked(self.location))
     }
 }
 
@@ -61,7 +62,7 @@ pub type PropKey = Tracked<PropKeyData>;
 pub enum PropValData {
     Init(Expr),
     Get(Vec<StmtListItem>),
-    Set(Patt, Vec<StmtListItem>)
+    Set(Patt<Id>, Vec<StmtListItem>)
 }
 
 impl Untrack for PropValData {

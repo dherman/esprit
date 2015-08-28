@@ -79,8 +79,8 @@ pub type ForHead = Tracked<ForHeadData>;
 #[derive(Debug, PartialEq)]
 pub enum ForInHeadData {
     VarInit(Id, Expr),
-    Var(Patt),
-    Let(Patt),
+    Var(Patt<Id>),
+    Let(Patt<Id>),
     Expr(Expr)
 }
 
@@ -99,8 +99,8 @@ pub type ForInHead = Tracked<ForInHeadData>;
 
 #[derive(Debug, PartialEq)]
 pub enum ForOfHeadData {
-    Var(Patt),
-    Let(Patt),
+    Var(Patt<Id>),
+    Let(Patt<Id>),
     Expr(Expr)
 }
 
@@ -118,7 +118,7 @@ pub type ForOfHead = Tracked<ForOfHeadData>;
 
 #[derive(Debug, PartialEq)]
 pub struct CatchData {
-    pub param: Patt,
+    pub param: Patt<Id>,
     pub body: Vec<StmtListItem>
 }
 

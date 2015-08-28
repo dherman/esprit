@@ -6,7 +6,7 @@ use stmt::StmtListItem;
 
 #[derive(Debug, PartialEq)]
 pub struct ParamsData {
-    pub list: Vec<Patt>
+    pub list: Vec<Patt<Id>>
 }
 
 pub type Params = Tracked<ParamsData>;

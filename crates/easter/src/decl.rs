@@ -23,7 +23,7 @@ pub type Decl = Tracked<DeclData>;
 #[derive(Debug, PartialEq)]
 pub enum DtorData {
     Simple(Id, Option<Expr>),
-    Compound(CompoundPatt, Expr)
+    Compound(CompoundPatt<Id>, Expr)
 }
 
 impl Untrack for DtorData {
@@ -39,13 +39,13 @@ pub type Dtor = Tracked<DtorData>;
 
 pub trait DtorExt {
     fn from_simple_init(Id, Expr) -> Dtor;
-    fn from_compound_init(CompoundPatt, Expr) -> Dtor;
-    fn from_init(Patt, Expr) -> Dtor;
-    fn from_init_opt(Patt, Option<Expr>) -> Result<Dtor, CompoundPatt>;
+    fn from_compound_init(CompoundPatt<Id>, Expr) -> Dtor;
+    fn from_init(Patt<Id>, Expr) -> Dtor;
+    fn from_init_opt(Patt<Id>, Option<Expr>) -> Result<Dtor, CompoundPatt<Id>>;
 }
 
 impl DtorExt for Dtor {
-    fn from_compound_init(lhs: CompoundPatt, rhs: Expr) -> Dtor {
+    fn from_compound_init(lhs: CompoundPatt<Id>, rhs: Expr) -> Dtor {
         Dtor {
             location: span(&lhs, &rhs),
             value: DtorData::Compound(lhs, rhs)
@@ -59,7 +59,7 @@ impl DtorExt for Dtor {
         }
     }
 
-    fn from_init(lhs: Patt, rhs: Expr) -> Dtor {
+    fn from_init(lhs: Patt<Id>, rhs: Expr) -> Dtor {
         Dtor {
             location: span(&lhs, &rhs),
             value: match lhs {
@@ -69,7 +69,7 @@ impl DtorExt for Dtor {
         }
     }
 
-    fn from_init_opt(lhs: Patt, rhs: Option<Expr>) -> Result<Dtor, CompoundPatt> {
+    fn from_init_opt(lhs: Patt<Id>, rhs: Option<Expr>) -> Result<Dtor, CompoundPatt<Id>> {
         match (lhs, rhs) {
             (Patt::Simple(id), rhs) => {
                 let location = id.location();

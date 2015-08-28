@@ -5,7 +5,7 @@ use joker::lexer::Lexer;
 use joker::context::{SharedContext, Mode};
 use easter::prog::{Script, ScriptData};
 use easter::stmt::{Stmt, StmtData, StmtListItem, ForHead, ForHeadData, ForInHead, ForInHeadData, ForOfHead, ForOfHeadData, Case, CaseData, Catch, CatchData};
-use easter::expr::{Expr, ExprData, IntoAssignmentPattern};
+use easter::expr::{Expr, ExprData, IntoAssignPatt};
 use easter::decl::{Decl, DeclData, Dtor, DtorData, DtorExt};
 use easter::patt::{Patt, CompoundPatt};
 use easter::fun::{Fun, FunData, Params, ParamsData};
@@ -103,7 +103,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
         })
     }
 
-    fn pattern_list(&mut self) -> Result<Vec<Patt>> {
+    fn pattern_list(&mut self) -> Result<Vec<Patt<Id>>> {
         let mut patts = Vec::new();
         if try!(self.peek()).value == TokenData::RParen {
             return Ok(patts);
@@ -115,7 +115,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
         Ok(patts)
     }
 
-    fn pattern(&mut self) -> Result<Patt> {
+    fn pattern(&mut self) -> Result<Patt<Id>> {
         match try!(self.peek()).value {
             TokenData::Identifier(_) => {
                 let id = try!(self.binding_id());
@@ -128,7 +128,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
         }
     }
 
-    fn binding_pattern(&mut self) -> Result<CompoundPatt> {
+    fn binding_pattern(&mut self) -> Result<CompoundPatt<Id>> {
         if !try!(self.peek()).first_binding() {
             return Err(Error::UnexpectedToken(try!(self.read())));
         }
@@ -1337,7 +1337,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
     fn more_assignment(&mut self, left: Expr) -> Result<Expr> {
         let token = try!(self.read_op());
         if let Some(op) = token.to_assop() {
-            let left = try!(left.into_assignment_pattern().map_err(Error::InvalidLHS));
+            let left = try!(left.into_assign_patt().map_err(Error::InvalidLHS));
             let right = try!(self.assignment_expression());
             let location = span(&left, &right);
             return Ok(ExprData::Assign(op, left, Box::new(right)).tracked(location));
