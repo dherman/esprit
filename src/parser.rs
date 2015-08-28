@@ -1,8 +1,9 @@
+use joker;
 use joker::track::*;
 use joker::token::{Token, TokenData};
 use joker::word::{Atom, Name, Reserved};
 use joker::lexer::Lexer;
-use joker::context::{SharedContext, Mode};
+use joker::context::Mode;
 use easter::prog::{Script, ScriptData};
 use easter::stmt::{Stmt, StmtData, StmtListItem, ForHead, ForHeadData, ForInHead, ForInHeadData, ForOfHead, ForOfHeadData, Case, CaseData, Catch, CatchData};
 use easter::expr::{Expr, ExprData};
@@ -19,7 +20,8 @@ use std::rc::Rc;
 use std::mem::replace;
 use std::convert::From;
 use std::str::Chars;
-use context::{ParserContext, LabelType};
+use context;
+use context::{LabelType, WithContext};
 use tokens::{First, Follows, HasLabelType};
 use atom::AtomExt;
 use track::Newline;
@@ -27,14 +29,13 @@ use result::Result;
 use error::Error;
 use track::Tracking;
 use state::State;
-use context::WithContext;
 use expr::{Deref, Suffix, Arguments, Prefix, Postfix};
 use stack::{Stack, Infix};
 
 pub struct Parser<I> {
     pub lexer: Lexer<I>,
-    pub shared_cx: Rc<Cell<SharedContext>>,
-    pub parser_cx: ParserContext
+    pub shared_cx: Rc<Cell<joker::context::Context>>,
+    pub parser_cx: context::Context
 }
 
 impl<'a> From<&'a str> for Parser<Chars<'a>> {
@@ -45,15 +46,15 @@ impl<'a> From<&'a str> for Parser<Chars<'a>> {
 
 impl<I: Iterator<Item=char>> From<I> for Parser<I> {
     fn from(i: I) -> Parser<I> {
-        let cx = Rc::new(Cell::new(SharedContext::new(Mode::Sloppy)));
+        let cx = Rc::new(Cell::new(joker::context::Context::new(Mode::Sloppy)));
         let lexer = Lexer::new(i, cx.clone());
         Parser::new(lexer, cx.clone())
     }
 }
 
 impl<I: Iterator<Item=char>> Parser<I> {
-    pub fn new(lexer: Lexer<I>, cx: Rc<Cell<SharedContext>>) -> Parser<I> {
-        Parser { lexer: lexer, shared_cx: cx, parser_cx: ParserContext::new() }
+    pub fn new(lexer: Lexer<I>, cx: Rc<Cell<joker::context::Context>>) -> Parser<I> {
+        Parser { lexer: lexer, shared_cx: cx, parser_cx: context::Context::new() }
     }
 
     pub fn script(&mut self) -> Result<Script> {
@@ -137,7 +138,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
     }
 
     fn function(&mut self) -> Result<Fun> {
-        let outer_cx = replace(&mut self.parser_cx, ParserContext::new_function());
+        let outer_cx = replace(&mut self.parser_cx, context::Context::new_function());
         let result = self.span(&mut |this| {
             this.reread(TokenData::Reserved(Reserved::Function));
             let id = try!(this.id_opt());
@@ -945,7 +946,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                     let paren = try!(self.expect(TokenData::LParen));
                     try!(self.expect(TokenData::RParen));
                     try!(self.expect(TokenData::LBrace));
-                    let outer_cx = replace(&mut self.parser_cx, ParserContext::new_function());
+                    let outer_cx = replace(&mut self.parser_cx, context::Context::new_function());
                     let body = self.statement_list();
                     replace(&mut self.parser_cx, outer_cx);
                     let body = try!(body);
@@ -973,7 +974,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                     let param = try!(self.pattern());
                     try!(self.expect(TokenData::RParen));
                     try!(self.expect(TokenData::LBrace));
-                    let outer_cx = replace(&mut self.parser_cx, ParserContext::new_function());
+                    let outer_cx = replace(&mut self.parser_cx, context::Context::new_function());
                     let body = self.statement_list();
                     replace(&mut self.parser_cx, outer_cx);
                     let body = try!(body);

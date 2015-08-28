@@ -55,7 +55,7 @@ pub enum LabelType {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct ParserContext {
+pub struct Context {
     pub function: bool,
     pub iteration: bool,
     pub switch: bool,
@@ -63,9 +63,9 @@ pub struct ParserContext {
     pub labels: HashMap<Rc<Name>, LabelType>
 }
 
-impl ParserContext {
-    pub fn new() -> ParserContext {
-        ParserContext {
+impl Context {
+    pub fn new() -> Context {
+        Context {
             function: false,
             iteration: false,
             switch: false,
@@ -74,8 +74,8 @@ impl ParserContext {
         }
     }
 
-    pub fn new_function() -> ParserContext {
-        ParserContext {
+    pub fn new_function() -> Context {
+        Context {
             function: true,
             iteration: false,
             switch: false,

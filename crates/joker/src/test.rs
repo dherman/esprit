@@ -9,7 +9,7 @@ use unjson::result::Result;
 use unjson::ty::*;
 use token::*;
 use word::{Reserved, Name};
-use context::{SharedContext, Mode};
+use context::{Context, Mode};
 use std;
 
 macro_rules! right {
@@ -29,7 +29,7 @@ macro_rules! tuplify {
 
 pub struct LexerTest {
     pub source: String,
-    pub context: SharedContext,
+    pub context: Context,
     pub expected: std::result::Result<TokenData, String>
 }
 
@@ -66,7 +66,7 @@ impl IntoTest for Object {
         } else {
             Ok(try!(self.extract_field("expected").and_then(|data| data.into_token())))
         };
-        let mut context = SharedContext::new(Mode::Sloppy);
+        let mut context = Context::new(Mode::Sloppy);
         context.operator = set.contains("operator");
         Ok(LexerTest {
             source: source,

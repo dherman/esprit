@@ -6,7 +6,7 @@ use word::Map as WordMap;
 
 use std::cell::Cell;
 use std::rc::Rc;
-use context::SharedContext;
+use context::Context;
 use char::ESCharExt;
 use reader::Reader;
 use lookahead::Buffer;
@@ -38,7 +38,7 @@ impl SpanTracker {
 
 pub struct Lexer<I> {
     reader: Reader<I>,
-    cx: Rc<Cell<SharedContext>>,
+    cx: Rc<Cell<Context>>,
     lookahead: Buffer,
     wordmap: WordMap
 }
@@ -46,7 +46,7 @@ pub struct Lexer<I> {
 impl<I> Lexer<I> where I: Iterator<Item=char> {
     // constructor
 
-    pub fn new(chars: I, cx: Rc<Cell<SharedContext>>) -> Lexer<I> {
+    pub fn new(chars: I, cx: Rc<Cell<Context>>) -> Lexer<I> {
         Lexer {
             reader: Reader::new(chars),
             cx: cx,
@@ -750,13 +750,13 @@ mod tests {
     use test::{deserialize_lexer_tests, LexerTest};
     use lexer::Lexer;
     use result::Result;
-    use context::SharedContext;
+    use context::Context;
     use token::{Token, TokenData};
     use std::cell::Cell;
     use std::rc::Rc;
     use std;
 
-    fn lex2(source: &String, context: SharedContext) -> Result<(Token, Token)> {
+    fn lex2(source: &String, context: Context) -> Result<(Token, Token)> {
         let chars = source.chars();
         let cx = Rc::new(Cell::new(context));
         let mut lexer = Lexer::new(chars, cx.clone());

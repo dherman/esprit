@@ -15,18 +15,16 @@ impl Mode {
     }
 }
 
-// FIXME: this needs a better name
-
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub struct SharedContext {
+pub struct Context {
     pub mode: Mode,
     pub operator: bool,
     pub generator: bool
 }
 
-impl SharedContext {
-    pub fn new(mode: Mode) -> SharedContext {
-        SharedContext {
+impl Context {
+    pub fn new(mode: Mode) -> Context {
+        Context {
             mode: mode,
             operator: false,
             generator: false
