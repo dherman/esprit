@@ -500,7 +500,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn read_string_escape(&mut self, source: &mut String, value: &mut String) -> Result<()> {
-        source.push(self.read());
+        source.push(self.reread('\\'));
         match self.peek() {
             Some(ch) if ch.is_digit(8) => {
                 let mut code = 0;
@@ -533,7 +533,6 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             }
             Some(ch) if ch.is_es_newline() => {
                 self.read_newline_into(source);
-                value.push('\n'); // FIXME: does this need to avoid canonicalizing the newline? look it up in the spec
             }
             Some(ch) => {
                 source.push(self.reread(ch));

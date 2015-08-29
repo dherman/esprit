@@ -138,5 +138,13 @@
 {"source": "'\\u{66}\\u{6f}\\u{6f}'",       "context": [], "expected": ["String", "foo"]},
 {"source": "'\\146\\157\\157'",             "context": [], "expected": ["String", "foo"]},
 
+{"source": "\"hello\\\nworld\"",            "context": [], "expected": ["String", "helloworld"]},
+{"source": "\"hello\\\rworld\"",            "context": [], "expected": ["String", "helloworld"]},
+{"source": "\"hello\\\r\nworld\"",          "context": [], "expected": ["String", "helloworld"]},
+{"source": "\"hello\\\n\nworld\"",          "context": [], "error": "unexpected char"},
+{"source": "\"hello\\\r\rworld\"",          "context": [], "error": "unexpected char"},
+{"source": "\"hello\\\r\n\rworld\"",        "context": [], "error": "unexpected char"},
+{"source": "\"hello\\\r\n\nworld\"",        "context": [], "error": "unexpected char"},
+
 {"source": "null",  "context": [], "expected": ["Reserved", "Null"]}
 ]
