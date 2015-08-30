@@ -1,4 +1,3 @@
-use rustc_serialize::json::Json;
 use serde_json::value::Value;
 use easter::expr::{ExprData, Expr};
 use easter::obj::DotKeyData;
@@ -7,7 +6,6 @@ use easter::punc::{Unop, Binop, Assop, Logop};
 use unjson::ty::{Object, TyOf};
 use unjson::{Unjson, ExtractField};
 use joker::track::*;
-use joker::token::{StringLiteral, NumberLiteral};
 
 use tag::{Tag, TagOf};
 use id::IntoId;
@@ -15,6 +13,7 @@ use result::Result;
 use error::{Error, string_error, node_type_error, type_error};
 use node::ExtractNode;
 use fun::IntoFun;
+use lit::{IntoStringLiteral, IntoNumberLiteral};
 
 pub trait IntoExpr {
     fn into_expr(self) -> Result<Expr>;
@@ -31,23 +30,10 @@ impl IntoExpr for Object {
                 match json {
                     Value::Null => ExprData::Null,
                     Value::Bool(val) => if val { ExprData::True } else { ExprData::False },
-                    Value::String(value) => {
-                        // FIXME: this hack is pretty close to correct but it's inefficient and the only dependency on rustc-serialize
-                        let source = Json::String(value.to_string()).pretty().to_string(); // FIXME: deal with \u2028, \u2029
-                        ExprData::String(StringLiteral {
-                            source: source,
-                            value: value
-                        })
-                    }
-                    Value::I64(val) => ExprData::Number(NumberLiteral::DecimalInt(val.to_string(), None)),
-                    Value::U64(val) => ExprData::Number(NumberLiteral::DecimalInt(val.to_string(), None)),
-                    Value::F64(val) => {
-                        let s = val.to_string();
-                        let v: Vec<&str> = s.split('.').collect();
-                        let int_part = Some(v[0].to_owned());
-                        let fract_part = if v.len() > 1 { Some(v[1].to_owned()) } else { None };
-                        ExprData::Number(NumberLiteral::Float(int_part, fract_part, None))
-                    }
+                    Value::String(value) => ExprData::String(value.into_string_literal()),
+                    Value::I64(val) => ExprData::Number(val.into_number_literal()),
+                    Value::U64(val) => ExprData::Number(val.into_number_literal()),
+                    Value::F64(val) => ExprData::Number(val.into_number_literal()),
                     Value::Object(_) => {
                         let mut regex = try!(self.extract_object("regex").map_err(Error::Json));
                         let pattern = try!(regex.extract_string("pattern").map_err(Error::Json));
@@ -161,23 +147,10 @@ impl IntoExpr for Object {
         Ok(match json {
             Value::Null => ExprData::Null,
             Value::Bool(val) => if val { ExprData::True } else { ExprData::False },
-            Value::String(value) => {
-                // FIXME: this hack is pretty close to correct but it's inefficient and the only dependency on rustc-serialize
-                let source = Json::String(value.to_string()).pretty().to_string(); // FIXME: deal with \u2028, \u2029
-                ExprData::String(StringLiteral {
-                    source: source,
-                    value: value
-                })
-            }
-            Value::I64(val) => ExprData::Number(NumberLiteral::DecimalInt(val.to_string(), None)),
-            Value::U64(val) => ExprData::Number(NumberLiteral::DecimalInt(val.to_string(), None)),
-            Value::F64(val) => {
-                let s = val.to_string();
-                let v: Vec<&str> = s.split('.').collect();
-                let int_part = Some(v[0].to_owned());
-                let fract_part = if v.len() > 1 { Some(v[1].to_owned()) } else { None };
-                ExprData::Number(NumberLiteral::Float(int_part, fract_part, None))
-            }
+            Value::String(value) => ExprData::String(value.into_string_literal()),
+            Value::I64(val) => ExprData::Number(val.into_number_literal()),
+            Value::U64(val) => ExprData::Number(val.into_number_literal()),
+            Value::F64(val) => ExprData::Number(val.into_number_literal()),
             Value::Object(_) => {
                 let mut regex = try!(self.extract_object("regex").map_err(Error::Json));
                 let pattern = try!(regex.extract_string("pattern").map_err(Error::Json));

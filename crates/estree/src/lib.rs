@@ -17,6 +17,7 @@ mod patt;
 mod obj;
 mod decl;
 mod prog;
+mod lit;
 
 use serde::de::Error;
 use serde::de::{Deserialize, Deserializer};

@@ -34,7 +34,7 @@ pub enum ExprData {
     False,
     Null,
     Number(NumberLiteral),
-    RegExp(String, Vec<char>),
+    RegExp(String, Vec<char>), // FIXME: define RegExpLiteral
     String(StringLiteral)
 }
 
