@@ -197,18 +197,6 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }
     }
 
-    /*
-    fn expect(&mut self, expected: char) -> Result<()> {
-        match self.peek() {
-            Some(ch) if ch == expected => (),
-            Some(ch) => { return Err(Error::MissingChar(expected, Some(ch))); }
-            None => { return Err(Error::MissingChar(expected, None)); }
-        }
-        self.skip();
-        Ok(())
-    }
-    */
-
     // lexical grammar
 
     fn skip_newlines(&mut self) {
