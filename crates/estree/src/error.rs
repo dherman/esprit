@@ -3,7 +3,7 @@ use std::fmt::{Display, Formatter};
 
 use easter::id::Id;
 use easter::expr::Expr;
-use easter::patt::CompoundPatt;
+use easter::patt::{CompoundPatt, CompoundPattData};
 use unjson;
 use unjson::ty::Ty;
 use result::Result;
@@ -31,15 +31,17 @@ impl Display for Error {
                 fmt.write_fmt(format_args!("expected {} node, got {}", expected, actual))
             }
             &Error::UnexpectedInitializer(_) => {
-                // FIXME: stringify the expression?
                 fmt.write_fmt(format_args!("unexpected initializer in for-in loop"))
             }
             &Error::InvalidLHS(_) => {
                 fmt.write_fmt(format_args!("invalid left-hand side of assignment"))
             }
-            &Error::UninitializedPattern(_) => {
-                // FIXME: better error message
-                fmt.write_fmt(format_args!("uninitialized compound pattern"))
+            &Error::UninitializedPattern(ref patt) => {
+                let ty = match patt.value {
+                    CompoundPattData::Arr(_) => "array",
+                    CompoundPattData::Obj(_) => "object"
+                };
+                fmt.write_fmt(format_args!("uninitialized {} pattern in declarator", ty))
             }
         }
     }
