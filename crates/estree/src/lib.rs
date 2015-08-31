@@ -1,4 +1,3 @@
-extern crate rustc_serialize;
 extern crate unjson;
 extern crate serde;
 extern crate serde_json;

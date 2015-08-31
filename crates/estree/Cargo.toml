@@ -8,7 +8,6 @@ description = "A deserializer for the ESTree format."
 repository = "https://github.com/dherman/esprit"
 
 [dependencies]
-rustc-serialize = "0.3.16"
 serde = "0.5.2"
 serde_json = "0.5.1"
 unjson = { version = "0.0.1", path = "../unjson" }

@@ -452,7 +452,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             }
         }
         Ok(span.end(self, TokenData::String(StringLiteral {
-            source: source,
+            source: Some(source),
             value: value
         })))
     }

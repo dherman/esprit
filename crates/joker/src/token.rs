@@ -125,7 +125,7 @@ impl PartialEq for RegExpLiteral {
 }
 
 pub struct StringLiteral {
-    pub source: String,
+    pub source: Option<String>,
     pub value: String
 }
 
@@ -144,7 +144,7 @@ impl PartialEq for StringLiteral {
 }
 
 pub struct NumberLiteral {
-    pub source: NumberSource,
+    pub source: Option<NumberSource>,
     pub value: f64
 }
 
@@ -212,7 +212,7 @@ impl NumberSource {
     pub fn into_token_data(self) -> TokenData {
         let value = self.value();
         TokenData::Number(NumberLiteral {
-            source: self,
+            source: Some(self),
             value: value
         })
     }
