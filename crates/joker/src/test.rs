@@ -354,7 +354,10 @@ impl IntoToken for Value {
                 let (pattern, flags) = tuplify!(arr, ((), ()));
                 let pattern = try!(pattern.into_string());
                 let flags = try!(flags.into_string()).chars().collect();
-                TokenData::RegExp(pattern, flags)
+                TokenData::RegExp(RegExpLiteral {
+                    pattern: pattern,
+                    flags: flags
+                })
             }
             "Identifier"    => TokenData::Identifier(try!(arr.remove(0).into_name())),
             _               => { return type_error("token", Ty::Array); }

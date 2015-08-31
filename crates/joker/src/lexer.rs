@@ -1,7 +1,7 @@
 use std::char;
 
 use track::*;
-use token::{Token, TokenData, Exp, CharCase, Sign, NumberSource, Radix, StringLiteral};
+use token::{Token, TokenData, Exp, CharCase, Sign, NumberSource, Radix, StringLiteral, RegExpLiteral};
 use word::Map as WordMap;
 
 use std::cell::Cell;
@@ -254,7 +254,10 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         try!(self.read_until_with(&|ch| ch == '/', &mut |this| { this.read_regexp_char(&mut s) }));
         self.reread('/');
         let flags = try!(self.read_word_parts());
-        Ok(span.end(self, TokenData::RegExp(s, flags.chars().collect())))
+        Ok(span.end(self, TokenData::RegExp(RegExpLiteral {
+            pattern: s,
+            flags: flags.chars().collect()
+        })))
     }
 
     fn read_regexp_char(&mut self, s: &mut String) -> Result<()> {

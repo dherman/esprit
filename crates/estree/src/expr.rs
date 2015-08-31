@@ -5,6 +5,7 @@ use easter::id::IdExt;
 use easter::punc::{Unop, Binop, Assop, Logop};
 use unjson::ty::{Object, TyOf};
 use unjson::{Unjson, ExtractField};
+use joker::token::RegExpLiteral;
 use joker::track::*;
 
 use tag::{Tag, TagOf};
@@ -38,7 +39,10 @@ impl IntoExpr for Object {
                         let mut regex = try!(self.extract_object("regex").map_err(Error::Json));
                         let pattern = try!(regex.extract_string("pattern").map_err(Error::Json));
                         let flags = try!(regex.extract_string("flags").map_err(Error::Json));
-                        ExprData::RegExp(pattern, flags.chars().collect())
+                        ExprData::RegExp(RegExpLiteral {
+                            pattern: pattern,
+                            flags: flags.chars().collect()
+                        })
                     }
                     _ => { return type_error("null, number, boolean, string, or object", json.ty()); }
                 }
@@ -155,7 +159,10 @@ impl IntoExpr for Object {
                 let mut regex = try!(self.extract_object("regex").map_err(Error::Json));
                 let pattern = try!(regex.extract_string("pattern").map_err(Error::Json));
                 let flags = try!(regex.extract_string("flags").map_err(Error::Json));
-                ExprData::RegExp(pattern, flags.chars().collect())
+                ExprData::RegExp(RegExpLiteral {
+                    pattern: pattern,
+                    flags: flags.chars().collect()
+                })
             }
             _ => { return type_error("null, number, boolean, string, or object", json.ty()); }
         }.tracked(None))

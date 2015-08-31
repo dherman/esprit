@@ -83,13 +83,45 @@ pub enum TokenData {
     Arrow,
 
     Number(NumberLiteral),
-
     String(StringLiteral),
-    RegExp(String, Vec<char>),
+    RegExp(RegExpLiteral),
 
     Identifier(Name),
 
     EOF
+}
+
+pub struct RegExpLiteral {
+    pub pattern: String,
+    pub flags: Vec<char>
+}
+
+trait CharsEx {
+    fn alphabetize(&self) -> Vec<char>;
+}
+
+impl CharsEx for Vec<char> {
+    fn alphabetize(&self) -> Vec<char> {
+        let mut x: Vec<char> = self.to_vec();
+        x.sort();
+        x
+    }
+}
+
+impl Debug for RegExpLiteral {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        fmt.debug_struct("RegExpLiteral")
+            .field("pattern", &self.pattern)
+            .field("flags", &self.flags.alphabetize())
+            .finish()
+    }
+}
+
+impl PartialEq for RegExpLiteral {
+    fn eq(&self, other: &Self) -> bool {
+        (self.pattern == other.pattern) &&
+        (self.flags.alphabetize() == other.flags.alphabetize())
+    }
 }
 
 pub struct StringLiteral {

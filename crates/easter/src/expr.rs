@@ -1,7 +1,7 @@
 use std::fmt;
 use std::fmt::{Debug, Formatter};
 use joker::track::*;
-use joker::token::{NumberLiteral, StringLiteral};
+use joker::token::{NumberLiteral, StringLiteral, RegExpLiteral};
 
 use obj::{DotKey, Prop};
 use fun::Fun;
@@ -34,7 +34,7 @@ pub enum ExprData {
     False,
     Null,
     Number(NumberLiteral),
-    RegExp(String, Vec<char>), // FIXME: define RegExpLiteral
+    RegExp(RegExpLiteral),
     String(StringLiteral)
 }
 
@@ -76,8 +76,7 @@ impl PartialEq for ExprData {
             (&ExprData::False,              &ExprData::False)                            => true,
             (&ExprData::Null,               &ExprData::Null)                             => true,
             (&ExprData::Number(ref lit_l),  &ExprData::Number(ref lit_r))                => lit_l == lit_r,
-            (&ExprData::RegExp(ref src_l, ref flags_l),
-             &ExprData::RegExp(ref src_r, ref flags_r))                                  => (src_l, flags_l) == (src_r, flags_r),
+            (&ExprData::RegExp(ref lit_l),  &ExprData::RegExp(ref lit_r))                => lit_l == lit_r,
             (&ExprData::String(ref lit_l),  &ExprData::String(ref lit_r))                => lit_l == lit_r,
             _ => false
         }
@@ -115,7 +114,7 @@ impl Debug for ExprData {
             &ExprData::False                               => fmt.write_str("False"),
             &ExprData::Null                                => fmt.write_str("Null"),
             &ExprData::Number(ref lit)                     => fmt.debug_tuple("Number").field(lit).finish(),
-            &ExprData::RegExp(ref source, ref flags)       => fmt.debug_tuple("RegExp").field(source).field(flags).finish(),
+            &ExprData::RegExp(ref lit)                     => fmt.debug_tuple("RegExp").field(lit).finish(),
             &ExprData::String(ref lit)                     => fmt.debug_tuple("String").field(lit).finish()
         }
     }
@@ -148,7 +147,7 @@ impl Untrack for ExprData {
             ExprData::False                                          => { }
             ExprData::Null                                           => { }
             ExprData::Number(_)                                      => { }
-            ExprData::RegExp(_, _)                                   => { }
+            ExprData::RegExp(_)                                      => { }
             ExprData::String(_)                                      => { }
         }
     }
