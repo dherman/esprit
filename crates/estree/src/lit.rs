@@ -1,5 +1,5 @@
 use rustc_serialize::json::Json;
-use joker::token::{StringLiteral, NumberLiteral};
+use joker::token::{StringLiteral, NumberLiteral, NumberSource};
 
 trait ToSource {
     fn to_source(&self) -> String;
@@ -35,22 +35,33 @@ pub trait IntoNumberLiteral {
 
 impl IntoNumberLiteral for i64 {
     fn into_number_literal(self) -> NumberLiteral {
-        NumberLiteral::DecimalInt(self.to_string(), None)
+        NumberLiteral {
+            source: NumberSource::DecimalInt(self.to_string(), None),
+            value: self as f64
+        }
     }
 }
 
 impl IntoNumberLiteral for u64 {
     fn into_number_literal(self) -> NumberLiteral {
-        NumberLiteral::DecimalInt(self.to_string(), None)
+        NumberLiteral {
+            source: NumberSource::DecimalInt(self.to_string(), None),
+            value: self as f64
+        }
     }
 }
 
 impl IntoNumberLiteral for f64 {
     fn into_number_literal(self) -> NumberLiteral {
-        let s = self.to_string();
-        let v: Vec<&str> = s.split('.').collect();
-        let int_part = Some(v[0].to_owned());
-        let fract_part = if v.len() > 1 { Some(v[1].to_owned()) } else { None };
-        NumberLiteral::Float(int_part, fract_part, None)
+        NumberLiteral {
+            source: {
+                let s = self.to_string();
+                let v: Vec<&str> = s.split('.').collect();
+                let int_part = Some(v[0].to_owned());
+                let fract_part = if v.len() > 1 { Some(v[1].to_owned()) } else { None };
+                NumberSource::Float(int_part, fract_part, None)
+            },
+            value: self
+        }
     }
 }

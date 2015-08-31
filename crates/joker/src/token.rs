@@ -107,23 +107,34 @@ impl Debug for StringLiteral {
 
 impl PartialEq for StringLiteral {
     fn eq(&self, other: &Self) -> bool {
-        self.value.eq(&other.value)
+        self.value == other.value
     }
 }
 
-#[derive(PartialEq)]
-pub enum NumberLiteral {
-    DecimalInt(String, Option<Exp>),
-    RadixInt(Radix, String),
-    Float(Option<String>, Option<String>, Option<Exp>)
+pub struct NumberLiteral {
+    pub source: NumberSource,
+    pub value: f64
 }
 
 impl Debug for NumberLiteral {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        fmt.debug_tuple("NumberLiteral")
-            .field(&self.value())
+        fmt.debug_struct("NumberLiteral")
+            .field("value", &self.value)
             .finish()
     }
+}
+
+impl PartialEq for NumberLiteral {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum NumberSource {
+    DecimalInt(String, Option<Exp>),
+    RadixInt(Radix, String),
+    Float(Option<String>, Option<String>, Option<Exp>)
 }
 
 fn format_sign(sign: &Option<Sign>) -> String {
@@ -140,28 +151,38 @@ fn format_int(src: &Option<String>) -> String {
     }
 }
 
-impl NumberLiteral {
-    pub fn value(&self) -> Option<f64> {
+impl NumberSource {
+    pub fn value(&self) -> f64 {
         match *self {
-            NumberLiteral::DecimalInt(ref mantissa, None) => {
-                let i: Option<i64> = mantissa.parse().ok();
-                i.map(|i| i as f64)
+            NumberSource::DecimalInt(ref mantissa, None) => {
+                let i: i64 = mantissa.parse().ok().unwrap();
+                i as f64
             }
-            NumberLiteral::DecimalInt(ref mantissa, Some(Exp { ref sign, ref value, .. })) => {
-                let s = format!("{}e{}{}", mantissa, format_sign(sign), value);
-                let i: Option<i64> = s.parse().ok();
-                i.map(|i| i as f64)
+            NumberSource::DecimalInt(ref mantissa, Some(Exp { ref sign, ref value, .. })) => {
+                let mantissa: i64 = mantissa.parse().ok().unwrap();
+                let mantissa: f64 = mantissa as f64;
+                let exp: i32 = value.parse().ok().unwrap();
+                mantissa * (10 as f64).powi(if *sign == Some(Sign::Minus) { -exp } else { exp })
             }
-            NumberLiteral::RadixInt(ref radix, ref src) => {
-                i64::from_str_radix(&src[..], radix.value()).ok().map(|i| i as f64)
+            NumberSource::RadixInt(ref radix, ref src) => {
+                let i = i64::from_str_radix(&src[..], radix.value()).ok().unwrap();
+                i as f64
             }
-            NumberLiteral::Float(ref ip, ref fp, None) => {
-                format!("{}.{}", format_int(ip), format_int(fp)).parse().ok()
+            NumberSource::Float(ref ip, ref fp, None) => {
+                format!("{}.{}", format_int(ip), format_int(fp)).parse().ok().unwrap()
             }
-            NumberLiteral::Float(ref ip, ref fp, Some(Exp { ref sign, ref value, .. })) => {
-                format!("{}.{}e{}{}", format_int(ip), format_int(fp), format_sign(sign), value).parse().ok()
+            NumberSource::Float(ref ip, ref fp, Some(Exp { ref sign, ref value, .. })) => {
+                format!("{}.{}e{}{}", format_int(ip), format_int(fp), format_sign(sign), value).parse().ok().unwrap()
             }
         }
+    }
+
+    pub fn into_token_data(self) -> TokenData {
+        let value = self.value();
+        TokenData::Number(NumberLiteral {
+            source: self,
+            value: value
+        })
     }
 }
 

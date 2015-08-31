@@ -316,32 +316,32 @@ impl IntoToken for Value {
                 let (value, exp) = tuplify!(arr, ((), ()));
                 let value = try!(value.into_string());
                 let exp = try!(exp.into_exp_opt());
-                TokenData::Number(NumberLiteral::DecimalInt(value, exp))
+                NumberSource::DecimalInt(value, exp).into_token_data()
             }
             "BinaryInt"     => {
                 let (flag, value) = tuplify!(arr, ((), ()));
                 let flag = try!(flag.into_char_case());
                 let value = try!(value.into_string());
-                TokenData::Number(NumberLiteral::RadixInt(Radix::Bin(flag), value))
+                NumberSource::RadixInt(Radix::Bin(flag), value).into_token_data()
             }
             "OctalInt"      => {
                 let (flag, value) = tuplify!(arr, ((), ()));
                 let flag = try!(flag.into_char_case_opt());
                 let value = try!(value.into_string());
-                TokenData::Number(NumberLiteral::RadixInt(Radix::Oct(flag), value))
+                NumberSource::RadixInt(Radix::Oct(flag), value).into_token_data()
             }
             "HexInt"        => {
                 let (flag, value) = tuplify!(arr, ((), ()));
                 let flag = try!(flag.into_char_case());
                 let value = try!(value.into_string());
-                TokenData::Number(NumberLiteral::RadixInt(Radix::Hex(flag), value))
+                NumberSource::RadixInt(Radix::Hex(flag), value).into_token_data()
             }
             "Float"         => {
                 let (int, frac, exp) = tuplify!(arr, ((), (), ()));
                 let int = try!(int.into_string_opt());
                 let frac = try!(frac.into_string_opt());
                 let exp = try!(exp.into_exp_opt());
-                TokenData::Number(NumberLiteral::Float(int, frac, exp))
+                NumberSource::Float(int, frac, exp).into_token_data()
             }
             "String"        => {
                 let value = try!(arr.remove(0).into_string());

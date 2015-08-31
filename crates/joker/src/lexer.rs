@@ -1,7 +1,7 @@
 use std::char;
 
 use track::*;
-use token::{Token, TokenData, Exp, CharCase, Sign, NumberLiteral, Radix, StringLiteral};
+use token::{Token, TokenData, Exp, CharCase, Sign, NumberSource, Radix, StringLiteral};
 use word::Map as WordMap;
 
 use std::cell::Cell;
@@ -350,19 +350,19 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     fn read_hex_int(&mut self) -> Result<Token> {
         self.read_radix_int(16, &|ch| ch.is_es_hex_digit(), &|cc, s| {
-            TokenData::Number(NumberLiteral::RadixInt(Radix::Hex(cc), s))
+            NumberSource::RadixInt(Radix::Hex(cc), s).into_token_data()
         }, Error::MissingHexDigits)
     }
 
     fn read_oct_int(&mut self) -> Result<Token> {
         self.read_radix_int(8, &|ch| ch.is_es_oct_digit(), &|cc, s| {
-            TokenData::Number(NumberLiteral::RadixInt(Radix::Oct(Some(cc)), s))
+            NumberSource::RadixInt(Radix::Oct(Some(cc)), s).into_token_data()
         }, Error::MissingOctalDigits)
     }
 
     fn read_bin_int(&mut self) -> Result<Token> {
         self.read_radix_int(2, &|ch| ch.is_es_bin_digit(), &|cc, s| {
-            TokenData::Number(NumberLiteral::RadixInt(Radix::Bin(cc), s))
+            NumberSource::RadixInt(Radix::Bin(cc), s).into_token_data()
         }, Error::MissingBinaryDigits)
     }
 
@@ -371,11 +371,11 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         self.skip();
         let mut s = String::new();
         self.read_into_until(&mut s, &|ch| !ch.is_digit(10));
-        span.end(self, TokenData::Number(if s.chars().all(|ch| ch.is_es_oct_digit()) {
-            NumberLiteral::RadixInt(Radix::Oct(None), s)
+        span.end(self, if s.chars().all(|ch| ch.is_es_oct_digit()) {
+            NumberSource::RadixInt(Radix::Oct(None), s).into_token_data()
         } else {
-            NumberLiteral::DecimalInt(format!("0{}", s), None)
-        }))
+            NumberSource::DecimalInt(format!("0{}", s), None).into_token_data()
+        })
     }
 
     fn read_number(&mut self) -> Result<Token> {
@@ -389,7 +389,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 self.skip();
                 let frac = self.read_decimal_digits();
                 let exp = try!(self.read_exp_part());
-                Ok(span.end(self, TokenData::Number(NumberLiteral::Float(None, Some(frac), exp))))
+                Ok(span.end(self, NumberSource::Float(None, Some(frac), exp).into_token_data()))
             }
             (Some(ch), _) => {
                 debug_assert!(ch.is_digit(10));
@@ -404,11 +404,11 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                     (false, None)
                 };
                 let exp = try!(self.read_exp_part());
-                Ok(span.end(self, TokenData::Number(if dot {
-                    NumberLiteral::Float(Some(pos), frac, exp)
+                Ok(span.end(self, if dot {
+                    NumberSource::Float(Some(pos), frac, exp).into_token_data()
                 } else {
-                    NumberLiteral::DecimalInt(pos, exp)
-                })))
+                    NumberSource::DecimalInt(pos, exp).into_token_data()
+                }))
             }
             (None, _) => { panic!("read_number() called at EOF"); }
         });

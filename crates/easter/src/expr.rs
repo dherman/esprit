@@ -75,7 +75,7 @@ impl PartialEq for ExprData {
             (&ExprData::True,               &ExprData::True)                             => true,
             (&ExprData::False,              &ExprData::False)                            => true,
             (&ExprData::Null,               &ExprData::Null)                             => true,
-            (&ExprData::Number(ref lit_l),  &ExprData::Number(ref lit_r))                => lit_l.value() == lit_r.value(),
+            (&ExprData::Number(ref lit_l),  &ExprData::Number(ref lit_r))                => lit_l == lit_r,
             (&ExprData::RegExp(ref src_l, ref flags_l),
              &ExprData::RegExp(ref src_r, ref flags_r))                                  => (src_l, flags_l) == (src_r, flags_r),
             (&ExprData::String(ref lit_l),  &ExprData::String(ref lit_r))                => lit_l == lit_r,
