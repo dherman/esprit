@@ -8346,4 +8346,33 @@
       }
     }]
   }
+}, {
+  "source": "\"foo\\\u2028bar\"",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "Literal",
+        "value": "foobar",
+        "raw": "\"foo\\\u2028bar\""
+      }
+    }]
+  }
+}, {
+  "source": "\"\u2028\"",
+  "expected": null
+}, {
+  "source": "\"\\u2028\"",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "Literal",
+        "value": "\u2028",
+        "raw": "\"\\u2028\""
+      }
+    }]
+  }
 }]

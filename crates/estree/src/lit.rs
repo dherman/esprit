@@ -8,7 +8,11 @@ trait ToSource {
 impl ToSource for String {
     fn to_source(&self) -> String {
         // FIXME: this hack is pretty close to correct but it's inefficient and the only dependency on rustc-serialize
-        Json::String(self.to_string()).pretty().to_string() // FIXME: deal with \u2028, \u2029
+        Json::String(self.to_string())
+            .pretty()
+            .to_string()
+            .replace("\u{2028}", "\\u2028")
+            .replace("\u{2029}", "\\u2029")
     }
 }
 

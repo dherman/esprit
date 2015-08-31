@@ -357,6 +357,10 @@
   "({ set foo(x) { } })": true,
   "({ set foo(x) { }, bar: 1 })": true,
   "({ foo: 1, set bar(x) { } })": true,
-  "({ foo: 1, set bar(x) { }, baz: 2 })": true
+  "({ foo: 1, set bar(x) { }, baz: 2 })": true,
+
+  "\"foo\\\u2028bar\"": true,
+  "\"\u2028\"": false,
+  "\"\\u2028\"": true
 
 }
