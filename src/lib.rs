@@ -1,3 +1,12 @@
+//! A JavaScript parsing library.
+//!
+//! Esprit currently parses all of ES5 and bits of ES6. The goal
+//! is to support all of ES6.
+//!
+//! Currently the parser is hard-coded to produce the Easter AST
+//! data structures. Eventually it should be abstracted to support
+//! pluggable builders.
+
 extern crate serde;
 extern crate serde_json;
 extern crate estree;
