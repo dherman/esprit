@@ -1,7 +1,7 @@
 [package]
 
 name = "estree"
-version = "0.0.2"
+version = "0.0.3"
 authors = ["Dave Herman <dherman@mozilla.com>"]
 license = "MIT"
 description = "A deserializer for the ESTree format."
