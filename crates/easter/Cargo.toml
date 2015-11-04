@@ -1,11 +1,11 @@
 [package]
 
 name = "easter"
-version = "0.0.2"
+version = "0.0.3"
 authors = ["Dave Herman <dherman@mozilla.com>"]
 license = "MIT"
 description = "Type definitions for ECMAScript abstract syntax trees."
 repository = "https://github.com/dherman/esprit"
 
 [dependencies]
-joker = { version = "0.0.2", path = "../joker" }
+joker = { version = "0.0.3", path = "../joker" }
