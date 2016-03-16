@@ -8,4 +8,4 @@ description = "Tools for destructuring JSON data."
 repository = "https://github.com/dherman/esprit"
 
 [dependencies]
-serde_json = "0.5.1"
+serde_json = "0.7.0"

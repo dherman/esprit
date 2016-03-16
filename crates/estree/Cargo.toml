@@ -8,8 +8,8 @@ description = "A deserializer for the ESTree format."
 repository = "https://github.com/dherman/esprit"
 
 [dependencies]
-serde = "0.6.1"
-serde_json = "0.5.1"
+serde = "0.7.0"
+serde_json = "0.7.0"
 unjson = { version = "0.0.3", path = "../unjson" }
 joker = { version = "0.0.3", path = "../joker" }
 easter = { version = "0.0.3", path = "../easter" }
