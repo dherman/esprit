@@ -8,5 +8,5 @@ description = "A JavaScript tokenizer."
 repository = "https://github.com/dherman/esprit"
 
 [dependencies]
-serde_json = "0.5.1"
+serde_json = "0.7.0"
 unjson = { version = "0.0.3", path = "../unjson" }

@@ -93,7 +93,7 @@ impl<T: FromStr> FromStr for Tracked<T> {
 }
 
 pub trait IntoTracked {
-    fn tracked(self, Option<Span>) -> Tracked<Self>;
+    fn tracked(self, Option<Span>) -> Tracked<Self> where Self: Sized;
     //fn tracked<T: Track>(self, T) -> Tracked<Self>;
 }
 
