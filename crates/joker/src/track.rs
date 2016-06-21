@@ -92,8 +92,8 @@ impl<T: FromStr> FromStr for Tracked<T> {
     }
 }
 
-pub trait IntoTracked {
-    fn tracked(self, Option<Span>) -> Tracked<Self>;
+pub trait IntoTracked: Sized {
+    fn tracked(self, location: Option<Span>) -> Tracked<Self>;
     //fn tracked<T: Track>(self, T) -> Tracked<Self>;
 }
 
