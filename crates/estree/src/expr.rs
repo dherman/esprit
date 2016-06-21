@@ -4,7 +4,7 @@ use easter::obj::DotKeyData;
 use easter::id::IdExt;
 use easter::punc::{Unop, Binop, Assop, Logop};
 use unjson::ty::{Object, TyOf};
-use unjson::{Unjson, ExtractField};
+use unjson::ExtractField;
 use joker::token::RegExpLiteral;
 use joker::track::*;
 

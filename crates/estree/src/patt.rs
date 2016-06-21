@@ -3,7 +3,7 @@ use easter::id::{Id, IdExt};
 use unjson::ty::Object;
 
 use id::IntoId;
-use result::{Result, Map};
+use result::Result;
 
 pub trait IntoPatt {
     fn into_patt(self) -> Result<Patt<Id>>;
