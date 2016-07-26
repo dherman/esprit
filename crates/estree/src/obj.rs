@@ -1,5 +1,4 @@
 use easter::obj::{Prop, PropData, PropKey, PropKeyData, PropValData};
-use easter::id::IdExt;
 use easter::expr::ExprData;
 use unjson::ty::{Object, Ty};
 use unjson::{Unjson, ExtractField};

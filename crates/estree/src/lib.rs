@@ -31,7 +31,7 @@ impl Deserialize for ESTreeScript {
         let json: Object = try!(Deserialize::deserialize(de));
         match json.into_script() {
             Ok(script) => Ok(ESTreeScript(script)),
-            Err(err)   => Err(D::Error::syntax(&format!("{}", err)[..]))
+            Err(err)   => Err(D::Error::custom(&format!("{}", err)[..]))
         }
     }
 }
