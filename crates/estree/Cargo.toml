@@ -10,6 +10,6 @@ repository = "https://github.com/dherman/esprit"
 [dependencies]
 serde = "0.7.10"
 serde_json = "0.7.1"
-unjson = { version = "0.0.3", path = "../unjson" }
-joker = { version = "0.0.3", path = "../joker" }
-easter = { version = "0.0.3", path = "../easter" }
+unjson = { version = "0.0.4", path = "../unjson" }
+joker = { version = "0.0.4", path = "../joker" }
+easter = { version = "0.0.4", path = "../easter" }

@@ -8,4 +8,4 @@ description = "Type definitions for ECMAScript abstract syntax trees."
 repository = "https://github.com/dherman/esprit"
 
 [dependencies]
-joker = { version = "0.0.3", path = "../joker" }
+joker = { version = "0.0.4", path = "../joker" }
