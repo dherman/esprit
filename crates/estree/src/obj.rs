@@ -1,7 +1,7 @@
 use easter::obj::{Prop, PropData, PropKey, PropKeyData, PropValData};
 use easter::expr::ExprData;
 use unjson::ty::{Object, Ty};
-use unjson::{Unjson, ExtractField};
+use unjson::ExtractField;
 use joker::track::*;
 
 use tag::{Tag, TagOf};
