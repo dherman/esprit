@@ -1407,6 +1407,9 @@ mod tests {
     use std::{thread, env};
     use test::{deserialize_parser_tests, ParserTest};
     use joker::track::Untrack;
+    use easter::stmt::{Stmt, StmtListItem, StmtData};
+    use easter::expr::{Expr, ExprData};
+    use easter::patt::{Patt, AssignTarget, AssignTargetData};
     use ::script;
 
     #[test]
@@ -1505,4 +1508,22 @@ mod tests {
         }
     }
 
+
+    #[test]
+    pub fn as_ref_test() {
+        let mut ast = script("foobar = 17;").ok().unwrap();
+        ast.untrack();
+        match ast.value.body.first().unwrap() {
+            &StmtListItem::Stmt(Stmt {
+                value: StmtData::Expr(Expr {
+                    value: ExprData::Assign(_, Patt::Simple(AssignTarget { value: AssignTargetData::Id(ref id), .. }), _),
+                    ..
+                }, _),
+                ..
+            }) => {
+                assert!(id.value.name.as_ref() == "foobar");
+            }
+            _ => { panic!("unexpected AST structure"); }
+        }
+    }
 }

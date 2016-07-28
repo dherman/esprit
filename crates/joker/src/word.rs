@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::convert::From;
+use std::convert::{AsRef, From};
 use token::TokenData;
 
 // Unconditionally reserved words.
@@ -134,6 +134,15 @@ impl Name {
         match self {
             Name::Atom(atom) => atom.name().to_string(),
             Name::String(s)  => s
+        }
+    }
+}
+
+impl AsRef<str> for Name {
+    fn as_ref(&self) -> &str {
+        match self {
+            &Name::Atom(ref atom) => atom.name(),
+            &Name::String(ref s)  => s.as_ref()
         }
     }
 }
