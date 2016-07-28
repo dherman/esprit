@@ -5,6 +5,8 @@ version = "0.0.4"
 authors = ["Dave Herman <dherman@mozilla.com>"]
 license = "MIT"
 description = "Type definitions for ECMAScript abstract syntax trees."
+documentation = "https://esprit.surge.sh"
+homepage = "https://esprit.surge.sh"
 repository = "https://github.com/dherman/esprit"
 
 [dependencies]

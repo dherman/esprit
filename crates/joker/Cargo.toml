@@ -5,6 +5,8 @@ version = "0.0.4"
 authors = ["Dave Herman <dherman@mozilla.com>"]
 license = "MIT"
 description = "A JavaScript tokenizer."
+documentation = "https://esprit.surge.sh"
+homepage = "https://esprit.surge.sh"
 repository = "https://github.com/dherman/esprit"
 
 [dependencies]

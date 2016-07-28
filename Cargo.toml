@@ -6,6 +6,8 @@ authors = ["Dave Herman <dherman@mozilla.com>"]
 build = "build.rs"
 license = "MIT"
 description = "An ECMAScript parser library."
+documentation = "https://esprit.surge.sh"
+homepage = "https://esprit.surge.sh"
 repository = "https://github.com/dherman/esprit"
 exclude = ["test/build/**/*"]
 
