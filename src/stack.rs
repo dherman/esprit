@@ -1,8 +1,8 @@
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::{cmp, usize};
-use joker::track::{span, IntoTracked};
-use easter::expr::{Expr, ExprData};
+use joker::track::span;
+use easter::expr::Expr;
 use easter::punc::{Binop, Logop, Precedence};
 
 #[derive(Debug)]
@@ -51,9 +51,9 @@ impl Frame {
     fn fill(self, right: Expr) -> Expr {
         let location = span(&self.left, &right);
         match self.op {
-            Infix::Binop(op) => ExprData::Binop(op, Box::new(self.left), Box::new(right)),
-            Infix::Logop(op) => ExprData::Logop(op, Box::new(self.left), Box::new(right))
-        }.tracked(location)
+            Infix::Binop(op) => Expr::Binop(location, op, Box::new(self.left), Box::new(right)),
+            Infix::Logop(op) => Expr::Logop(location, op, Box::new(self.left), Box::new(right))
+        }
     }
 }
 
@@ -89,10 +89,10 @@ struct FrameExpr<'a>(&'a Expr);
 impl<'a> FrameExpr<'a> {
     fn width(&self) -> usize {
         match *self {
-            FrameExpr(&Expr { value: ExprData::Binop(ref op, ref left, ref right), .. }) => {
+            FrameExpr(&Expr::Binop(_, ref op, ref left, ref right)) => {
                 1 + FrameExpr(left).width() + 1 + op.to_string().len() + 1 + FrameExpr(right).width() + 1
             }
-            FrameExpr(&Expr { value: ExprData::Logop(ref op, ref left, ref right), .. }) => {
+            FrameExpr(&Expr::Logop(_, ref op, ref left, ref right)) => {
                 1 + FrameExpr(left).width() + 1 + op.to_string().len() + 1 + FrameExpr(right).width() + 1
             }
             _ => 1
@@ -103,10 +103,10 @@ impl<'a> FrameExpr<'a> {
 impl<'a> Display for FrameExpr<'a> {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         match *self {
-            FrameExpr(&Expr { value: ExprData::Binop(ref op, ref left, ref right), .. }) => {
+            FrameExpr(&Expr::Binop(_, ref op, ref left, ref right)) => {
                 fmt.write_fmt(format_args!("({} {} {})", FrameExpr(left), op, FrameExpr(right)))
             }
-            FrameExpr(&Expr { value: ExprData::Logop(ref op, ref left, ref right), .. }) => {
+            FrameExpr(&Expr::Logop(_, ref op, ref left, ref right)) => {
                 fmt.write_fmt(format_args!("({} {} {})", FrameExpr(left), op, FrameExpr(right)))
             }
             _ => fmt.write_str("_")

@@ -6,36 +6,71 @@ use patt::{Patt, CompoundPatt};
 use expr::Expr;
 
 #[derive(Debug, PartialEq)]
-pub enum DeclData {
+pub enum Decl {
     Fun(Fun)
 }
 
-impl Untrack for DeclData {
-    fn untrack(&mut self) {
-        match *self {
-            DeclData::Fun(ref mut fun) => { fun.untrack(); }
-        }
+impl TrackingRef for Decl {
+    fn tracking_ref(&self) -> &Option<Span> {
+        let Decl::Fun(ref fun) = *self;
+        fun.tracking_ref()
     }
 }
 
-pub type Decl = Tracked<DeclData>;
+impl TrackingMut for Decl {
+    fn tracking_mut(&mut self) -> &mut Option<Span> {
+        let Decl::Fun(ref mut fun) = *self;
+        fun.tracking_mut()
+    }
+}
+
+impl Untrack for Decl {
+    fn untrack(&mut self) {
+        let Decl::Fun(ref mut fun) = *self;
+        fun.untrack();
+    }
+}
 
 #[derive(Debug, PartialEq)]
-pub enum DtorData {
-    Simple(Id, Option<Expr>),
-    Compound(CompoundPatt<Id>, Expr)
+pub enum Dtor {
+    Simple(Option<Span>, Id, Option<Expr>),
+    Compound(Option<Span>, CompoundPatt<Id>, Expr)
 }
 
-impl Untrack for DtorData {
-    fn untrack(&mut self) {
+impl TrackingRef for Dtor {
+    fn tracking_ref(&self) -> &Option<Span> {
         match *self {
-            DtorData::Simple(ref mut id, ref mut init)     => { id.untrack(); init.untrack(); }
-            DtorData::Compound(ref mut patt, ref mut init) => { patt.untrack(); init.untrack(); }
+            Dtor::Simple(ref location, _, _)
+          | Dtor::Compound(ref location, _, _) => location
         }
     }
 }
 
-pub type Dtor = Tracked<DtorData>;
+impl TrackingMut for Dtor {
+    fn tracking_mut(&mut self) -> &mut Option<Span> {
+        match *self {
+            Dtor::Simple(ref mut location, _, _)
+          | Dtor::Compound(ref mut location, _, _) => location
+        }
+    }
+}
+
+impl Untrack for Dtor {
+    fn untrack(&mut self) {
+        match *self {
+            Dtor::Simple(ref mut location, ref mut id, ref mut init) => {
+                *location = None;
+                id.untrack();
+                init.untrack();
+            }
+            Dtor::Compound(ref mut location, ref mut patt, ref mut init) => {
+                *location = None;
+                patt.untrack();
+                init.untrack();
+            }
+        }
+    }
+}
 
 pub trait DtorExt {
     fn from_simple_init(Id, Expr) -> Dtor;
@@ -46,45 +81,29 @@ pub trait DtorExt {
 
 impl DtorExt for Dtor {
     fn from_compound_init(lhs: CompoundPatt<Id>, rhs: Expr) -> Dtor {
-        Dtor {
-            location: span(&lhs, &rhs),
-            value: DtorData::Compound(lhs, rhs)
-        }
+        Dtor::Compound(span(&lhs, &rhs), lhs, rhs)
     }
 
     fn from_simple_init(lhs: Id, rhs: Expr) -> Dtor {
-        Dtor {
-            location: span(&lhs, &rhs),
-            value: DtorData::Simple(lhs, Some(rhs))
-        }
+        Dtor::Simple(span(&lhs, &rhs), lhs, Some(rhs))
     }
 
     fn from_init(lhs: Patt<Id>, rhs: Expr) -> Dtor {
-        Dtor {
-            location: span(&lhs, &rhs),
-            value: match lhs {
-                Patt::Simple(id) => DtorData::Simple(id, Some(rhs)),
-                Patt::Compound(patt) => DtorData::Compound(patt, rhs)
-            }
+        let loc = span(&lhs, &rhs);
+        match lhs {
+            Patt::Simple(id) => Dtor::Simple(loc, id, Some(rhs)),
+            Patt::Compound(patt) => Dtor::Compound(loc, patt, rhs)
         }
     }
 
     fn from_init_opt(lhs: Patt<Id>, rhs: Option<Expr>) -> Result<Dtor, CompoundPatt<Id>> {
         match (lhs, rhs) {
             (Patt::Simple(id), rhs) => {
-                let location = id.location();
-                Ok(Dtor {
-                    value: DtorData::Simple(id, rhs),
-                    location: location
-                })
+                Ok(Dtor::Simple(*id.tracking_ref(), id, rhs))
             }
             (Patt::Compound(patt), None) => Err(patt),
             (Patt::Compound(patt), Some(rhs)) => {
-                let location = span(&patt, &rhs);
-                Ok(Dtor {
-                    value: DtorData::Compound(patt, rhs),
-                    location: location
-                })
+                Ok(Dtor::Compound(span(&patt, &rhs), patt, rhs))
             }
         }
     }

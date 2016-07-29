@@ -1,12 +1,11 @@
 use std::fmt;
 use std::fmt::{Display, Formatter};
-use joker::track::{Span, IntoTracked};
-use expr::{Expr, ExprData};
-use patt::{Patt, AssignTarget, AssignTargetData, CompoundPattData, PropPatt, PropPattData};
-use obj::{Prop, PropValData};
+use joker::track::{Span, TrackingRef};
+use expr::Expr;
+use patt::{Patt, AssignTarget, CompoundPatt, PropPatt};
+use obj::{Prop, PropVal};
 
 #[derive(Debug, PartialEq)]
-
 pub enum Error {
     InvalidAssignTarget(Option<Span>),
     InvalidPropPatt(Option<Span>)
@@ -31,18 +30,18 @@ pub trait IntoAssignPatt {
 
 impl IntoAssignPatt for Expr {
     fn into_assign_patt(self) -> Result<Patt<AssignTarget>, Error> {
-        Ok(match self.value {
-            ExprData::Id(id)           => Patt::Simple(AssignTargetData::Id(id).tracked(self.location)),
-            ExprData::Dot(obj, key)    => Patt::Simple(AssignTargetData::Dot(obj, key).tracked(self.location)),
-            ExprData::Brack(obj, prop) => Patt::Simple(AssignTargetData::Brack(obj, prop).tracked(self.location)),
-            ExprData::Obj(props) => {
+        Ok(match self {
+            Expr::Id(id)                     => Patt::Simple(AssignTarget::Id(id)),
+            Expr::Dot(location, obj, key)    => Patt::Simple(AssignTarget::Dot(location, obj, key)),
+            Expr::Brack(location, obj, prop) => Patt::Simple(AssignTarget::Brack(location, obj, prop)),
+            Expr::Obj(location, props) => {
                 let mut prop_patts = Vec::with_capacity(props.len());
                 for prop in props {
                     prop_patts.push(try!(prop.into_assign_prop()));
                 }
-                Patt::Compound(CompoundPattData::Obj(prop_patts).tracked(self.location))
+                Patt::Compound(CompoundPatt::Obj(location, prop_patts))
             }
-            ExprData::Arr(exprs) => {
+            Expr::Arr(location, exprs) => {
                 let mut patts = Vec::with_capacity(exprs.len());
                 for expr in exprs {
                     patts.push(match expr {
@@ -50,9 +49,9 @@ impl IntoAssignPatt for Expr {
                         None => None
                     });
                 }
-                Patt::Compound(CompoundPattData::Arr(patts).tracked(self.location))
+                Patt::Compound(CompoundPatt::Arr(location, patts))
             }
-            _ => { return Err(Error::InvalidAssignTarget(self.location)); }
+            _ => { return Err(Error::InvalidAssignTarget(*self.tracking_ref())); }
         })
     }
 }
@@ -63,11 +62,12 @@ pub trait IntoAssignProp {
 
 impl IntoAssignProp for Prop {
     fn into_assign_prop(self) -> Result<PropPatt<AssignTarget>, Error> {
-        let key = self.value.key;
-        let patt = match self.value.val.value {
-            PropValData::Init(expr) => try!(expr.into_assign_patt()),
-            _ => { return Err(Error::InvalidPropPatt(self.value.val.location)); }
+        let location = *self.tracking_ref();
+        let key = self.key;
+        let patt = match self.val {
+            PropVal::Init(expr) => try!(expr.into_assign_patt()),
+            _ => { return Err(Error::InvalidPropPatt(*self.val.tracking_ref())); }
         };
-        Ok(PropPattData { key: key, patt: patt }.tracked(self.location))
+        Ok(PropPatt { location: location, key: key, patt: patt })
     }
 }

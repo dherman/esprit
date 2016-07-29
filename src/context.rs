@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::mem::replace;
 use joker::word::Name;
-use joker::track::{IntoTracked, span};
-use easter::stmt::{StmtData, Stmt};
+use joker::track::span;
+use easter::stmt::Stmt;
 use easter::id::Id;
 use result::Result;
 use parser::Parser;
@@ -21,7 +21,7 @@ impl<I: Iterator<Item=char>> WithContext for Parser<I> {
     {
         let mut label_strings = Vec::new();
         for id in labels.iter() {
-            let label = Rc::new(id.value.name.clone());
+            let label = Rc::new(id.name.clone());
             self.parser_cx.labels.insert(label.clone(), label_type);
             label_strings.push(label);
         }
@@ -33,7 +33,7 @@ impl<I: Iterator<Item=char>> WithContext for Parser<I> {
         labels.reverse();
         for id in labels {
             let location = span(&id, &body);
-            body = StmtData::Label(id, Box::new(body)).tracked(location);
+            body = Stmt::Label(location, id, Box::new(body));
         }
         Ok(body)
     }
