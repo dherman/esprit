@@ -1,7 +1,7 @@
 [package]
 
 name = "easter"
-version = "0.0.4"
+version = "0.0.5"
 authors = ["Dave Herman <dherman@mozilla.com>"]
 license = "MIT"
 description = "Type definitions for ECMAScript abstract syntax trees."
@@ -10,4 +10,4 @@ homepage = "https://esprit.surge.sh"
 repository = "https://github.com/dherman/esprit"
 
 [dependencies]
-joker = { version = "0.0.4", path = "../joker" }
+joker = { version = "0.0.5", path = "../joker" }

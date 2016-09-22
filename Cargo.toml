@@ -1,7 +1,7 @@
 [package]
 
 name = "esprit"
-version = "0.0.4"
+version = "0.0.5"
 authors = ["Dave Herman <dherman@mozilla.com>"]
 build = "build.rs"
 license = "MIT"
@@ -14,7 +14,7 @@ exclude = ["test/build/**/*"]
 [dependencies]
 serde = "0.7.10"
 serde_json = "0.7.1"
-unjson = { version = "0.0.4", path = "crates/unjson" }
-joker = { version = "0.0.4", path = "crates/joker" }
-easter = { version = "0.0.4", path = "crates/easter" }
-estree = { version = "0.0.4", path = "crates/estree" }
+unjson = { version = "0.0.5", path = "crates/unjson" }
+joker = { version = "0.0.5", path = "crates/joker" }
+easter = { version = "0.0.5", path = "crates/easter" }
+estree = { version = "0.0.5", path = "crates/estree" }
