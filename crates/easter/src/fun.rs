@@ -5,31 +5,47 @@ use patt::Patt;
 use stmt::StmtListItem;
 
 #[derive(Debug, PartialEq)]
-pub struct ParamsData {
+pub struct Params {
+    pub location: Option<Span>,
     pub list: Vec<Patt<Id>>
 }
 
-pub type Params = Tracked<ParamsData>;
+impl TrackingRef for Params {
+    fn tracking_ref(&self) -> &Option<Span> { &self.location }
+}
 
-impl Untrack for ParamsData {
+impl TrackingMut for Params {
+    fn tracking_mut(&mut self) -> &mut Option<Span> { &mut self.location }
+}
+
+impl Untrack for Params {
     fn untrack(&mut self) {
+        self.location = None;
         self.list.untrack();
     }
 }
 
 #[derive(Debug, PartialEq)]
-pub struct FunData {
+pub struct Fun {
+    pub location: Option<Span>,
     pub id: Option<Id>,
     pub params: Params,
     pub body: Vec<StmtListItem>
 }
 
-impl Untrack for FunData {
+impl TrackingRef for Fun {
+    fn tracking_ref(&self) -> &Option<Span> { &self.location }
+}
+
+impl TrackingMut for Fun {
+    fn tracking_mut(&mut self) -> &mut Option<Span> { &mut self.location }
+}
+
+impl Untrack for Fun {
     fn untrack(&mut self) {
+        self.location = None;
         self.id.untrack();
         self.params.untrack();
         self.body.untrack();
     }
 }
-
-pub type Fun = Tracked<FunData>;

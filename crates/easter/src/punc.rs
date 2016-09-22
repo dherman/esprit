@@ -1,5 +1,5 @@
 use std::fmt;
-use std::fmt::{Display, Formatter};
+use std::fmt::{Display, Debug, Formatter};
 use std::str::FromStr;
 use joker::track::*;
 use joker::token::{TokenData, Token};
@@ -45,19 +45,60 @@ impl FromStr for UnopTag {
     }
 }
 
-pub type Unop = Tracked<UnopTag>;
+#[derive(PartialEq, Eq)]
+pub struct Op<T> {
+    pub location: Option<Span>,
+    pub tag: T
+}
 
-impl Untrack for UnopTag {
-    fn untrack(&mut self) { }
+impl<T: FromStr> FromStr for Op<T> {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Op<T>, ()> {
+        match T::from_str(s) {
+            Ok(tag) => Ok(Op { location: None, tag: tag }),
+            Err(_)  => Err(())
+        }
+    }
+}
+
+impl<T> TrackingRef for Op<T> {
+    fn tracking_ref(&self) -> &Option<Span> { &self.location }
+}
+
+impl<T> TrackingMut for Op<T> {
+    fn tracking_mut(&mut self) -> &mut Option<Span> { &mut self.location }
+}
+
+impl<T: Debug> Debug for Op<T> {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        fmt.debug_struct("Op")
+            .field("tag", &self.tag)
+            .finish()
+    }
+}
+
+impl<T: Display> Display for Op<T> {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        self.tag.fmt(fmt)
+    }
+}
+
+pub type Unop = Op<UnopTag>;
+
+impl<T> Untrack for Op<T> {
+    fn untrack(&mut self) {
+        self.location = None;
+    }
 }
 
 pub trait Precedence {
     fn precedence(&self) -> u32;
 }
 
-impl<T: Precedence> Precedence for Tracked<T> {
+impl<T: Precedence> Precedence for Op<T> {
     fn precedence(&self) -> u32 {
-        self.value.precedence()
+        self.tag.precedence()
     }
 }
 
@@ -145,7 +186,7 @@ impl Precedence for BinopTag {
     }
 }
 
-pub type Binop = Tracked<BinopTag>;
+pub type Binop = Op<BinopTag>;
 
 impl Display for BinopTag {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
@@ -175,10 +216,6 @@ impl Display for BinopTag {
     }
 }
 
-impl Untrack for BinopTag {
-    fn untrack(&mut self) { }
-}
-
 #[derive(Debug, Eq, PartialEq)]
 pub enum LogopTag {
     Or,
@@ -206,7 +243,7 @@ impl Precedence for LogopTag {
     }
 }
 
-pub type Logop = Tracked<LogopTag>;
+pub type Logop = Op<LogopTag>;
 
 impl Display for LogopTag {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
@@ -215,10 +252,6 @@ impl Display for LogopTag {
             LogopTag::And => "&&"
         })
     }
-}
-
-impl Untrack for LogopTag {
-    fn untrack(&mut self) { }
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -263,7 +296,7 @@ impl Precedence for AssopTag {
     fn precedence(&self) -> u32 { 0 }
 }
 
-pub type Assop = Tracked<AssopTag>;
+pub type Assop = Op<AssopTag>;
 
 impl Display for AssopTag {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
@@ -284,10 +317,6 @@ impl Display for AssopTag {
     }
 }
 
-impl Untrack for AssopTag {
-    fn untrack(&mut self) { }
-}
-
 pub trait ToOp {
     fn to_binop(&self, bool) -> Option<Binop>;
     fn to_logop(&self) -> Option<Logop>;
@@ -296,55 +325,64 @@ pub trait ToOp {
 
 impl ToOp for Token {
     fn to_binop(&self, allow_in: bool) -> Option<Binop> {
-        Some(match self.value {
-            TokenData::Star                               => BinopTag::Times,
-            TokenData::Slash                              => BinopTag::Div,
-            TokenData::Mod                                => BinopTag::Mod,
-            TokenData::Plus                               => BinopTag::Plus,
-            TokenData::Minus                              => BinopTag::Minus,
-            TokenData::LShift                             => BinopTag::LShift,
-            TokenData::RShift                             => BinopTag::RShift,
-            TokenData::URShift                            => BinopTag::URShift,
-            TokenData::LAngle                             => BinopTag::Lt,
-            TokenData::RAngle                             => BinopTag::Gt,
-            TokenData::LEq                                => BinopTag::LEq,
-            TokenData::GEq                                => BinopTag::GEq,
-            TokenData::Reserved(Reserved::Instanceof)     => BinopTag::Instanceof,
-            TokenData::Reserved(Reserved::In) if allow_in => BinopTag::In,
-            TokenData::Eq                                 => BinopTag::Eq,
-            TokenData::NEq                                => BinopTag::NEq,
-            TokenData::StrictEq                           => BinopTag::StrictEq,
-            TokenData::StrictNEq                          => BinopTag::StrictNEq,
-            TokenData::BitAnd                             => BinopTag::BitAnd,
-            TokenData::BitXor                             => BinopTag::BitXor,
-            TokenData::BitOr                              => BinopTag::BitOr,
-            _ => { return None; }
-        }.tracked(self.location()))
+        Some(Op {
+            location: Some(self.location),
+            tag: match self.value {
+                TokenData::Star                               => BinopTag::Times,
+                TokenData::Slash                              => BinopTag::Div,
+                TokenData::Mod                                => BinopTag::Mod,
+                TokenData::Plus                               => BinopTag::Plus,
+                TokenData::Minus                              => BinopTag::Minus,
+                TokenData::LShift                             => BinopTag::LShift,
+                TokenData::RShift                             => BinopTag::RShift,
+                TokenData::URShift                            => BinopTag::URShift,
+                TokenData::LAngle                             => BinopTag::Lt,
+                TokenData::RAngle                             => BinopTag::Gt,
+                TokenData::LEq                                => BinopTag::LEq,
+                TokenData::GEq                                => BinopTag::GEq,
+                TokenData::Reserved(Reserved::Instanceof)     => BinopTag::Instanceof,
+                TokenData::Reserved(Reserved::In) if allow_in => BinopTag::In,
+                TokenData::Eq                                 => BinopTag::Eq,
+                TokenData::NEq                                => BinopTag::NEq,
+                TokenData::StrictEq                           => BinopTag::StrictEq,
+                TokenData::StrictNEq                          => BinopTag::StrictNEq,
+                TokenData::BitAnd                             => BinopTag::BitAnd,
+                TokenData::BitXor                             => BinopTag::BitXor,
+                TokenData::BitOr                              => BinopTag::BitOr,
+                _ => { return None; }
+            }
+        })
     }
 
     fn to_logop(&self) -> Option<Logop> {
-        Some(match self.value {
-            TokenData::LogicalAnd => LogopTag::And,
-            TokenData::LogicalOr  => LogopTag::Or,
-            _ => { return None; }
-        }.tracked(self.location()))
+        Some(Op {
+            location: Some(self.location),
+            tag: match self.value {
+                TokenData::LogicalAnd => LogopTag::And,
+                TokenData::LogicalOr  => LogopTag::Or,
+                _ => { return None; }
+            }
+        })
     }
 
     fn to_assop(&self) -> Option<Assop> {
-        Some(match self.value {
-            TokenData::Assign        => AssopTag::Eq,
-            TokenData::PlusAssign    => AssopTag::PlusEq,
-            TokenData::MinusAssign   => AssopTag::MinusEq,
-            TokenData::StarAssign    => AssopTag::TimesEq,
-            TokenData::SlashAssign   => AssopTag::DivEq,
-            TokenData::ModAssign     => AssopTag::ModEq,
-            TokenData::LShiftAssign  => AssopTag::LShiftEq,
-            TokenData::RShiftAssign  => AssopTag::RShiftEq,
-            TokenData::URShiftAssign => AssopTag::URShiftEq,
-            TokenData::BitAndAssign  => AssopTag::BitAndEq,
-            TokenData::BitOrAssign   => AssopTag::BitOrEq,
-            TokenData::BitXorAssign  => AssopTag::BitXorEq,
-            _ => { return None; }
-        }.tracked(self.location()))
+        Some(Op {
+            location: Some(self.location),
+            tag: match self.value {
+                TokenData::Assign        => AssopTag::Eq,
+                TokenData::PlusAssign    => AssopTag::PlusEq,
+                TokenData::MinusAssign   => AssopTag::MinusEq,
+                TokenData::StarAssign    => AssopTag::TimesEq,
+                TokenData::SlashAssign   => AssopTag::DivEq,
+                TokenData::ModAssign     => AssopTag::ModEq,
+                TokenData::LShiftAssign  => AssopTag::LShiftEq,
+                TokenData::RShiftAssign  => AssopTag::RShiftEq,
+                TokenData::URShiftAssign => AssopTag::URShiftEq,
+                TokenData::BitAndAssign  => AssopTag::BitAndEq,
+                TokenData::BitOrAssign   => AssopTag::BitOrEq,
+                TokenData::BitXorAssign  => AssopTag::BitXorEq,
+                _ => { return None; }
+            }
+        })
     }
 }

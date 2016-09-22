@@ -3,7 +3,7 @@ use std::fmt::{Display, Formatter};
 
 use easter::id::Id;
 use easter::expr::Expr;
-use easter::patt::{CompoundPatt, CompoundPattData};
+use easter::patt::CompoundPatt;
 use unjson;
 use unjson::ty::Ty;
 use result::Result;
@@ -37,9 +37,9 @@ impl Display for Error {
                 fmt.write_fmt(format_args!("invalid left-hand side of assignment"))
             }
             &Error::UninitializedPattern(ref patt) => {
-                let ty = match patt.value {
-                    CompoundPattData::Arr(_) => "array",
-                    CompoundPattData::Obj(_) => "object"
+                let ty = match *patt {
+                    CompoundPatt::Arr(_, _) => "array",
+                    CompoundPatt::Obj(_, _) => "object"
                 };
                 fmt.write_fmt(format_args!("uninitialized {} pattern in declarator", ty))
             }

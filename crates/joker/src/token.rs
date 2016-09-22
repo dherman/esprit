@@ -1,6 +1,6 @@
 use std::fmt;
 use std::fmt::{Debug, Formatter};
-use track::*;
+use track::{Span, Posn};
 use word::{Reserved, Name};
 
 #[derive(Debug, PartialEq)]
@@ -8,12 +8,6 @@ pub struct Token {
     pub location: Span,
     pub newline: bool,    // was there a newline between the preceding token and this one?
     pub value: TokenData
-}
-
-impl Track for Token {
-    fn location(&self) -> Option<Span> {
-        Some(self.location)
-    }
 }
 
 impl Token {

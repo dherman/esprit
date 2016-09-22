@@ -7,144 +7,285 @@ use patt::Patt;
 use punc::Semi;
 
 #[derive(Debug, PartialEq)]
-pub enum StmtData {
-    Empty,
-    Block(Vec<StmtListItem>),
-    Var(Vec<Dtor>, Semi),
-    Expr(Expr, Semi),
-    If(Expr, Box<Stmt>, Option<Box<Stmt>>),
-    Label(Id, Box<Stmt>),
-    Break(Option<Id>, Semi),
-    Cont(Option<Id>, Semi),
-    With(Expr, Box<Stmt>),
-    Switch(Expr, Vec<Case>),
-    Return(Option<Expr>, Semi),
-    Throw(Expr, Semi),
-    Try(Vec<StmtListItem>, Option<Box<Catch>>, Option<Vec<StmtListItem>>),
-    While(Expr, Box<Stmt>),
-    DoWhile(Box<Stmt>, Expr, Semi),
-    For(Option<Box<ForHead>>, Option<Expr>, Option<Expr>, Box<Stmt>),
-    ForIn(Box<ForInHead>, Expr, Box<Stmt>),
-    ForOf(Box<ForOfHead>, Expr, Box<Stmt>),
-    Debugger(Semi)
+pub enum Stmt {
+    Empty(Option<Span>),
+    Block(Option<Span>, Vec<StmtListItem>),
+    Var(Option<Span>, Vec<Dtor>, Semi),
+    Expr(Option<Span>, Expr, Semi),
+    If(Option<Span>, Expr, Box<Stmt>, Option<Box<Stmt>>),
+    Label(Option<Span>, Id, Box<Stmt>),
+    Break(Option<Span>, Option<Id>, Semi),
+    Cont(Option<Span>, Option<Id>, Semi),
+    With(Option<Span>, Expr, Box<Stmt>),
+    Switch(Option<Span>, Expr, Vec<Case>),
+    Return(Option<Span>, Option<Expr>, Semi),
+    Throw(Option<Span>, Expr, Semi),
+    Try(Option<Span>, Vec<StmtListItem>, Option<Box<Catch>>, Option<Vec<StmtListItem>>),
+    While(Option<Span>, Expr, Box<Stmt>),
+    DoWhile(Option<Span>, Box<Stmt>, Expr, Semi),
+    For(Option<Span>, Option<Box<ForHead>>, Option<Expr>, Option<Expr>, Box<Stmt>),
+    ForIn(Option<Span>, Box<ForInHead>, Expr, Box<Stmt>),
+    ForOf(Option<Span>, Box<ForOfHead>, Expr, Box<Stmt>),
+    Debugger(Option<Span>, Semi)
 }
 
-impl Untrack for StmtData {
-    fn untrack(&mut self) {
+impl TrackingRef for Stmt {
+    fn tracking_ref(&self) -> &Option<Span> {
         match *self {
-            StmtData::Empty                                                       => { }
-            StmtData::Block(ref mut items)                                        => { items.untrack(); }
-            StmtData::Var(ref mut dtors, ref mut semi)                            => { dtors.untrack(); semi.untrack(); }
-            StmtData::Expr(ref mut expr, ref mut semi)                            => { expr.untrack(); semi.untrack(); }
-            StmtData::If(ref mut test, ref mut cons, ref mut alt)                 => { test.untrack(); cons.untrack(); alt.untrack(); }
-            StmtData::Label(ref mut lab, ref mut stmt)                            => { lab.untrack(); stmt.untrack(); }
-            StmtData::Break(ref mut lab, ref mut semi)                            => { lab.untrack(); semi.untrack(); }
-            StmtData::Cont(ref mut lab, ref mut semi)                             => { lab.untrack(); semi.untrack(); }
-            StmtData::With(ref mut expr, ref mut stmt)                            => { expr.untrack(); stmt.untrack(); }
-            StmtData::Switch(ref mut expr, ref mut cases)                         => { expr.untrack(); cases.untrack(); }
-            StmtData::Return(ref mut expr, ref mut semi)                          => { expr.untrack(); semi.untrack(); }
-            StmtData::Throw(ref mut expr, ref mut semi)                           => { expr.untrack(); semi.untrack(); }
-            StmtData::Try(ref mut body, ref mut catch, ref mut finally)           => { body.untrack(); catch.untrack(); finally.untrack(); }
-            StmtData::While(ref mut expr, ref mut stmt)                           => { expr.untrack(); stmt.untrack(); }
-            StmtData::DoWhile(ref mut stmt, ref mut expr, ref mut semi)           => { stmt.untrack(); expr.untrack(); semi.untrack(); }
-            StmtData::For(ref mut init, ref mut test, ref mut incr, ref mut body) => { init.untrack(); test.untrack(); incr.untrack(); body.untrack(); }
-            StmtData::ForIn(ref mut lhs, ref mut rhs, ref mut body)               => { lhs.untrack(); rhs.untrack(); body.untrack(); }
-            StmtData::ForOf(ref mut lhs, ref mut rhs, ref mut body)               => { lhs.untrack(); rhs.untrack(); body.untrack(); }
-            StmtData::Debugger(ref mut semi)                                      => { semi.untrack(); }
+            Stmt::Empty(ref location)
+          | Stmt::Block(ref location, _)
+          | Stmt::Var(ref location, _, _)
+          | Stmt::Expr(ref location, _, _)
+          | Stmt::If(ref location, _, _, _)
+          | Stmt::Label(ref location, _, _)
+          | Stmt::Break(ref location, _, _)
+          | Stmt::Cont(ref location, _, _)
+          | Stmt::With(ref location, _, _)
+          | Stmt::Switch(ref location, _, _)
+          | Stmt::Return(ref location, _, _)
+          | Stmt::Throw(ref location, _, _)
+          | Stmt::Try(ref location, _, _, _)
+          | Stmt::While(ref location, _, _)
+          | Stmt::DoWhile(ref location, _, _, _)
+          | Stmt::For(ref location, _, _, _, _)
+          | Stmt::ForIn(ref location, _, _, _)
+          | Stmt::ForOf(ref location, _, _, _)
+          | Stmt::Debugger(ref location, _) => location
         }
     }
 }
 
-pub type Stmt = Tracked<StmtData>;
+impl TrackingMut for Stmt {
+    fn tracking_mut(&mut self) -> &mut Option<Span> {
+        match *self {
+            Stmt::Empty(ref mut location)
+          | Stmt::Block(ref mut location, _)
+          | Stmt::Var(ref mut location, _, _)
+          | Stmt::Expr(ref mut location, _, _)
+          | Stmt::If(ref mut location, _, _, _)
+          | Stmt::Label(ref mut location, _, _)
+          | Stmt::Break(ref mut location, _, _)
+          | Stmt::Cont(ref mut location, _, _)
+          | Stmt::With(ref mut location, _, _)
+          | Stmt::Switch(ref mut location, _, _)
+          | Stmt::Return(ref mut location, _, _)
+          | Stmt::Throw(ref mut location, _, _)
+          | Stmt::Try(ref mut location, _, _, _)
+          | Stmt::While(ref mut location, _, _)
+          | Stmt::DoWhile(ref mut location, _, _, _)
+          | Stmt::For(ref mut location, _, _, _, _)
+          | Stmt::ForIn(ref mut location, _, _, _)
+          | Stmt::ForOf(ref mut location, _, _, _)
+          | Stmt::Debugger(ref mut location, _) => location
+        }
+    }
+}
+
+impl Untrack for Stmt {
+    fn untrack(&mut self) {
+        *self.tracking_mut() = None;
+        match *self {
+            Stmt::Empty(_)                                                       => { }
+            Stmt::Block(_, ref mut items)                                        => { items.untrack(); }
+            Stmt::Var(_, ref mut dtors, ref mut semi)                            => { dtors.untrack(); semi.untrack(); }
+            Stmt::Expr(_, ref mut expr, ref mut semi)                            => { expr.untrack(); semi.untrack(); }
+            Stmt::If(_, ref mut test, ref mut cons, ref mut alt)                 => { test.untrack(); cons.untrack(); alt.untrack(); }
+            Stmt::Label(_, ref mut lab, ref mut stmt)                            => { lab.untrack(); stmt.untrack(); }
+            Stmt::Break(_, ref mut lab, ref mut semi)                            => { lab.untrack(); semi.untrack(); }
+            Stmt::Cont(_, ref mut lab, ref mut semi)                             => { lab.untrack(); semi.untrack(); }
+            Stmt::With(_, ref mut expr, ref mut stmt)                            => { expr.untrack(); stmt.untrack(); }
+            Stmt::Switch(_, ref mut expr, ref mut cases)                         => { expr.untrack(); cases.untrack(); }
+            Stmt::Return(_, ref mut expr, ref mut semi)                          => { expr.untrack(); semi.untrack(); }
+            Stmt::Throw(_, ref mut expr, ref mut semi)                           => { expr.untrack(); semi.untrack(); }
+            Stmt::Try(_, ref mut body, ref mut catch, ref mut finally)           => { body.untrack(); catch.untrack(); finally.untrack(); }
+            Stmt::While(_, ref mut expr, ref mut stmt)                           => { expr.untrack(); stmt.untrack(); }
+            Stmt::DoWhile(_, ref mut stmt, ref mut expr, ref mut semi)           => { stmt.untrack(); expr.untrack(); semi.untrack(); }
+            Stmt::For(_, ref mut init, ref mut test, ref mut incr, ref mut body) => { init.untrack(); test.untrack(); incr.untrack(); body.untrack(); }
+            Stmt::ForIn(_, ref mut lhs, ref mut rhs, ref mut body)               => { lhs.untrack(); rhs.untrack(); body.untrack(); }
+            Stmt::ForOf(_, ref mut lhs, ref mut rhs, ref mut body)               => { lhs.untrack(); rhs.untrack(); body.untrack(); }
+            Stmt::Debugger(_, ref mut semi)                                      => { semi.untrack(); }
+        }
+    }
+}
 
 #[derive(Debug, PartialEq)]
-pub enum ForHeadData {
-    Var(Vec<Dtor>),
-    Let(Vec<Dtor>),
+pub enum ForHead {
+    Var(Option<Span>, Vec<Dtor>),
+    Let(Option<Span>, Vec<Dtor>),
+    Expr(Option<Span>, Expr)
+}
+
+impl TrackingRef for ForHead {
+    fn tracking_ref(&self) -> &Option<Span> {
+        match *self {
+            ForHead::Var(ref location, _)
+          | ForHead::Let(ref location, _)
+          | ForHead::Expr(ref location, _) => location
+        }
+    }
+}
+
+impl TrackingMut for ForHead {
+    fn tracking_mut(&mut self) -> &mut Option<Span> {
+        match *self {
+            ForHead::Var(ref mut location, _)
+          | ForHead::Let(ref mut location, _)
+          | ForHead::Expr(ref mut location, _) => location
+        }
+    }
+}
+
+impl Untrack for ForHead {
+    fn untrack(&mut self) {
+        match *self {
+            ForHead::Var(ref mut location, ref mut vec)
+          | ForHead::Let(ref mut location, ref mut vec) => {
+                *location = None;
+                vec.untrack();
+            }
+            ForHead::Expr(ref mut location, ref mut expr) => {
+                *location = None;
+                expr.untrack();
+            }
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum ForInHead {
+    VarInit(Option<Span>, Id, Expr),
+    Var(Option<Span>, Patt<Id>),
+    Let(Option<Span>, Patt<Id>),
     Expr(Expr)
 }
 
-impl Untrack for ForHeadData {
-    fn untrack(&mut self) {
+impl TrackingRef for ForInHead {
+    fn tracking_ref(&self) -> &Option<Span> {
         match *self {
-            ForHeadData::Var(ref mut vec)   => { vec.untrack(); }
-            ForHeadData::Let(ref mut vec)   => { vec.untrack(); }
-            ForHeadData::Expr(ref mut expr) => { expr.untrack(); }
+            ForInHead::VarInit(ref location, _, _)
+          | ForInHead::Var(ref location, _)
+          | ForInHead::Let(ref location, _) => location,
+            ForInHead::Expr(ref expr) => expr.tracking_ref()
         }
     }
 }
 
-pub type ForHead = Tracked<ForHeadData>;
+impl TrackingMut for ForInHead {
+    fn tracking_mut(&mut self) -> &mut Option<Span> {
+        match *self {
+            ForInHead::VarInit(ref mut location, _, _)
+          | ForInHead::Var(ref mut location, _)
+          | ForInHead::Let(ref mut location, _) => location,
+            ForInHead::Expr(ref mut expr) => expr.tracking_mut()
+        }
+    }
+}
+
+impl Untrack for ForInHead {
+    fn untrack(&mut self) {
+        match *self {
+            ForInHead::VarInit(ref mut location, ref mut id, ref mut expr) => {
+                *location = None;
+                id.untrack();
+                expr.untrack();
+            }
+            ForInHead::Var(ref mut location, ref mut patt)
+          | ForInHead::Let(ref mut location, ref mut patt) => {
+                *location = None;
+                patt.untrack();
+            }
+            ForInHead::Expr(ref mut expr) => {
+                expr.untrack();
+            }
+        }
+    }
+}
 
 #[derive(Debug, PartialEq)]
-pub enum ForInHeadData {
-    VarInit(Id, Expr),
-    Var(Patt<Id>),
-    Let(Patt<Id>),
+pub enum ForOfHead {
+    Var(Option<Span>, Patt<Id>),
+    Let(Option<Span>, Patt<Id>),
     Expr(Expr)
 }
 
-impl Untrack for ForInHeadData {
-    fn untrack(&mut self) {
+impl TrackingRef for ForOfHead {
+    fn tracking_ref(&self) -> &Option<Span> {
         match *self {
-            ForInHeadData::VarInit(ref mut id, ref mut expr) => { id.untrack(); expr.untrack(); }
-            ForInHeadData::Var(ref mut patt)                 => { patt.untrack(); }
-            ForInHeadData::Let(ref mut patt)                 => { patt.untrack(); }
-            ForInHeadData::Expr(ref mut expr)                => { expr.untrack(); }
+            ForOfHead::Var(ref location, _)
+          | ForOfHead::Let(ref location, _) => location,
+            ForOfHead::Expr(ref expr) => expr.tracking_ref()
         }
     }
 }
 
-pub type ForInHead = Tracked<ForInHeadData>;
-
-#[derive(Debug, PartialEq)]
-pub enum ForOfHeadData {
-    Var(Patt<Id>),
-    Let(Patt<Id>),
-    Expr(Expr)
-}
-
-impl Untrack for ForOfHeadData {
-    fn untrack(&mut self) {
+impl TrackingMut for ForOfHead {
+    fn tracking_mut(&mut self) -> &mut Option<Span> {
         match *self {
-            ForOfHeadData::Var(ref mut patt)  => { patt.untrack(); }
-            ForOfHeadData::Let(ref mut patt)  => { patt.untrack(); }
-            ForOfHeadData::Expr(ref mut expr) => { expr.untrack(); }
+            ForOfHead::Var(ref mut location, _)
+          | ForOfHead::Let(ref mut location, _) => location,
+            ForOfHead::Expr(ref mut expr) => expr.tracking_mut()
         }
     }
 }
 
-pub type ForOfHead = Tracked<ForOfHeadData>;
+impl Untrack for ForOfHead {
+    fn untrack(&mut self) {
+        match *self {
+            ForOfHead::Var(ref mut location, ref mut patt)
+          | ForOfHead::Let(ref mut location, ref mut patt) => {
+                *location = None;
+                patt.untrack();
+            }
+            ForOfHead::Expr(ref mut expr) => { expr.untrack(); }
+        }
+    }
+}
 
 #[derive(Debug, PartialEq)]
-pub struct CatchData {
+pub struct Catch {
+    pub location: Option<Span>,
     pub param: Patt<Id>,
     pub body: Vec<StmtListItem>
 }
 
-impl Untrack for CatchData {
+impl TrackingRef for Catch {
+    fn tracking_ref(&self) -> &Option<Span> { &self.location }
+}
+
+impl TrackingMut for Catch {
+    fn tracking_mut(&mut self) -> &mut Option<Span> { &mut self.location }
+}
+
+impl Untrack for Catch {
     fn untrack(&mut self) {
+        self.location = None;
         self.param.untrack();
         self.body.untrack();
     }
 }
 
-pub type Catch = Tracked<CatchData>;
-
 #[derive(Debug, PartialEq)]
-pub struct CaseData {
+pub struct Case {
+    pub location: Option<Span>,
     pub test: Option<Expr>,
     pub body: Vec<StmtListItem>
 }
 
-impl Untrack for CaseData {
+impl TrackingRef for Case {
+    fn tracking_ref(&self) -> &Option<Span> { &self.location }
+}
+
+impl TrackingMut for Case {
+    fn tracking_mut(&mut self) -> &mut Option<Span> { &mut self.location }
+}
+
+impl Untrack for Case {
     fn untrack(&mut self) {
+        self.location = None;
         self.test.untrack();
         self.body.untrack();
     }
 }
-
-pub type Case = Tracked<CaseData>;
 
 #[derive(Debug, PartialEq)]
 pub enum StmtListItem {
@@ -152,20 +293,29 @@ pub enum StmtListItem {
     Stmt(Stmt)
 }
 
+impl TrackingRef for StmtListItem {
+    fn tracking_ref(&self) -> &Option<Span> {
+        match *self {
+            StmtListItem::Decl(ref decl) => decl.tracking_ref(),
+            StmtListItem::Stmt(ref stmt) => stmt.tracking_ref()
+        }
+    }
+}
+
+impl TrackingMut for StmtListItem {
+    fn tracking_mut(&mut self) -> &mut Option<Span> {
+        match *self {
+            StmtListItem::Decl(ref mut decl) => decl.tracking_mut(),
+            StmtListItem::Stmt(ref mut stmt) => stmt.tracking_mut()
+        }
+    }
+}
+
 impl Untrack for StmtListItem {
     fn untrack(&mut self) {
         match *self {
             StmtListItem::Decl(ref mut decl) => { decl.untrack(); }
             StmtListItem::Stmt(ref mut stmt) => { stmt.untrack(); }
-        }
-    }
-}
-
-impl Track for StmtListItem {
-    fn location(&self) -> Option<Span> {
-        match *self {
-            StmtListItem::Decl(ref decl) => decl.location(),
-            StmtListItem::Stmt(ref stmt) => stmt.location()
         }
     }
 }

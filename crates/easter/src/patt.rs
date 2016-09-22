@@ -5,36 +5,66 @@ use expr::Expr;
 use obj::{PropKey, DotKey};
 
 #[derive(Debug, PartialEq)]
-pub enum CompoundPattData<T> {
-    Arr(Vec<Option<Patt<T>>>),
-    Obj(Vec<PropPatt<T>>)
+pub enum CompoundPatt<T> {
+    Arr(Option<Span>, Vec<Option<Patt<T>>>),
+    Obj(Option<Span>, Vec<PropPatt<T>>)
 }
 
-impl<T: Untrack> Untrack for CompoundPattData<T> {
-    fn untrack(&mut self) {
+impl<T> TrackingRef for CompoundPatt<T> {
+    fn tracking_ref(&self) -> &Option<Span> {
         match *self {
-            CompoundPattData::Arr(ref mut patts) => { patts.untrack(); }
-            CompoundPattData::Obj(ref mut props) => { props.untrack(); }
+            CompoundPatt::Arr(ref location, _)
+          | CompoundPatt::Obj(ref location, _) => location
         }
     }
 }
 
-pub type CompoundPatt<T> = Tracked<CompoundPattData<T>>;
+impl<T> TrackingMut for CompoundPatt<T> {
+    fn tracking_mut(&mut self) -> &mut Option<Span> {
+        match *self {
+            CompoundPatt::Arr(ref mut location, _)
+          | CompoundPatt::Obj(ref mut location, _) => { location }
+        }
+    }
+}
+
+impl<T: Untrack> Untrack for CompoundPatt<T> {
+    fn untrack(&mut self) {
+        match *self {
+            CompoundPatt::Arr(ref mut location, ref mut patts) => {
+                *location = None;
+                patts.untrack();
+            }
+            CompoundPatt::Obj(ref mut location, ref mut props) => {
+                *location = None;
+                props.untrack();
+            }
+        }
+    }
+}
 
 #[derive(Debug, PartialEq)]
-pub struct PropPattData<T> {
+pub struct PropPatt<T> {
+    pub location: Option<Span>,
     pub key: PropKey,
     pub patt: Patt<T>
 }
 
-impl<T: Untrack> Untrack for PropPattData<T> {
+impl<T> TrackingRef for PropPatt<T> {
+    fn tracking_ref(&self) -> &Option<Span> { &self.location }
+}
+
+impl<T> TrackingMut for PropPatt<T> {
+    fn tracking_mut(&mut self) -> &mut Option<Span> { &mut self.location }
+}
+
+impl<T: Untrack> Untrack for PropPatt<T> {
     fn untrack(&mut self) {
+        self.location = None;
         self.key.untrack();
         self.patt.untrack();
     }
 }
-
-pub type PropPatt<T> = Tracked<PropPattData<T>>;
 
 #[derive(Debug, PartialEq)]
 pub enum Patt<T> {
@@ -51,11 +81,20 @@ impl<T> Patt<T> {
     }
 }
 
-impl<T: Track> Track for Patt<T> {
-    fn location(&self) -> Option<Span> {
+impl<T: TrackingRef> TrackingRef for Patt<T> {
+    fn tracking_ref(&self) -> &Option<Span> {
         match *self {
-            Patt::Simple(ref simple) => simple.location(),
-            Patt::Compound(ref patt) => patt.location()
+            Patt::Simple(ref simple) => simple.tracking_ref(),
+            Patt::Compound(ref patt) => patt.tracking_ref()
+        }
+    }
+}
+
+impl<T: TrackingMut> TrackingMut for Patt<T> {
+    fn tracking_mut(&mut self) -> &mut Option<Span> {
+        match *self {
+            Patt::Simple(ref mut simple) => simple.tracking_mut(),
+            Patt::Compound(ref mut patt) => patt.tracking_mut()
         }
     }
 }
@@ -70,20 +109,48 @@ impl<T: Untrack> Untrack for Patt<T> {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum AssignTargetData {
+pub enum AssignTarget {
     Id(Id),
-    Dot(Box<Expr>, DotKey),
-    Brack(Box<Expr>, Box<Expr>)
+    Dot(Option<Span>, Box<Expr>, DotKey),
+    Brack(Option<Span>, Box<Expr>, Box<Expr>)
 }
 
-impl Untrack for AssignTargetData {
-    fn untrack(&mut self) {
+impl TrackingRef for AssignTarget {
+    fn tracking_ref(&self) -> &Option<Span> {
         match *self {
-            AssignTargetData::Id(ref mut id)                   => { id.untrack(); }
-            AssignTargetData::Dot(ref mut obj, ref mut prop)   => { obj.untrack(); prop.untrack(); }
-            AssignTargetData::Brack(ref mut obj, ref mut prop) => { obj.untrack(); prop.untrack(); }
+            AssignTarget::Id(ref id) => id.tracking_ref(),
+            AssignTarget::Dot(ref location, _, _)
+          | AssignTarget::Brack(ref location, _, _) => location
         }
     }
 }
 
-pub type AssignTarget = Tracked<AssignTargetData>;
+impl TrackingMut for AssignTarget {
+    fn tracking_mut(&mut self) -> &mut Option<Span> {
+        match *self {
+            AssignTarget::Id(ref mut id) => id.tracking_mut(),
+            AssignTarget::Dot(ref mut location, _, _)
+          | AssignTarget::Brack(ref mut location, _, _) => location
+        }
+    }
+}
+
+impl Untrack for AssignTarget {
+    fn untrack(&mut self) {
+        match *self {
+            AssignTarget::Id(ref mut id) => {
+                id.untrack();
+            }
+            AssignTarget::Dot(ref mut location, ref mut obj, ref mut prop) => {
+                *location = None;
+                obj.untrack();
+                prop.untrack();
+            }
+            AssignTarget::Brack(ref mut location, ref mut obj, ref mut prop) => {
+                *location = None;
+                obj.untrack();
+                prop.untrack();
+            }
+        }
+    }
+}

@@ -1,20 +1,42 @@
+use std::ops::{Deref, DerefMut};
 use joker::word::Name;
-use joker::track::*;
+use joker::track::{TrackingRef, TrackingMut, Untrack, Span};
 
-use expr::{Expr, ExprData};
-use decl::{Dtor, DtorData};
+use expr::Expr;
+use decl::Dtor;
 use patt::Patt;
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct IdData {
+pub struct Id {
+    pub location: Option<Span>,
     pub name: Name
 }
 
-impl Untrack for IdData {
-    fn untrack(&mut self) { }
+impl Deref for Id {
+    type Target = Option<Span>;
+
+    fn deref(&self) -> &Option<Span> {
+        &self.location
+    }
 }
 
-pub type Id = Tracked<IdData>;
+impl DerefMut for Id {
+    fn deref_mut(&mut self) -> &mut Option<Span> {
+        &mut self.location
+    }
+}
+
+impl TrackingRef for Id {
+    fn tracking_ref(&self) -> &Option<Span> { &self.location }
+}
+
+impl TrackingMut for Id {
+    fn tracking_mut(&mut self) -> &mut Option<Span> { &mut self.location }
+}
+
+impl Untrack for Id {
+    fn untrack(&mut self) { self.location = None; }
+}
 
 pub trait IdExt {
     fn new(Name, Option<Span>) -> Id;
@@ -26,8 +48,8 @@ pub trait IdExt {
 impl IdExt for Id {
     fn new(name: Name, location: Option<Span>) -> Id {
         Id {
-            value: IdData { name: name },
-            location: location
+            location: location,
+            name: name
         }
     }
 
@@ -36,13 +58,10 @@ impl IdExt for Id {
     }
 
     fn into_expr(self) -> Expr {
-        self.map_self(ExprData::Id)
+        Expr::Id(self)
     }
 
     fn into_dtor(self) -> Dtor {
-        Dtor {
-            location: self.location,
-            value: DtorData::Simple(self, None)
-        }
+        Dtor::Simple(*self.tracking_ref(), self, None)
     }
 }

@@ -1,7 +1,7 @@
-use joker::track::{Span, span, IntoTracked};
+use joker::track::{Span, span};
 use joker::token::Token;
 use easter::punc::Unop;
-use easter::expr::{ExprData, Expr};
+use easter::expr::Expr;
 use easter::obj::DotKey;
 
 pub enum Prefix {
@@ -24,12 +24,10 @@ impl Deref {
     pub fn append_to(self, expr: Expr) -> Expr {
         match self {
             Deref::Brack(deref, end) => {
-                let location = span(&expr, &end);
-                ExprData::Brack(Box::new(expr), Box::new(deref)).tracked(location)
+                Expr::Brack(span(&expr, &Some(end.location)), Box::new(expr), Box::new(deref))
             }
             Deref::Dot(key) => {
-                let location = span(&expr, &key);
-                ExprData::Dot(Box::new(expr), key).tracked(location)
+                Expr::Dot(span(&expr, &key), Box::new(expr), key)
             }
         }
     }
@@ -47,13 +45,11 @@ pub struct Arguments {
 
 impl Arguments {
     pub fn append_to(self, expr: Expr) -> Expr {
-        let location = span(&expr, &self.end);
-        ExprData::Call(Box::new(expr), self.args).tracked(location)
+        Expr::Call(span(&expr, &Some(self.end.location)), Box::new(expr), self.args)
     }
 
     pub fn append_to_new(self, new: Token, expr: Expr) -> Expr {
-        let location = span(&new, &self.end);
-        ExprData::New(Box::new(expr), Some(self.args)).tracked(location)
+        Expr::New(span(&Some(new.location), &Some(self.end.location)), Box::new(expr), Some(self.args))
     }
 }
 

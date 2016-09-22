@@ -4,15 +4,15 @@ use joker::token::{Token, TokenData};
 use joker::word::{Atom, Name, Reserved};
 use joker::lexer::Lexer;
 use joker::context::Mode;
-use easter::prog::{Script, ScriptData};
-use easter::stmt::{Stmt, StmtData, StmtListItem, ForHead, ForHeadData, ForInHead, ForInHeadData, ForOfHead, ForOfHeadData, Case, CaseData, Catch, CatchData};
-use easter::expr::{Expr, ExprData};
-use easter::decl::{Decl, DeclData, Dtor, DtorData, DtorExt};
+use easter::prog::Script;
+use easter::stmt::{Stmt, StmtListItem, ForHead, ForInHead, ForOfHead, Case, Catch};
+use easter::expr::Expr;
+use easter::decl::{Decl, Dtor, DtorExt};
 use easter::patt::{Patt, CompoundPatt};
-use easter::fun::{Fun, FunData, Params, ParamsData};
-use easter::obj::{PropKey, PropKeyData, PropValData, Prop, PropData, DotKey, DotKeyData};
-use easter::id::{Id, IdData, IdExt};
-use easter::punc::{Unop, UnopTag, ToOp};
+use easter::fun::{Fun, Params};
+use easter::obj::{PropKey, PropVal, Prop, DotKey};
+use easter::id::{Id, IdExt};
+use easter::punc::{Unop, UnopTag, ToOp, Op};
 use easter::cover::IntoAssignPatt;
 
 use std::cell::Cell;
@@ -59,7 +59,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
 
     pub fn script(&mut self) -> Result<Script> {
         let items = try!(self.statement_list());
-        Ok(Script { location: self.vec_span(&items), value: ScriptData { body: items } })
+        Ok(Script { location: self.vec_span(&items), body: items })
     }
 
     fn statement_list(&mut self) -> Result<Vec<StmtListItem>> {
@@ -92,7 +92,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
 
     fn function_declaration(&mut self) -> Result<Decl> {
         self.span(&mut |this| {
-            Ok(DeclData::Fun(try!(this.function())))
+            Ok(Decl::Fun(try!(this.function())))
         })
     }
 
@@ -101,7 +101,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             try!(this.expect(TokenData::LParen));
             let list = try!(this.pattern_list());
             try!(this.expect(TokenData::RParen));
-            Ok(ParamsData { list: list })
+            Ok(Params { location: None, list: list })
         })
     }
 
@@ -146,7 +146,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             try!(this.expect(TokenData::LBrace));
             let body = try!(this.statement_list());
             try!(this.expect(TokenData::RBrace));
-            Ok(FunData { id: id, params: params, body: body })
+            Ok(Fun { location: None, id: id, params: params, body: body })
         });
         replace(&mut self.parser_cx, outer_cx);
         result
@@ -183,7 +183,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             _                => {
                 let span = self.start();
                 let expr = try!(self.id_expression(id));
-                Ok(try!(span.end_with_auto_semi(self, Newline::Required, |semi| StmtData::Expr(expr, semi))))
+                Ok(try!(span.end_with_auto_semi(self, Newline::Required, |semi| Stmt::Expr(None, expr, semi))))
             }
         }
     }
@@ -217,7 +217,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
     fn expression_statement(&mut self) -> Result<Stmt> {
         let span = self.start();
         let expr = try!(self.allow_in(true, |this| this.expression()));
-        Ok(try!(span.end_with_auto_semi(self, Newline::Required, |semi| StmtData::Expr(expr, semi))))
+        Ok(try!(span.end_with_auto_semi(self, Newline::Required, |semi| Stmt::Expr(None, expr, semi))))
     }
 
     fn block_statement(&mut self) -> Result<Stmt> {
@@ -225,7 +225,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             this.reread(TokenData::LBrace);
             let items = try!(this.statement_list());
             try!(this.expect(TokenData::RBrace));
-            Ok(StmtData::Block(items))
+            Ok(Stmt::Block(None, items))
         })
     }
 
@@ -233,7 +233,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
         let span = self.start();
         self.reread(TokenData::Reserved(Reserved::Var));
         let dtors = try!(self.declarator_list());
-        Ok(try!(span.end_with_auto_semi(self, Newline::Required, |semi| StmtData::Var(dtors, semi))))
+        Ok(try!(span.end_with_auto_semi(self, Newline::Required, |semi| Stmt::Var(None, dtors, semi))))
     }
 
     fn declarator_list(&mut self) -> Result<Vec<Dtor>> {
@@ -247,7 +247,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
 
     fn binding_id(&mut self) -> Result<Id> {
         let id = try!(self.id());
-        if self.shared_cx.get().mode.is_strict() && id.value.name.is_illegal_strict_binding() {
+        if self.shared_cx.get().mode.is_strict() && id.name.is_illegal_strict_binding() {
             return Err(Error::IllegalStrictBinding(id));
         }
         Ok(id)
@@ -259,11 +259,11 @@ impl<I: Iterator<Item=char>> Parser<I> {
             TokenData::Identifier(name) => {
                 if name.is_reserved(self.shared_cx.get().mode) {
                     return Err(Error::ContextualKeyword(Id {
-                        value: IdData { name: name },
-                        location: Some(location)
+                        location: Some(location),
+                        name: name
                     }));
                 }
-                Ok(Id { location: Some(location), value: IdData { name: name } })
+                Ok(Id { location: Some(location), name: name })
             }
             _ => Err(Error::UnexpectedToken(Token {
                 location: location,
@@ -277,7 +277,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
         let next = try!(self.read());
         match next.value {
             TokenData::Identifier(name) => {
-                Ok(Some(IdData { name: name }.tracked(Some(next.location))))
+                Ok(Some(Id { location: Some(next.location), name: name }))
             }
             _                           => { self.lexer.unread_token(next); Ok(None) }
         }
@@ -293,13 +293,13 @@ impl<I: Iterator<Item=char>> Parser<I> {
                     } else {
                         None
                     };
-                    Ok(DtorData::Simple(id, init))
+                    Ok(Dtor::Simple(None, id, init))
                 }
                 _ => {
                     let lhs = try!(this.binding_pattern());
                     try!(this.expect(TokenData::Assign));
                     let rhs = try!(this.assignment_expression());
-                    Ok(DtorData::Compound(lhs, rhs))
+                    Ok(Dtor::Compound(None, lhs, rhs))
                 }
             }
         })
@@ -308,7 +308,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
     fn empty_statement(&mut self) -> Result<Stmt> {
         self.span(&mut |this| {
             try!(this.expect(TokenData::Semi));
-            Ok(StmtData::Empty)
+            Ok(Stmt::Empty(None))
         })
     }
 
@@ -323,7 +323,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             } else {
                 None
             };
-            Ok(StmtData::If(test, cons, alt))
+            Ok(Stmt::If(None, test, cons, alt))
         })
     }
 
@@ -341,7 +341,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
         try!(self.expect(TokenData::Reserved(Reserved::While)));
         let test = try!(self.paren_expression());
         Ok(try!(span.end_with_auto_semi(self, Newline::Optional, |semi| {
-            StmtData::DoWhile(body, test, semi)
+            Stmt::DoWhile(None, body, test, semi)
         })))
     }
 
@@ -350,7 +350,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             this.reread(TokenData::Reserved(Reserved::While));
             let test = try!(this.paren_expression());
             let body = Box::new(try!(this.iteration_body()));
-            Ok(StmtData::While(test, body))
+            Ok(Stmt::While(None, test, body))
         })
     }
 
@@ -372,9 +372,9 @@ impl<I: Iterator<Item=char>> Parser<I> {
     }
 
     // 'for' '(' 'var' .
-    fn for_var(&mut self) -> Result<StmtData> {
+    fn for_var(&mut self) -> Result<Stmt> {
         let var_token = self.reread(TokenData::Reserved(Reserved::Var));
-        let var_location = var_token.location;
+        let var_location = Some(var_token.location);
         let lhs = try!(self.pattern());
         match try!(self.peek()).value {
             // 'for' '(' 'var' id   '=' .
@@ -389,16 +389,13 @@ impl<I: Iterator<Item=char>> Parser<I> {
                             // 'for' '(' 'var' id '=' expr ';'  . ==> C-style
                             TokenData::Comma
                           | TokenData::Semi => {
-                                let head = Some(try!(self.more_for_head(&var_location, Dtor::from_simple_init(id, rhs), ForHeadData::Var)));
+                                let head = Some(try!(self.more_for_head(&var_location, Dtor::from_simple_init(id, rhs), ForHead::Var)));
                                 self.more_for(head)
                             }
                             // 'for' '(' 'var' id '=' expr 'in' . ==> legacy enumeration
                             TokenData::Reserved(Reserved::In) => {
                                 self.reread(TokenData::Reserved(Reserved::In));
-                                let head = Box::new(ForInHead {
-                                    location: span(&var_location, &rhs),
-                                    value: ForInHeadData::VarInit(id, rhs)
-                                });
+                                let head = Box::new(ForInHead::VarInit(span(&var_location, &rhs), id, rhs));
                                 self.more_for_in(head)
                             }
                             _ => Err(Error::UnexpectedToken(try!(self.read())))
@@ -407,7 +404,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                     // 'for' '(' 'var' patt '=' . ==> C-style
                     Patt::Compound(patt) => {
                         let rhs = try!(self.allow_in(false, |this| this.assignment_expression()));
-                        let head = Some(try!(self.more_for_head(&var_location, Dtor::from_compound_init(patt, rhs), ForHeadData::Var)));
+                        let head = Some(try!(self.more_for_head(&var_location, Dtor::from_compound_init(patt, rhs), ForHead::Var)));
                         self.more_for(head)
                     }
                 }
@@ -422,27 +419,21 @@ impl<I: Iterator<Item=char>> Parser<I> {
                     Ok(dtor) => dtor,
                     Err(_) => { return Err(Error::UnexpectedToken(try!(self.read()))); }
                 };
-                let head = Some(try!(self.more_for_head(&var_location, dtor, ForHeadData::Var)));
+                let head = Some(try!(self.more_for_head(&var_location, dtor, ForHead::Var)));
                 self.more_for(head)
             }
             // 'for' '(' 'var' id   'in' . ==> enumeration
             // 'for' '(' 'var' patt 'in' . ==> enumeration
             TokenData::Reserved(Reserved::In) => {
                 self.reread(TokenData::Reserved(Reserved::In));
-                let head = Box::new(ForInHead {
-                    location: span(&var_location, &lhs),
-                    value: ForInHeadData::Var(lhs)
-                });
+                let head = Box::new(ForInHead::Var(span(&var_location, &lhs), lhs));
                 self.more_for_in(head)
             }
             // 'for' '(' 'var' id   'of' . ==> enumeration
             // 'for' '(' 'var' patt 'of' . ==> enumeration
             TokenData::Identifier(Name::Atom(Atom::Of)) => {
                 self.reread(TokenData::Identifier(Name::Atom(Atom::Of)));
-                let head = Box::new(ForOfHead {
-                    location: span(&var_location, &lhs),
-                    value: ForOfHeadData::Var(lhs)
-                });
+                let head = Box::new(ForOfHead::Var(span(&var_location, &lhs), lhs));
                 self.more_for_of(head)
             }
             _ => Err(Error::UnexpectedToken(try!(self.read())))
@@ -450,9 +441,9 @@ impl<I: Iterator<Item=char>> Parser<I> {
     }
 
     // 'for' '(' 'let' .
-    fn for_let(&mut self) -> Result<StmtData> {
+    fn for_let(&mut self) -> Result<Stmt> {
         let let_token = self.reread(TokenData::Identifier(Name::Atom(Atom::Let)));
-        let let_location = let_token.location;
+        let let_location = Some(let_token.location);
         // 'for' '(' 'let' . !{id, patt} ==> error
         let lhs = try!(self.pattern());
         match try!(self.peek()).value {
@@ -461,7 +452,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             TokenData::Assign => {
                 self.reread(TokenData::Assign);
                 let rhs = try!(self.allow_in(false, |this| this.assignment_expression()));
-                let head = Some(try!(self.more_for_head(&let_location, Dtor::from_init(lhs, rhs), ForHeadData::Let)));
+                let head = Some(try!(self.more_for_head(&let_location, Dtor::from_init(lhs, rhs), ForHead::Let)));
                 self.more_for(head)
             }
             TokenData::Comma
@@ -474,58 +465,43 @@ impl<I: Iterator<Item=char>> Parser<I> {
                     Ok(dtor) => dtor,
                     Err(_) => { return Err(Error::UnexpectedToken(try!(self.read()))); }
                 };
-                let head = Some(try!(self.more_for_head(&let_location, dtor, ForHeadData::Let)));
+                let head = Some(try!(self.more_for_head(&let_location, dtor, ForHead::Let)));
                 self.more_for(head)
             }
             // 'for' '(' 'let' id   'in' . ==> enumeration
             // 'for' '(' 'let' patt 'in' . ==> enumeration
             TokenData::Reserved(Reserved::In) => {
                 self.reread(TokenData::Reserved(Reserved::In));
-                let head = Box::new(ForInHead {
-                    location: span(&let_location, &lhs),
-                    value: ForInHeadData::Let(lhs)
-                });
+                let head = Box::new(ForInHead::Let(span(&let_location, &lhs), lhs));
                 self.more_for_in(head)
             }
             // 'for' '(' 'let' id   'of' . ==> enumeration
             // 'for' '(' 'let' patt 'of' . ==> enumeration
             TokenData::Identifier(Name::Atom(Atom::Of)) => {
                 self.reread(TokenData::Identifier(Name::Atom(Atom::Of)));
-                let head = Box::new(ForOfHead {
-                    location: span(&let_location, &lhs),
-                    value: ForOfHeadData::Let(lhs)
-                });
+                let head = Box::new(ForOfHead::Let(span(&let_location, &lhs), lhs));
                 self.more_for_of(head)
             }
             _ => Err(Error::UnexpectedToken(try!(self.read())))
         }
     }
 
-    fn for_expr(&mut self) -> Result<StmtData> {
+    fn for_expr(&mut self) -> Result<Stmt> {
         let lhs = try!(self.allow_in(false, |this| this.expression()));
         match try!(self.peek()).value {
             TokenData::Semi => {
-                let semi_location = self.reread(TokenData::Semi).location;
-                let head = Some(Box::new(ForHead {
-                    location: span(&lhs, &semi_location),
-                    value: ForHeadData::Expr(lhs)
-                }));
+                let semi_location = Some(self.reread(TokenData::Semi).location);
+                let head = Some(Box::new(ForHead::Expr(span(&lhs, &semi_location), lhs)));
                 self.more_for(head)
             }
             TokenData::Reserved(Reserved::In) => {
                 self.reread(TokenData::Reserved(Reserved::In));
-                let head = Box::new(ForInHead {
-                    location: lhs.location(),
-                    value: ForInHeadData::Expr(lhs)
-                });
+                let head = Box::new(ForInHead::Expr(lhs));
                 self.more_for_in(head)
             }
             TokenData::Identifier(Name::Atom(Atom::Of)) => {
                 self.reread(TokenData::Identifier(Name::Atom(Atom::Of)));
-                let head = Box::new(ForOfHead {
-                    location: lhs.location(),
-                    value: ForOfHeadData::Expr(lhs)
-                });
+                let head = Box::new(ForOfHead::Expr(lhs));
                 self.more_for_of(head)
             }
             _ => Err(Error::UnexpectedToken(try!(self.read())))
@@ -533,23 +509,20 @@ impl<I: Iterator<Item=char>> Parser<I> {
     }
 
     // 'for' '(' dtor .
-    fn more_for_head<F>(&mut self, start: &Span, dtor: Dtor, op: F) -> Result<Box<ForHead>>
-      where F: FnOnce(Vec<Dtor>) -> ForHeadData
+    fn more_for_head<F>(&mut self, start: &Option<Span>, dtor: Dtor, op: F) -> Result<Box<ForHead>>
+      where F: FnOnce(Option<Span>, Vec<Dtor>) -> ForHead
     {
         let dtors = try!(self.allow_in(false, |this| {
             let mut dtors = vec![dtor];
             try!(this.more_dtors(&mut dtors));
             Ok(dtors)
         }));
-        let semi_location = try!(self.expect(TokenData::Semi)).location;
-        Ok(Box::new(ForHead {
-            location: span(start, &semi_location),
-            value: op(dtors)
-        }))
+        let semi_location = Some(try!(self.expect(TokenData::Semi)).location);
+        Ok(Box::new(op(span(start, &semi_location), dtors)))
     }
 
     // 'for' '(' head ';' .
-    fn more_for(&mut self, head: Option<Box<ForHead>>) -> Result<StmtData> {
+    fn more_for(&mut self, head: Option<Box<ForHead>>) -> Result<Stmt> {
         let test = try!(self.expression_opt_semi());
         let update = if try!(self.matches(TokenData::RParen)) {
             None
@@ -559,23 +532,23 @@ impl<I: Iterator<Item=char>> Parser<I> {
             node
         };
         let body = Box::new(try!(self.iteration_body()));
-        Ok(StmtData::For(head, test, update, body))
+        Ok(Stmt::For(None, head, test, update, body))
     }
 
     // 'for' '(' head 'in' .
-    fn more_for_in(&mut self, head: Box<ForInHead>) -> Result<StmtData> {
+    fn more_for_in(&mut self, head: Box<ForInHead>) -> Result<Stmt> {
         let obj = try!(self.allow_in(true, |this| this.assignment_expression()));
         try!(self.expect(TokenData::RParen));
         let body = Box::new(try!(self.iteration_body()));
-        Ok(StmtData::ForIn(head, obj, body))
+        Ok(Stmt::ForIn(None, head, obj, body))
     }
 
     // 'for' '(' head 'of' .
-    fn more_for_of(&mut self, head: Box<ForOfHead>) -> Result<StmtData> {
+    fn more_for_of(&mut self, head: Box<ForOfHead>) -> Result<Stmt> {
         let obj = try!(self.allow_in(true, |this| this.assignment_expression()));
         try!(self.expect(TokenData::RParen));
         let body = Box::new(try!(self.iteration_body()));
-        Ok(StmtData::ForOf(head, obj, body))
+        Ok(Stmt::ForOf(None, head, obj, body))
     }
 
     fn expression_opt_semi(&mut self) -> Result<Option<Expr>> {
@@ -602,7 +575,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             let outer_switch = replace(&mut this.parser_cx.switch, true);
             let cases = this.switch_cases();
             replace(&mut this.parser_cx.switch, outer_switch);
-            Ok(StmtData::Switch(disc, try!(cases)))
+            Ok(Stmt::Switch(None, disc, try!(cases)))
         })
     }
 
@@ -634,7 +607,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             let test = try!(this.allow_in(true, |this| this.expression()));
             try!(this.expect(TokenData::Colon));
             let body = try!(this.case_body());
-            Ok(CaseData { test: Some(test), body: body })
+            Ok(Case { location: None, test: Some(test), body: body })
         })
     }
 
@@ -660,7 +633,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             this.reread(TokenData::Reserved(Reserved::Default));
             try!(this.expect(TokenData::Colon));
             let body = try!(this.case_body());
-            Ok(CaseData { test: None, body: body })
+            Ok(Case { location: None, test: None, body: body })
         })
     }
 
@@ -669,7 +642,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
         let break_token = self.reread(TokenData::Reserved(Reserved::Break));
         let arg = if try!(self.has_arg_same_line()) {
             let id = try!(self.id());
-            if !self.parser_cx.labels.contains_key(&Rc::new(id.value.name.clone())) {
+            if !self.parser_cx.labels.contains_key(&Rc::new(id.name.clone())) {
                 return Err(Error::InvalidLabel(id));
             }
             Some(id)
@@ -680,7 +653,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             None
         };
         span.end_with_auto_semi(self, Newline::Required, |semi| {
-            StmtData::Break(arg, semi)
+            Stmt::Break(None, arg, semi)
         })
     }
 
@@ -689,7 +662,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
         let continue_token = self.reread(TokenData::Reserved(Reserved::Continue));
         let arg = if try!(self.has_arg_same_line()) {
             let id = try!(self.id());
-            match self.parser_cx.labels.get(&Rc::new(id.value.name.clone())) {
+            match self.parser_cx.labels.get(&Rc::new(id.name.clone())) {
                 None                        => { return Err(Error::InvalidLabel(id)); }
                 Some(&LabelType::Statement) => { return Err(Error::InvalidLabelType(id)); }
                 _                           => { }
@@ -702,7 +675,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             None
         };
         span.end_with_auto_semi(self, Newline::Required, |semi| {
-            StmtData::Cont(arg, semi)
+            Stmt::Cont(None, arg, semi)
         })
     }
 
@@ -715,10 +688,10 @@ impl<I: Iterator<Item=char>> Parser<I> {
             None
         };
         let result = try!(span.end_with_auto_semi(self, Newline::Required, |semi| {
-            StmtData::Return(arg, semi)
+            Stmt::Return(None, arg, semi)
         }));
         if !self.parser_cx.function {
-            Err(Error::TopLevelReturn(result.location.unwrap()))
+            Err(Error::TopLevelReturn(result.tracking_ref().unwrap()))
         } else {
             Ok(result)
         }
@@ -732,7 +705,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             }
             let obj = try!(this.paren_expression());
             let body = Box::new(try!(this.statement()));
-            Ok(StmtData::With(obj, body))
+            Ok(Stmt::With(None, obj, body))
         })
     }
 
@@ -744,7 +717,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
         }
         let arg = try!(self.allow_in(true, |this| this.expression()));
         span.end_with_auto_semi(self, Newline::Required, |semi| {
-            StmtData::Throw(arg, semi)
+            Stmt::Throw(None, arg, semi)
         })
     }
 
@@ -768,7 +741,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             }
             let catch = try!(this.catch_opt()).map(Box::new);
             let finally = try!(this.finally_opt());
-            Ok(StmtData::Try(body, catch, finally))
+            Ok(Stmt::Try(None, body, catch, finally))
         })
     }
 
@@ -782,7 +755,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                     try!(this.expect(TokenData::RParen));
 
                     let body = try!(this.block());
-                    Ok(CatchData { param: param, body: body })
+                    Ok(Catch { location: None, param: param, body: body })
                 }).map(Some)
             }
             _ => Ok(None)
@@ -802,7 +775,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
     fn debugger_statement(&mut self) -> Result<Stmt> {
         let span = self.start();
         self.reread(TokenData::Reserved(Reserved::Debugger));
-        Ok(try!(span.end_with_auto_semi(self, Newline::Required, |semi| StmtData::Debugger(semi))))
+        Ok(try!(span.end_with_auto_semi(self, Newline::Required, |semi| Stmt::Debugger(None, semi))))
     }
 
 /*
@@ -833,21 +806,20 @@ impl<I: Iterator<Item=char>> Parser<I> {
         let token = try!(self.read());
         let location = Some(token.location);
         Ok(match token.value {
-            TokenData::Identifier(name)          => ExprData::Id(Id::new(name, location)),
-            TokenData::Reserved(Reserved::Null)  => ExprData::Null,
-            TokenData::Reserved(Reserved::This)  => ExprData::This,
-            TokenData::Reserved(Reserved::True)  => ExprData::True,
-            TokenData::Reserved(Reserved::False) => ExprData::False,
-            TokenData::Number(literal)           => ExprData::Number(literal),
-            TokenData::String(literal)           => ExprData::String(literal),
-            TokenData::RegExp(literal)           => ExprData::RegExp(literal),
+            TokenData::Identifier(name)          => Expr::Id(Id::new(name, location)),
+            TokenData::Reserved(Reserved::Null)  => Expr::Null(location),
+            TokenData::Reserved(Reserved::This)  => Expr::This(location),
+            TokenData::Reserved(Reserved::True)  => Expr::True(location),
+            TokenData::Reserved(Reserved::False) => Expr::False(location),
+            TokenData::Number(literal)           => Expr::Number(location, literal),
+            TokenData::String(literal)           => Expr::String(location, literal),
+            TokenData::RegExp(literal)           => Expr::RegExp(location, literal),
             TokenData::LBrack                    => { return self.array_literal(token); }
             TokenData::LBrace                    => { return self.object_literal(token); }
             TokenData::Reserved(Reserved::Function) => {
                 self.lexer.unread_token(token);
                 let fun = try!(self.function());
-                let location = fun.location();
-                return Ok(ExprData::Fun(fun).tracked(location));
+                return Ok(Expr::Fun(fun));
             }
             TokenData::LParen => {
                 self.lexer.unread_token(token);
@@ -855,13 +827,14 @@ impl<I: Iterator<Item=char>> Parser<I> {
             }
             // ES6: more cases
             _ => { return Err(Error::UnexpectedToken(token)); }
-        }.tracked(location))
+        })
     }
 
     fn array_literal(&mut self, start: Token) -> Result<Expr> {
         let mut elts = Vec::new();
+        let start_location = Some(start.location);
         if let Some(end) = try!(self.matches_token(TokenData::RBrack)) {
-            return Ok(ExprData::Arr(elts).tracked(span(&start, &end)));
+            return Ok(Expr::Arr(span(&start_location, &Some(end.location)), elts));
         }
         loop {
             let elt = try!(self.array_element());
@@ -874,8 +847,8 @@ impl<I: Iterator<Item=char>> Parser<I> {
                 break;
             }
         }
-        let end = try!(self.expect(TokenData::RBrack));
-        Ok(ExprData::Arr(elts).tracked(span(&start, &end)))
+        let end_location = Some(try!(self.expect(TokenData::RBrack)).location);
+        Ok(Expr::Arr(span(&start_location, &end_location), elts))
     }
 
     fn array_element(&mut self) -> Result<Option<Expr>> {
@@ -888,8 +861,9 @@ impl<I: Iterator<Item=char>> Parser<I> {
 
     fn object_literal(&mut self, start: Token) -> Result<Expr> {
         let mut props = Vec::new();
+        let start_location = Some(start.location);
         if let Some(end) = try!(self.matches_token(TokenData::RBrace)) {
-            return Ok(ExprData::Obj(props).tracked(span(&start, &end)));
+            return Ok(Expr::Obj(span(&start_location, &Some(end.location)), props));
         }
         loop {
             let prop = try!(self.object_property());
@@ -901,34 +875,35 @@ impl<I: Iterator<Item=char>> Parser<I> {
                 break;
             }
         }
-        let end = try!(self.expect(TokenData::RBrace));
-        Ok(ExprData::Obj(props).tracked(span(&start, &end)))
+        let end_location = Some(try!(self.expect(TokenData::RBrace)).location);
+        Ok(Expr::Obj(span(&start_location, &end_location), props))
     }
 
     fn more_prop_init(&mut self, key: PropKey) -> Result<Prop> {
         self.reread(TokenData::Colon);
         let val = try!(self.allow_in(true, |this| this.assignment_expression()));
-        let key_location = key.location();
-        let val_location = val.location();
-        Ok(PropData {
+        let key_location = *key.tracking_ref();
+        let val_location = *val.tracking_ref();
+        Ok(Prop {
+            location: span(&key_location, &val_location),
             key: key,
-            val: PropValData::Init(val).tracked(val_location)
-        }.tracked(span(&key_location, &val_location)))
+            val: PropVal::Init(val)
+        })
     }
 
     fn property_key_opt(&mut self) -> Result<Option<PropKey>> {
         let token = try!(self.read());
         let location = Some(token.location);
         Ok(Some(match token.value {
-            TokenData::Identifier(name) => PropKeyData::Id(name.into_string()),
-            TokenData::Reserved(word) => PropKeyData::Id(word.into_string()),
-            TokenData::String(s) => PropKeyData::String(s),
-            TokenData::Number(n) => PropKeyData::Number(n),
+            TokenData::Identifier(name) => PropKey::Id(location, name.into_string()),
+            TokenData::Reserved(word) => PropKey::Id(location, word.into_string()),
+            TokenData::String(s) => PropKey::String(location, s),
+            TokenData::Number(n) => PropKey::Number(location, n),
             _ => {
                 self.lexer.unread_token(token);
                 return Ok(None);
             }
-        }.tracked(location)))
+        }))
     }
 
     fn property_key(&mut self) -> Result<PropKey> {
@@ -943,26 +918,27 @@ impl<I: Iterator<Item=char>> Parser<I> {
         match first.value {
             TokenData::Identifier(Name::Atom(Atom::Get)) => {
                 if let Some(key) = try!(self.property_key_opt()) {
-                    let paren = try!(self.expect(TokenData::LParen));
+                    let paren_location = Some(try!(self.expect(TokenData::LParen)).location);
                     try!(self.expect(TokenData::RParen));
                     try!(self.expect(TokenData::LBrace));
                     let outer_cx = replace(&mut self.parser_cx, context::Context::new_function());
                     let body = self.statement_list();
                     replace(&mut self.parser_cx, outer_cx);
                     let body = try!(body);
-                    let end = try!(self.expect(TokenData::RBrace));
-                    let val_location = span(&paren, &end);
-                    let prop_location = span(&key, &end);
-                    return Ok(PropData {
+                    let end_location = Some(try!(self.expect(TokenData::RBrace)).location);
+                    let val_location = span(&paren_location, &end_location);
+                    let prop_location = span(&key, &end_location);
+                    return Ok(Prop {
+                        location: prop_location,
                         key: key,
-                        val: PropValData::Get(body).tracked(val_location)
-                    }.tracked(prop_location));
+                        val: PropVal::Get(val_location, body)
+                    });
                 }
                 match try!(self.peek()).value {
                     // ES6: TokenData::LParen => unimplemented!(),
                     TokenData::Colon => {
                         let key_location = Some(first.location);
-                        self.more_prop_init(PropKeyData::Id("get".to_string()).tracked(key_location))
+                        self.more_prop_init(PropKey::Id(key_location, "get".to_string()))
                     }
                     // ES6: treat as elided optional initializer
                     _ => { return Err(Error::UnexpectedToken(try!(self.read()))); }
@@ -970,7 +946,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             }
             TokenData::Identifier(Name::Atom(Atom::Set)) => {
                 if let Some(key) = try!(self.property_key_opt()) {
-                    let paren = try!(self.expect(TokenData::LParen));
+                    let paren_location = Some(try!(self.expect(TokenData::LParen)).location);
                     let param = try!(self.pattern());
                     try!(self.expect(TokenData::RParen));
                     try!(self.expect(TokenData::LBrace));
@@ -978,19 +954,20 @@ impl<I: Iterator<Item=char>> Parser<I> {
                     let body = self.statement_list();
                     replace(&mut self.parser_cx, outer_cx);
                     let body = try!(body);
-                    let end = try!(self.expect(TokenData::RBrace));
-                    let val_location = span(&paren, &end);
-                    let prop_location = span(&key, &end);
-                    return Ok(PropData {
+                    let end_location = Some(try!(self.expect(TokenData::RBrace)).location);
+                    let val_location = span(&paren_location, &end_location);
+                    let prop_location = span(&key, &end_location);
+                    return Ok(Prop {
+                        location: prop_location,
                         key: key,
-                        val: PropValData::Set(param, body).tracked(val_location)
-                    }.tracked(prop_location));
+                        val: PropVal::Set(val_location, param, body)
+                    });
                 }
                 match try!(self.peek()).value {
                     // ES6: TokenData::LParen => unimplemented!(),
                     TokenData::Colon => {
                         let key_location = Some(first.location);
-                        self.more_prop_init(PropKeyData::Id("set".to_string()).tracked(key_location))
+                        self.more_prop_init(PropKey::Id(key_location, "set".to_string()))
                     }
                     // ES6: treat as elided optional initializer
                     _ => { return Err(Error::UnexpectedToken(try!(self.read()))); }
@@ -1016,8 +993,8 @@ impl<I: Iterator<Item=char>> Parser<I> {
     fn member_base_expression(&mut self) -> Result<Expr> {
         if let Some(new) = try!(self.matches_token(TokenData::Reserved(Reserved::New))) {
             try!(self.expect(TokenData::Dot));
-            let target = try!(self.expect(TokenData::Identifier(Name::Atom(Atom::Target))));
-            return Ok(ExprData::NewTarget.tracked(span(&new, &target)));
+            let target_location = Some(try!(self.expect(TokenData::Identifier(Name::Atom(Atom::Target)))).location);
+            return Ok(Expr::NewTarget(span(&Some(new.location), &target_location)));
         }
         self.primary_expression()
     }
@@ -1051,8 +1028,8 @@ impl<I: Iterator<Item=char>> Parser<I> {
             base = args.append_to_new(news.next().unwrap(), base);
         }
         for new in news {
-            let location = span(&new, &base);
-            base = ExprData::New(Box::new(base), None).tracked(location);
+            let location = span(&Some(new.location), &base);
+            base = Expr::New(location, Box::new(base), None);
         }
         for suffix in suffixes {
             base = suffix.append_to(base);
@@ -1134,12 +1111,14 @@ impl<I: Iterator<Item=char>> Parser<I> {
 
     fn id_name(&mut self) -> Result<DotKey> {
         let token = try!(self.read());
-        let location = Some(token.location);
-        Ok(match token.value {
-            TokenData::Identifier(name) => DotKeyData(name.into_string()),
-            TokenData::Reserved(word) => DotKeyData(word.into_string()),
-            _ => { return Err(Error::UnexpectedToken(token)); }
-        }.tracked(location))
+        Ok(DotKey {
+            location: Some(token.location),
+            value: match token.value {
+                TokenData::Identifier(name) => name.into_string(),
+                TokenData::Reserved(word) => word.into_string(),
+                _ => { return Err(Error::UnexpectedToken(token)); }
+            }
+        })
     }
 
     fn deref_dot(&mut self) -> Result<Deref> {
@@ -1176,9 +1155,10 @@ impl<I: Iterator<Item=char>> Parser<I> {
         }
         if news.len() > 0 {
             if try!(self.matches_op(TokenData::Dot)) {
-                let target = try!(self.expect(TokenData::Identifier(Name::Atom(Atom::Target))));
+                let target_location = Some(try!(self.expect(TokenData::Identifier(Name::Atom(Atom::Target)))).location);
                 let new = news.pop();
-                let new_target = ExprData::NewTarget.tracked(span(&new, &target));
+                let new_location = new.map(|new| new.location);
+                let new_target = Expr::NewTarget(span(&new_location, &target_location));
                 if news.len() > 0 {
                     self.more_new_expression(news, new_target)
                 } else {
@@ -1195,16 +1175,15 @@ impl<I: Iterator<Item=char>> Parser<I> {
     // IDUnaryExpression ::=
     //   IdentifierReference Suffix* PostfixOperator?
     fn id_unary_expression(&mut self, id: Id) -> Result<Expr> {
-        let location = id.location();
-        let mut result = ExprData::Id(id).tracked(location);
+        let mut result = Expr::Id(id);
         let suffixes = try!(self.suffixes());
         for suffix in suffixes {
             result = suffix.append_to(result);
         }
         if let Some(postfix) = try!(self.match_postfix_operator_opt()) {
             result = match postfix {
-                Postfix::Inc(location) => ExprData::PostInc(Box::new(result)).tracked(Some(location)),
-                Postfix::Dec(location) => ExprData::PostDec(Box::new(result)).tracked(Some(location))
+                Postfix::Inc(location) => Expr::PostInc(Some(location), Box::new(result)),
+                Postfix::Dec(location) => Expr::PostDec(Some(location), Box::new(result))
             };
         }
         Ok(result)
@@ -1220,18 +1199,18 @@ impl<I: Iterator<Item=char>> Parser<I> {
         let mut arg = try!(self.lhs_expression());
         if let Some(postfix) = try!(self.match_postfix_operator_opt()) {
             arg = match postfix {
-                Postfix::Inc(location) => ExprData::PostInc(Box::new(arg)).tracked(Some(location)),
-                Postfix::Dec(location) => ExprData::PostDec(Box::new(arg)).tracked(Some(location))
+                Postfix::Inc(location) => Expr::PostInc(Some(location), Box::new(arg)),
+                Postfix::Dec(location) => Expr::PostDec(Some(location), Box::new(arg))
             };
         }
         for prefix in prefixes.into_iter().rev() {
             match prefix {
                 Prefix::Unop(op)      => {
                     let location = span(&op, &arg);
-                    arg = ExprData::Unop(op, Box::new(arg)).tracked(location);
+                    arg = Expr::Unop(location, op, Box::new(arg));
                 }
-                Prefix::Inc(location) => { arg = ExprData::PreInc(Box::new(arg)).tracked(Some(location)); }
-                Prefix::Dec(location) => { arg = ExprData::PreDec(Box::new(arg)).tracked(Some(location)); }
+                Prefix::Inc(location) => { arg = Expr::PreInc(Some(location), Box::new(arg)); }
+                Prefix::Dec(location) => { arg = Expr::PreDec(Some(location), Box::new(arg)); }
             }
         }
         Ok(arg)
@@ -1273,7 +1252,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             TokenData::Bang                       => UnopTag::Not,
             _ => { self.lexer.unread_token(token); return Ok(None); }
         };
-        Ok(Some(tag.tracked(token.location())))
+        Ok(Some(Op { location: Some(token.location), tag: tag }))
     }
 
     // PostfixOperator ::=
@@ -1314,7 +1293,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             try!(self.expect(TokenData::Colon));
             let alt = try!(self.assignment_expression());
             let location = span(&cons, &alt);
-            return Ok(ExprData::Cond(Box::new(left), Box::new(cons), Box::new(alt)).tracked(location));
+            return Ok(Expr::Cond(location, Box::new(left), Box::new(cons), Box::new(alt)));
         }
         Ok(left)
     }
@@ -1339,14 +1318,14 @@ impl<I: Iterator<Item=char>> Parser<I> {
     fn more_assignment(&mut self, left: Expr) -> Result<Expr> {
         let token = try!(self.read_op());
         if let Some(op) = token.to_assop() {
-            let left_location = left.location();
+            let left_location = *left.tracking_ref();
             let left = match left.into_assign_patt() {
                 Ok(left) => left,
                 Err(cover_err) => { return Err(Error::InvalidLHS(left_location, cover_err)); }
             };
             let right = try!(self.assignment_expression());
             let location = span(&left, &right);
-            return Ok(ExprData::Assign(op, left, Box::new(right)).tracked(location));
+            return Ok(Expr::Assign(location, op, left, Box::new(right)));
         }
         self.lexer.unread_token(token);
         Ok(left)
@@ -1397,7 +1376,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             elts.push(try!(self.assignment_expression()));
         }
         let location = self.vec_span(&elts);
-        Ok(ExprData::Seq(elts).tracked(location))
+        Ok(Expr::Seq(location, elts))
     }
 }
 
@@ -1406,10 +1385,10 @@ mod tests {
 
     use std::{thread, env};
     use test::{deserialize_parser_tests, ParserTest};
+    use easter::stmt::{Stmt, StmtListItem};
+    use easter::expr::Expr;
+    use easter::patt::{AssignTarget, Patt};
     use joker::track::Untrack;
-    use easter::stmt::{Stmt, StmtListItem, StmtData};
-    use easter::expr::{Expr, ExprData};
-    use easter::patt::{Patt, AssignTarget, AssignTargetData};
     use ::script;
 
     #[test]
@@ -1513,15 +1492,9 @@ mod tests {
     pub fn as_ref_test() {
         let mut ast = script("foobar = 17;").ok().unwrap();
         ast.untrack();
-        match ast.value.body.first().unwrap() {
-            &StmtListItem::Stmt(Stmt {
-                value: StmtData::Expr(Expr {
-                    value: ExprData::Assign(_, Patt::Simple(AssignTarget { value: AssignTargetData::Id(ref id), .. }), _),
-                    ..
-                }, _),
-                ..
-            }) => {
-                assert!(id.value.name.as_ref() == "foobar");
+        match ast.body.first().unwrap() {
+            &StmtListItem::Stmt(Stmt::Expr(_, Expr::Assign(_, _, Patt::Simple(AssignTarget::Id(ref id)), _), _)) => {
+                assert!(id.name.as_ref() == "foobar");
             }
             _ => { panic!("unexpected AST structure"); }
         }
