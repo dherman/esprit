@@ -871,7 +871,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             if !try!(self.matches(TokenData::Comma)) {
                 break;
             }
-            if try!(self.peek()).value == TokenData::RBrack {
+            if try!(self.peek()).value == TokenData::RBrace {
                 break;
             }
         }
