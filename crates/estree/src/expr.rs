@@ -58,13 +58,17 @@ impl IntoExpr for Object {
             }
             Tag::AssignmentExpression => {
                 let str = try!(self.extract_string("operator").map_err(Error::Json));
-                let op: Assop = match str.parse() {
-                    Ok(op) => op,
-                    Err(_) => { return string_error("assignment operator", str); }
-                };
-                let left = try!(self.extract_assign_patt("left"));
-                let right = try!(self.extract_expr("right"));
-                Expr::Assign(None, op, left, Box::new(right))
+                let right = Box::new(try!(self.extract_expr("right")));
+                match &str[..] {
+                    "=" => Expr::Assign(None, try!(self.extract_assign_patt("left")), right),
+                    _ => {
+                        let op: Assop = match str.parse() {
+                            Ok(op) => op,
+                            Err(_) => { return string_error("assignment operator", str); }
+                        };
+                        Expr::BinAssign(None, op, try!(self.extract_assign_target("left")), right)
+                    }
+                }
             }
             Tag::LogicalExpression => {
                 let str = try!(self.extract_string("operator").map_err(Error::Json));
