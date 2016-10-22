@@ -6,10 +6,12 @@ INTEGRATION_OUT = build/integration.json
 all: $(INTEGRATION_OUT) $(UNIT_OUT)
 .PHONY: all
 
-$(INTEGRATION_OUT): $(wildcard integration/*.js) package.json build-integration.js
+node_modules/.exists: package.json
 	npm install
-	node build-integration.js integration/ > $(INTEGRATION_OUT)
+	touch $@
 
-$(UNIT_OUT): $(UNIT_IN) package.json build-unit.js
-	npm install
-	node build-unit.js $(UNIT_IN) > $(UNIT_OUT)
+$(INTEGRATION_OUT): $(wildcard integration/*.js) node_modules/.exists build-integration.js
+	node build-integration.js integration $(INTEGRATION_OUT)
+
+$(UNIT_OUT): $(UNIT_IN) node_modules/.exists build-unit.js
+	node build-unit.js $(UNIT_IN) $(UNIT_OUT)

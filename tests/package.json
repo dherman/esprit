@@ -4,6 +4,6 @@
   "repository": "https://github.com/dherman/esprit",
   "dependencies": {
     "esprima": "2.2.0",
-    "js-beautify": "1.5.5"
+    "serialize-js": "1.1.0"
   }
 }
