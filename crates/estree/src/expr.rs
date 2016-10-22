@@ -87,7 +87,7 @@ impl IntoExpr for Object {
             }
             Tag::UpdateExpression => {
                 let op = try!(self.extract_string("operator").map_err(Error::Json));
-                let arg = Box::new(try!(self.extract_expr("argument")));
+                let arg = Box::new(try!(self.extract_assign_target("argument")));
                 let prefix = try!(self.extract_bool("prefix").map_err(Error::Json));
                 match (&op[..], prefix) {
                     ("++", true)  => Expr::PreInc(None, arg),
