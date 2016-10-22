@@ -1340,15 +1340,23 @@ impl<I: Iterator<Item=char>> Parser<I> {
 
     fn more_assignment(&mut self, left: Expr) -> Result<Expr> {
         let token = try!(self.read_op());
-        if let Some(op) = token.to_assop() {
-            let left_location = *left.tracking_ref();
+        let left_location = *left.tracking_ref();
+        if token.value == TokenData::Assign {
             let left = match left.into_assign_patt() {
                 Ok(left) => left,
                 Err(cover_err) => { return Err(Error::InvalidLHS(left_location, cover_err)); }
             };
             let right = try!(self.assignment_expression());
             let location = span(&left, &right);
-            return Ok(Expr::Assign(location, op, left, Box::new(right)));
+            return Ok(Expr::Assign(location, left, Box::new(right)));
+        } else if let Some(op) = token.to_assop() {
+            let left = match left.into_assign_target() {
+                Ok(left) => left,
+                Err(cover_err) => { return Err(Error::InvalidLHS(left_location, cover_err)); }
+            };
+            let right = try!(self.assignment_expression());
+            let location = span(&left, &right);
+            return Ok(Expr::BinAssign(location, op, left, Box::new(right)));
         }
         self.lexer.unread_token(token);
         Ok(left)
@@ -1516,7 +1524,7 @@ mod tests {
         let mut ast = script("foobar = 17;").ok().unwrap();
         ast.untrack();
         match ast.body.first().unwrap() {
-            &StmtListItem::Stmt(Stmt::Expr(_, Expr::Assign(_, _, Patt::Simple(AssignTarget::Id(ref id)), _), _)) => {
+            &StmtListItem::Stmt(Stmt::Expr(_, Expr::Assign(_, Patt::Simple(AssignTarget::Id(ref id)), _), _)) => {
                 assert!(id.name.as_ref() == "foobar");
             }
             _ => { panic!("unexpected AST structure"); }

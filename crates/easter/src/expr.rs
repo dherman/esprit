@@ -23,7 +23,8 @@ pub enum Expr {
     PostInc(Option<Span>, Box<AssignTarget>),
     PreDec(Option<Span>, Box<AssignTarget>),
     PostDec(Option<Span>, Box<AssignTarget>),
-    Assign(Option<Span>, Assop, Patt<AssignTarget>, Box<Expr>),
+    Assign(Option<Span>, Patt<AssignTarget>, Box<Expr>),
+    BinAssign(Option<Span>, Assop, AssignTarget, Box<Expr>),
     Cond(Option<Span>, Box<Expr>, Box<Expr>, Box<Expr>),
     Call(Option<Span>, Box<Expr>, Vec<Expr>),
     New(Option<Span>, Box<Expr>, Option<Vec<Expr>>),
@@ -52,7 +53,8 @@ impl TrackingRef for Expr {
           | Expr::PostInc(ref location, _)
           | Expr::PreDec(ref location, _)
           | Expr::PostDec(ref location, _)
-          | Expr::Assign(ref location, _, _, _)
+          | Expr::Assign(ref location, _, _)
+          | Expr::BinAssign(ref location, _, _, _)
           | Expr::Cond(ref location, _, _, _)
           | Expr::Call(ref location, _, _)
           | Expr::New(ref location, _, _)
@@ -85,7 +87,8 @@ impl TrackingMut for Expr {
           | Expr::PostInc(ref mut location, _)
           | Expr::PreDec(ref mut location, _)
           | Expr::PostDec(ref mut location, _)
-          | Expr::Assign(ref mut location, _, _, _)
+          | Expr::Assign(ref mut location, _, _)
+          | Expr::BinAssign(ref mut location, _, _, _)
           | Expr::Cond(ref mut location, _, _, _)
           | Expr::Call(ref mut location, _, _)
           | Expr::New(ref mut location, _, _)
@@ -125,8 +128,10 @@ impl PartialEq for Expr {
           | (&Expr::PostInc(_, ref arg_l),        &Expr::PostInc(_, ref arg_r))
           | (&Expr::PreDec(_, ref arg_l),         &Expr::PreDec(_, ref arg_r))
           | (&Expr::PostDec(_, ref arg_l),        &Expr::PostDec(_, ref arg_r))        => arg_l == arg_r,
-            (&Expr::Assign(_, ref op_l, ref patt_l, ref arg_l),
-             &Expr::Assign(_, ref op_r, ref patt_r, ref arg_r))                        => (op_l, patt_l, arg_l) == (op_r, patt_r, arg_r),
+            (&Expr::Assign(_, ref patt_l, ref arg_l),
+             &Expr::Assign(_, ref patt_r, ref arg_r))                                  => (patt_l, arg_l) == (patt_r, arg_r),
+            (&Expr::BinAssign(_, ref op_l, ref patt_l, ref arg_l),
+             &Expr::BinAssign(_, ref op_r, ref patt_r, ref arg_r))                     => (op_l, patt_l, arg_l) == (op_r, patt_r, arg_r),
             (&Expr::Cond(_, ref test_l, ref cons_l, ref alt_l),
              &Expr::Cond(_, ref test_r, ref cons_r, ref alt_r))                        => (test_l, cons_l, alt_l) == (test_r, cons_r, alt_r),
             (&Expr::Call(_, ref callee_l, ref args_l),
@@ -155,36 +160,37 @@ impl PartialEq for Expr {
 impl Debug for Expr {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         match self {
-            &Expr::This(_)                                => fmt.write_str("This"),
-            &Expr::Id(ref id)                             => fmt.debug_tuple("Id").field(id).finish(),
-            &Expr::Arr(_, ref elts)                       => fmt.debug_tuple("Arr").field(elts).finish(),
-            &Expr::Obj(_, ref props)                      => fmt.debug_tuple("Obj").field(props).finish(),
-            &Expr::Fun(ref fun)                           => fmt.debug_tuple("Fun").field(fun).finish(),
-            &Expr::Seq(_, ref exprs)                      => fmt.debug_tuple("Seq").field(exprs).finish(),
-            &Expr::Unop(_, ref op, ref arg)               => fmt.debug_tuple("Unop").field(op).field(arg).finish(),
-            &Expr::Binop(_, ref op, ref left, ref right)  => fmt.debug_tuple("Binop").field(op).field(left).field(right).finish(),
-            &Expr::Logop(_, ref op, ref left, ref right)  => fmt.debug_tuple("Logop").field(op).field(left).field(right).finish(),
-            &Expr::PreInc(_, ref arg)                     => fmt.debug_tuple("PreInc").field(arg).finish(),
-            &Expr::PostInc(_, ref arg)                    => fmt.debug_tuple("PostInc").field(arg).finish(),
-            &Expr::PreDec(_, ref arg)                     => fmt.debug_tuple("PreDec").field(arg).finish(),
-            &Expr::PostDec(_, ref arg)                    => fmt.debug_tuple("PostDec").field(arg).finish(),
-            &Expr::Assign(_, ref op, ref left, ref right) => fmt.debug_tuple("Assign").field(op).field(left).field(right).finish(),
-            &Expr::Cond(_, ref test, ref cons, ref alt)   => fmt.debug_tuple("Cond").field(test).field(cons).field(alt).finish(),
-            &Expr::Call(_, ref callee, ref args)          => fmt.debug_tuple("Call").field(callee).field(args).finish(),
+            &Expr::This(_)                                   => fmt.write_str("This"),
+            &Expr::Id(ref id)                                => fmt.debug_tuple("Id").field(id).finish(),
+            &Expr::Arr(_, ref elts)                          => fmt.debug_tuple("Arr").field(elts).finish(),
+            &Expr::Obj(_, ref props)                         => fmt.debug_tuple("Obj").field(props).finish(),
+            &Expr::Fun(ref fun)                              => fmt.debug_tuple("Fun").field(fun).finish(),
+            &Expr::Seq(_, ref exprs)                         => fmt.debug_tuple("Seq").field(exprs).finish(),
+            &Expr::Unop(_, ref op, ref arg)                  => fmt.debug_tuple("Unop").field(op).field(arg).finish(),
+            &Expr::Binop(_, ref op, ref left, ref right)     => fmt.debug_tuple("Binop").field(op).field(left).field(right).finish(),
+            &Expr::Logop(_, ref op, ref left, ref right)     => fmt.debug_tuple("Logop").field(op).field(left).field(right).finish(),
+            &Expr::PreInc(_, ref arg)                        => fmt.debug_tuple("PreInc").field(arg).finish(),
+            &Expr::PostInc(_, ref arg)                       => fmt.debug_tuple("PostInc").field(arg).finish(),
+            &Expr::PreDec(_, ref arg)                        => fmt.debug_tuple("PreDec").field(arg).finish(),
+            &Expr::PostDec(_, ref arg)                       => fmt.debug_tuple("PostDec").field(arg).finish(),
+            &Expr::Assign(_, ref left, ref right)            => fmt.debug_tuple("Assign").field(left).field(right).finish(),
+            &Expr::BinAssign(_, ref op, ref left, ref right) => fmt.debug_tuple("BinAssign").field(op).field(left).field(right).finish(),
+            &Expr::Cond(_, ref test, ref cons, ref alt)      => fmt.debug_tuple("Cond").field(test).field(cons).field(alt).finish(),
+            &Expr::Call(_, ref callee, ref args)             => fmt.debug_tuple("Call").field(callee).field(args).finish(),
             &Expr::New(_, ref ctor, None) => {
                 let args: Vec<Expr> = vec![];
                 fmt.debug_tuple("New").field(ctor).field(&args).finish()
             }
-            &Expr::New(_, ref ctor, Some(ref args))       => fmt.debug_tuple("New").field(ctor).field(args).finish(),
-            &Expr::Dot(_, ref expr, ref key)              => fmt.debug_tuple("Dot").field(expr).field(key).finish(),
-            &Expr::Brack(_, ref expr, ref prop)           => fmt.debug_tuple("Brack").field(expr).field(prop).finish(),
-            &Expr::NewTarget(_)                           => fmt.write_str("NewTarget"),
-            &Expr::True(_)                                => fmt.write_str("True"),
-            &Expr::False(_)                               => fmt.write_str("False"),
-            &Expr::Null(_)                                => fmt.write_str("Null"),
-            &Expr::Number(_, ref lit)                     => fmt.debug_tuple("Number").field(lit).finish(),
-            &Expr::RegExp(_, ref lit)                     => fmt.debug_tuple("RegExp").field(lit).finish(),
-            &Expr::String(_, ref lit)                     => fmt.debug_tuple("String").field(lit).finish()
+            &Expr::New(_, ref ctor, Some(ref args))          => fmt.debug_tuple("New").field(ctor).field(args).finish(),
+            &Expr::Dot(_, ref expr, ref key)                 => fmt.debug_tuple("Dot").field(expr).field(key).finish(),
+            &Expr::Brack(_, ref expr, ref prop)              => fmt.debug_tuple("Brack").field(expr).field(prop).finish(),
+            &Expr::NewTarget(_)                              => fmt.write_str("NewTarget"),
+            &Expr::True(_)                                   => fmt.write_str("True"),
+            &Expr::False(_)                                  => fmt.write_str("False"),
+            &Expr::Null(_)                                   => fmt.write_str("Null"),
+            &Expr::Number(_, ref lit)                        => fmt.debug_tuple("Number").field(lit).finish(),
+            &Expr::RegExp(_, ref lit)                        => fmt.debug_tuple("RegExp").field(lit).finish(),
+            &Expr::String(_, ref lit)                        => fmt.debug_tuple("String").field(lit).finish()
         }
     }
 }
@@ -193,32 +199,33 @@ impl Untrack for Expr {
     fn untrack(&mut self) {
         *self.tracking_mut() = None;
         match *self {
-            Expr::This(_)                                           => { }
-            Expr::Id(ref mut id)                                    => { id.untrack(); }
-            Expr::Arr(_, ref mut exprs)                             => { exprs.untrack(); }
-            Expr::Obj(_, ref mut props)                             => { props.untrack(); }
-            Expr::Fun(ref mut fun)                                  => { fun.untrack(); }
-            Expr::Seq(_, ref mut exprs)                             => { exprs.untrack(); }
-            Expr::Unop(_, ref mut op, ref mut expr)                 => { op.untrack(); expr.untrack(); }
-            Expr::Binop(_, ref mut op, ref mut left, ref mut right) => { op.untrack(); left.untrack(); right.untrack(); }
-            Expr::Logop(_, ref mut op, ref mut left, ref mut right) => { op.untrack(); left.untrack(); right.untrack(); }
-            Expr::PreInc(_, ref mut expr)                           => { expr.untrack(); }
-            Expr::PostInc(_, ref mut expr)                          => { expr.untrack(); }
-            Expr::PreDec(_, ref mut expr)                           => { expr.untrack(); }
-            Expr::PostDec(_, ref mut expr)                          => { expr.untrack(); }
-            Expr::Assign(_, ref mut op, ref mut patt, ref mut expr) => { op.untrack(); patt.untrack(); expr.untrack(); }
-            Expr::Cond(_, ref mut test, ref mut cons, ref mut alt)  => { test.untrack(); cons.untrack(); alt.untrack(); }
-            Expr::Call(_, ref mut callee, ref mut args)             => { callee.untrack(); args.untrack(); }
-            Expr::New(_, ref mut ctor, ref mut args)                => { ctor.untrack(); args.untrack(); }
-            Expr::Dot(_, ref mut obj, ref mut key)                  => { obj.untrack(); key.untrack(); }
-            Expr::Brack(_, ref mut obj, ref mut prop)               => { obj.untrack(); prop.untrack(); }
-            Expr::NewTarget(_)                                      => { }
-            Expr::True(_)                                           => { }
-            Expr::False(_)                                          => { }
-            Expr::Null(_)                                           => { }
-            Expr::Number(_, _)                                      => { }
-            Expr::RegExp(_, _)                                      => { }
-            Expr::String(_, _)                                      => { }
+            Expr::This(_)                                              => { }
+            Expr::Id(ref mut id)                                       => { id.untrack(); }
+            Expr::Arr(_, ref mut exprs)                                => { exprs.untrack(); }
+            Expr::Obj(_, ref mut props)                                => { props.untrack(); }
+            Expr::Fun(ref mut fun)                                     => { fun.untrack(); }
+            Expr::Seq(_, ref mut exprs)                                => { exprs.untrack(); }
+            Expr::Unop(_, ref mut op, ref mut expr)                    => { op.untrack(); expr.untrack(); }
+            Expr::Binop(_, ref mut op, ref mut left, ref mut right)    => { op.untrack(); left.untrack(); right.untrack(); }
+            Expr::Logop(_, ref mut op, ref mut left, ref mut right)    => { op.untrack(); left.untrack(); right.untrack(); }
+            Expr::PreInc(_, ref mut expr)                              => { expr.untrack(); }
+            Expr::PostInc(_, ref mut expr)                             => { expr.untrack(); }
+            Expr::PreDec(_, ref mut expr)                              => { expr.untrack(); }
+            Expr::PostDec(_, ref mut expr)                             => { expr.untrack(); }
+            Expr::Assign(_, ref mut patt, ref mut expr)                => { patt.untrack(); expr.untrack(); }
+            Expr::BinAssign(_, ref mut op, ref mut patt, ref mut expr) => { op.untrack(); patt.untrack(); expr.untrack(); }
+            Expr::Cond(_, ref mut test, ref mut cons, ref mut alt)     => { test.untrack(); cons.untrack(); alt.untrack(); }
+            Expr::Call(_, ref mut callee, ref mut args)                => { callee.untrack(); args.untrack(); }
+            Expr::New(_, ref mut ctor, ref mut args)                   => { ctor.untrack(); args.untrack(); }
+            Expr::Dot(_, ref mut obj, ref mut key)                     => { obj.untrack(); key.untrack(); }
+            Expr::Brack(_, ref mut obj, ref mut prop)                  => { obj.untrack(); prop.untrack(); }
+            Expr::NewTarget(_)                                         => { }
+            Expr::True(_)                                              => { }
+            Expr::False(_)                                             => { }
+            Expr::Null(_)                                              => { }
+            Expr::Number(_, _)                                         => { }
+            Expr::RegExp(_, _)                                         => { }
+            Expr::String(_, _)                                         => { }
         }
     }
 }
