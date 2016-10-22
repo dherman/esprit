@@ -24,16 +24,28 @@ impl Display for Error {
     }
 }
 
-pub trait IntoAssignPatt {
+pub trait IntoAssignTarget {
+    fn into_assign_target(self) -> Result<AssignTarget, Error>;
+}
+
+impl IntoAssignTarget for Expr {
+    fn into_assign_target(self) -> Result<AssignTarget, Error> {
+        Ok(match self {
+            Expr::Id(id)                     => AssignTarget::Id(id),
+            Expr::Dot(location, obj, key)    => AssignTarget::Dot(location, obj, key),
+            Expr::Brack(location, obj, prop) => AssignTarget::Brack(location, obj, prop),
+            _ => { return Err(Error::InvalidAssignTarget(*self.tracking_ref())); }
+        })
+    }
+}
+
+pub trait IntoAssignPatt : IntoAssignTarget {
     fn into_assign_patt(self) -> Result<Patt<AssignTarget>, Error>;
 }
 
 impl IntoAssignPatt for Expr {
     fn into_assign_patt(self) -> Result<Patt<AssignTarget>, Error> {
         Ok(match self {
-            Expr::Id(id)                     => Patt::Simple(AssignTarget::Id(id)),
-            Expr::Dot(location, obj, key)    => Patt::Simple(AssignTarget::Dot(location, obj, key)),
-            Expr::Brack(location, obj, prop) => Patt::Simple(AssignTarget::Brack(location, obj, prop)),
             Expr::Obj(location, props) => {
                 let mut prop_patts = Vec::with_capacity(props.len());
                 for prop in props {
@@ -51,7 +63,7 @@ impl IntoAssignPatt for Expr {
                 }
                 Patt::Compound(CompoundPatt::Arr(location, patts))
             }
-            _ => { return Err(Error::InvalidAssignTarget(*self.tracking_ref())); }
+            _ => { return self.into_assign_target().map(Patt::Simple); }
         })
     }
 }

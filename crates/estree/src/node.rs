@@ -6,7 +6,7 @@ use easter::stmt::{Stmt, StmtListItem, Case, Catch, Script};
 use easter::patt::{Patt, AssignTarget};
 use easter::obj::Prop;
 use easter::decl::Dtor;
-use easter::cover::IntoAssignPatt;
+use easter::cover::{IntoAssignTarget, IntoAssignPatt};
 
 use error::Error;
 use result::{Result, Map};
@@ -20,6 +20,7 @@ use decl::IntoDecl;
 pub trait ExtractNode {
     fn extract_id(&mut self, &'static str) -> Result<Id>;
     fn extract_id_opt(&mut self, &'static str) -> Result<Option<Id>>;
+    fn extract_assign_target(&mut self, &'static str) -> Result<AssignTarget>;
     fn extract_assign_patt(&mut self, &'static str) -> Result<Patt<AssignTarget>>;
     fn extract_stmt(&mut self, &'static str) -> Result<Stmt>;
     fn extract_expr(&mut self, &'static str) -> Result<Expr>;
@@ -56,6 +57,14 @@ impl ExtractNode for Object {
             Some(obj) => Some(try!(obj.into_id())),
             None      => None
         })
+    }
+
+    fn extract_assign_target(&mut self, name: &'static str) -> Result<AssignTarget> {
+        let expr = try!(self.extract_expr(name));
+        match expr.into_assign_target() {
+            Ok(patt) => Ok(patt),
+            _ => Err(Error::InvalidLHS(name))
+        }
     }
 
     fn extract_assign_patt(&mut self, name: &'static str) -> Result<Patt<AssignTarget>> {

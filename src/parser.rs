@@ -10,7 +10,7 @@ use easter::fun::{Fun, Params};
 use easter::obj::{PropKey, PropVal, Prop, DotKey};
 use easter::id::{Id, IdExt};
 use easter::punc::{Unop, UnopTag, ToOp, Op};
-use easter::cover::IntoAssignPatt;
+use easter::cover::{IntoAssignTarget, IntoAssignPatt};
 
 use std::rc::Rc;
 use std::mem::replace;
@@ -1096,7 +1096,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             this.reread(TokenData::Reserved(Reserved::Try));
             let body = try!(this.block());
             match try!(this.peek()).value {
-                TokenData::Reserved(Reserved::Catch) 
+                TokenData::Reserved(Reserved::Catch)
               | TokenData::Reserved(Reserved::Finally) => { }
                 _ => {
                     return Err(Error::OrphanTry(try!(this.read())));
@@ -1442,7 +1442,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
         }
     }
 */
-    
+
     // Deref ::=
     //   "[" Expression "]"
     //   "." IdentifierName
@@ -1542,9 +1542,15 @@ impl<I: Iterator<Item=char>> Parser<I> {
             result = suffix.append_to(result);
         }
         if let Some(postfix) = try!(self.match_postfix_operator_opt()) {
-            result = match postfix {
-                Postfix::Inc(location) => Expr::PostInc(Some(location), Box::new(result)),
-                Postfix::Dec(location) => Expr::PostDec(Some(location), Box::new(result))
+            let result_location = *result.tracking_ref();
+            result = match result.into_assign_target().map(Box::new) {
+                Ok(target) => {
+                    match postfix {
+                        Postfix::Inc(location) => Expr::PostInc(Some(location), target),
+                        Postfix::Dec(location) => Expr::PostDec(Some(location), target)
+                    }
+                }
+                Err(cover_err) => { return Err(Error::InvalidLHS(result_location, cover_err)); }
             };
         }
         Ok(result)
@@ -1559,9 +1565,15 @@ impl<I: Iterator<Item=char>> Parser<I> {
         }
         let mut arg = try!(self.lhs_expression());
         if let Some(postfix) = try!(self.match_postfix_operator_opt()) {
-            arg = match postfix {
-                Postfix::Inc(location) => Expr::PostInc(Some(location), Box::new(arg)),
-                Postfix::Dec(location) => Expr::PostDec(Some(location), Box::new(arg))
+            let arg_location = *arg.tracking_ref();
+            arg = match arg.into_assign_target().map(Box::new) {
+                Ok(target) => {
+                    match postfix {
+                        Postfix::Inc(location) => Expr::PostInc(Some(location), target),
+                        Postfix::Dec(location) => Expr::PostDec(Some(location), target)
+                    }
+                }
+                Err(cover_err) => { return Err(Error::InvalidLHS(arg_location, cover_err)); }
             };
         }
         for prefix in prefixes.into_iter().rev() {
@@ -1570,8 +1582,19 @@ impl<I: Iterator<Item=char>> Parser<I> {
                     let location = span(&op, &arg);
                     arg = Expr::Unop(location, op, Box::new(arg));
                 }
-                Prefix::Inc(location) => { arg = Expr::PreInc(Some(location), Box::new(arg)); }
-                Prefix::Dec(location) => { arg = Expr::PreDec(Some(location), Box::new(arg)); }
+                _ => {
+                    let arg_location = *arg.tracking_ref();
+                    arg = match arg.into_assign_target().map(Box::new) {
+                        Ok(target) => {
+                            match prefix {
+                                Prefix::Inc(location) => Expr::PreInc(Some(location), target),
+                                Prefix::Dec(location) => Expr::PreDec(Some(location), target),
+                                Prefix::Unop(_) => unreachable!()
+                            }
+                        }
+                        Err(cover_err) => { return Err(Error::InvalidLHS(arg_location, cover_err)); }
+                    };
+                }
             }
         }
         Ok(arg)
