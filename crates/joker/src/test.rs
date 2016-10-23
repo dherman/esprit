@@ -346,7 +346,7 @@ impl IntoToken for Value {
             "String"        => {
                 let value = try!(arr.remove(0).into_string());
                 TokenData::String(StringLiteral {
-                    source: format!("{:?}", Value::String(value.to_string())),
+                    source: Some(format!("{:?}", Value::String(value.to_string()))),
                     value: value
                 })
             }
