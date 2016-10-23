@@ -506,7 +506,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             TokenData::Reserved(Reserved::For)      => self.for_statement(),
             TokenData::Reserved(Reserved::Debugger) => self.debugger_statement(),
             TokenData::Identifier(_)                => {
-                let id = self.id().ok().unwrap();
+                let id = self.id().unwrap();
                 self.id_statement(id)
             }
             _                                       => self.expression_statement()
@@ -537,7 +537,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
         let mut expr_id = None;    // id that starts the statement following the labels, if any
 
         while let TokenData::Identifier(_) = try!(self.peek()).value {
-            let id = self.id().ok().unwrap();
+            let id = self.id().unwrap();
             if !try!(self.matches_op(TokenData::Colon)) {
                 expr_id = Some(id);
                 break;

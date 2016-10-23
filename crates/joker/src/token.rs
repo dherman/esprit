@@ -193,24 +193,24 @@ impl NumberSource {
     pub fn value(&self) -> f64 {
         match *self {
             NumberSource::DecimalInt(ref mantissa, None) => {
-                let i: i64 = mantissa.parse().ok().unwrap();
+                let i: i64 = mantissa.parse().unwrap();
                 i as f64
             }
             NumberSource::DecimalInt(ref mantissa, Some(Exp { ref sign, ref value, .. })) => {
-                let mantissa: i64 = mantissa.parse().ok().unwrap();
+                let mantissa: i64 = mantissa.parse().unwrap();
                 let mantissa: f64 = mantissa as f64;
-                let exp: i32 = value.parse().ok().unwrap();
+                let exp: i32 = value.parse().unwrap();
                 mantissa * (10 as f64).powi(if *sign == Some(Sign::Minus) { -exp } else { exp })
             }
             NumberSource::RadixInt(ref radix, ref src) => {
-                let i = i64::from_str_radix(&src[..], radix.value()).ok().unwrap();
+                let i = i64::from_str_radix(&src[..], radix.value()).unwrap();
                 i as f64
             }
             NumberSource::Float(ref ip, ref fp, None) => {
-                format!("{}.{}", format_int(ip), format_int(fp)).parse().ok().unwrap()
+                format!("{}.{}", format_int(ip), format_int(fp)).parse().unwrap()
             }
             NumberSource::Float(ref ip, ref fp, Some(Exp { ref sign, ref value, .. })) => {
-                format!("{}.{}e{}{}", format_int(ip), format_int(fp), format_sign(sign), value).parse().ok().unwrap()
+                format!("{}.{}e{}{}", format_int(ip), format_int(fp), format_sign(sign), value).parse().unwrap()
             }
         }
     }
