@@ -18,3 +18,10 @@ unjson = { version = "0.0.5", path = "crates/unjson" }
 joker = { version = "0.0.5", path = "crates/joker" }
 easter = { version = "0.0.5", path = "crates/easter" }
 estree = { version = "0.0.5", path = "crates/estree" }
+
+[dev-dependencies]
+rustc-test = "0.1"
+
+[[test]]
+name = "parser"
+harness = false

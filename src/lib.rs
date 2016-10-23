@@ -24,7 +24,6 @@ mod parser;
 mod state;
 mod expr;
 mod stack;
-mod test;
 
 // type Parser<I: Iterator<Item=char>> = parser::Parser<I>;
 
