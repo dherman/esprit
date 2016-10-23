@@ -9,7 +9,7 @@ description = "An ECMAScript parser library."
 documentation = "https://esprit.surge.sh"
 homepage = "https://esprit.surge.sh"
 repository = "https://github.com/dherman/esprit"
-exclude = ["test/build/**/*"]
+exclude = ["tests/build/**/*"]
 
 [dependencies]
 serde = "0.7.10"
