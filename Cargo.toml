@@ -3,7 +3,6 @@
 name = "esprit"
 version = "0.0.5"
 authors = ["Dave Herman <dherman@mozilla.com>"]
-build = "build.rs"
 license = "MIT"
 description = "An ECMAScript parser library."
 documentation = "https://esprit.surge.sh"
