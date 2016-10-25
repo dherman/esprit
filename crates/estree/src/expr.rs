@@ -132,23 +132,21 @@ impl IntoExpr for Object {
     fn into_lit(mut self) -> Result<Expr> {
         let json = try!(self.extract_field("value").map_err(Error::Json));
         Ok(match json {
-            Value::Bool(val) => if val { Expr::True(None) } else { Expr::False(None) },
+            Value::Null if !self.contains_key("regex") => Expr::Null(None),
+            Value::Bool(true) => Expr::True(None),
+            Value::Bool(false) => Expr::False(None),
             Value::String(value) => Expr::String(None, value.into_string_literal()),
             Value::I64(val) => Expr::Number(None, val.into_number_literal()),
             Value::U64(val) => Expr::Number(None, val.into_number_literal()),
             Value::F64(val) => Expr::Number(None, val.into_number_literal()),
             Value::Null | Value::Object(_) => {
-                if json == Value::Null && !self.contains_key("regex") {
-                    Expr::Null(None)
-                } else {
-                    let mut regex = try!(self.extract_object("regex").map_err(Error::Json));
-                    let pattern = try!(regex.extract_string("pattern").map_err(Error::Json));
-                    let flags = try!(regex.extract_string("flags").map_err(Error::Json));
-                    Expr::RegExp(None, RegExpLiteral {
-                        pattern: pattern,
-                        flags: flags.chars().collect()
-                    })
-                }
+                let mut regex = try!(self.extract_object("regex").map_err(Error::Json));
+                let pattern = try!(regex.extract_string("pattern").map_err(Error::Json));
+                let flags = try!(regex.extract_string("flags").map_err(Error::Json));
+                Expr::RegExp(None, RegExpLiteral {
+                    pattern: pattern,
+                    flags: flags.chars().collect()
+                })
             }
             _ => { return type_error("null, number, boolean, string, or object", json.ty()); }
         })
