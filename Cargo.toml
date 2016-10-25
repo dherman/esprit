@@ -21,6 +21,7 @@ estree = { version = "0.0.5", path = "crates/estree" }
 
 [dev-dependencies]
 rustc-test = "0.1"
+glob = "0.2"
 
 [[test]]
 name = "parser"
