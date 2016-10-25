@@ -25,27 +25,7 @@ impl IntoExpr for Object {
         let tag = try!(self.tag());
         Ok(match tag {
             Tag::Identifier => { return Ok(try!(self.into_id()).into_expr()); }
-            Tag::Literal => {
-                let json = try!(self.extract_field("value").map_err(Error::Json));
-                match json {
-                    Value::Null => Expr::Null(None),
-                    Value::Bool(val) => if val { Expr::True(None) } else { Expr::False(None) },
-                    Value::String(value) => Expr::String(None, value.into_string_literal()),
-                    Value::I64(val) => Expr::Number(None, val.into_number_literal()),
-                    Value::U64(val) => Expr::Number(None, val.into_number_literal()),
-                    Value::F64(val) => Expr::Number(None, val.into_number_literal()),
-                    Value::Object(_) => {
-                        let mut regex = try!(self.extract_object("regex").map_err(Error::Json));
-                        let pattern = try!(regex.extract_string("pattern").map_err(Error::Json));
-                        let flags = try!(regex.extract_string("flags").map_err(Error::Json));
-                        Expr::RegExp(None, RegExpLiteral {
-                            pattern: pattern,
-                            flags: flags.chars().collect()
-                        })
-                    }
-                    _ => { return type_error("null, number, boolean, string, or object", json.ty()); }
-                }
-            }
+            Tag::Literal => try!(IntoExpr::into_lit(self)),
             Tag::BinaryExpression => {
                 let str = try!(self.extract_string("operator").map_err(Error::Json));
                 let op: Binop = match str.parse() {
