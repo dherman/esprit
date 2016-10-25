@@ -3,6 +3,7 @@
 extern crate easter;
 extern crate esprit;
 extern crate estree;
+extern crate glob;
 extern crate joker;
 extern crate serde_json;
 extern crate test;
@@ -13,7 +14,12 @@ use easter::patt::{AssignTarget, Patt};
 use easter::stmt::{Stmt, StmtListItem, Script};
 use esprit::script;
 use estree::IntoScript;
+use glob::glob;
 use joker::track::Untrack;
+use serde_json::value::Value;
+use std::fs::{File, read_dir};
+use std::io::Read;
+use std::path::Path;
 use std::{thread, env};
 use test::{TestDesc, TestDescAndFn, TestName, TestFn, test_main};
 use test::ShouldPanic::No;
@@ -70,38 +76,6 @@ fn as_ref_test(tests: &mut Vec<TestDescAndFn>) {
     });
 }
 
-fn unit_tests(target: &mut Vec<TestDescAndFn>) {
-    let tests = deserialize_parser_tests(include_str!("../tests/build/unit.json"));
-    for ParserTest { source, expected, .. } in tests {
-        add_test(target, source.clone(), move || {
-            let expected = expected.map(|ast| ast.unwrap());
-            let result = script(&source[..]);
-            match (result, expected) {
-                (Ok(mut actual_ast), Some(expected_ast)) => {
-                    actual_ast.untrack();
-                    // if actual_ast != expected_ast {
-                    //     println!("expected AST: {:#?}", expected_ast);
-                    //     println!("actual AST:   {:#?}", actual_ast);
-                    // }
-                    assert!(actual_ast == expected_ast, "unit test got wrong result\n\
-                    expected AST: {:#?}\n\
-                    actual AST: {:#?}", expected_ast, actual_ast);
-                }
-                (Err(_), None) => { }
-                (Ok(mut actual_ast), None) => {
-                    actual_ast.untrack();
-                    panic!("expected error, got AST:\n{:#?}", actual_ast);
-                }
-                (Err(actual_err), Some(expected_ast)) => {
-                    panic!("expected AST, got error\n\
-                    expected AST: {:#?}\n\
-                    actual error: {:#?}", expected_ast, actual_err);
-                }
-            }
-        });
-    }
-}
-
 const DEFAULT_MB: usize = 4;
 
 fn read_envvar() -> Option<usize> {
@@ -136,6 +110,67 @@ fn integration_tests(target: &mut Vec<TestDescAndFn>) {
     for ParserTest { filename, source, expected } in tests {
         add_test(target, filename.unwrap(), move || {
             let expected_ast = expected.unwrap().unwrap();
+            match script(&source[..]) {
+                Ok(mut actual_ast) => {
+                    actual_ast.untrack();
+                    assert!(actual_ast == expected_ast, "integration test got wrong result\n\
+                    expected AST: {:#?}\n\
+                    actual AST: {:#?}", expected_ast, actual_ast);
+                }
+                Err(actual_err) => {
+                    panic!("integration test failed to parse:\n{:#?}", actual_err);
+                }
+            }
+        });
+    }
+}
+
+fn unit_tests(target: &mut Vec<TestDescAndFn>) {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+
+    let fixtures = {
+        let mut fixtures = root.to_path_buf();
+        fixtures.push("tests");
+        fixtures.push("esprima");
+        fixtures.push("test");
+        fixtures.push("fixtures");
+        fixtures
+    };
+
+    let files =
+        read_dir(fixtures.as_path()).unwrap()
+        .map(|dir| dir.unwrap())
+        .filter(|dir| match dir.file_name().to_str().unwrap() {
+            "ES2016" |
+            "es2017" |
+            "ES6" |
+            "JSX" |
+            "tolerant-parse" => false,
+            _ => true
+        })
+        .flat_map(|dir| glob(&format!("{}/**/*.tree.json", dir.path().to_str().unwrap())).unwrap())
+        .filter_map(|entry| {
+            let tree_path = entry.unwrap();
+            let source_path = {
+                let tree_file_name = tree_path.file_name().unwrap().to_str().unwrap();
+                let source_file_name = tree_file_name[..tree_file_name.len() - 9].to_string() + "js";
+                tree_path.with_file_name(source_file_name)
+            };
+            if source_path.exists() {
+                Some((tree_path, source_path))
+            } else {
+                None
+            }
+        });
+
+    for (tree_path, source_path) in files {
+        add_test(target, source_path.strip_prefix(&root).unwrap().to_str().unwrap().to_string(), move || {
+            let v: Value = serde_json::de::from_reader(File::open(tree_path).unwrap()).unwrap();
+            let expected_ast = v.into_object().unwrap().into_script().map_err(|err| {
+                format!("failed to deserialize script: {}", err)
+            }).unwrap();
+            let mut source = String::new();
+            File::open(source_path).unwrap().read_to_string(&mut source).unwrap();
             match script(&source[..]) {
                 Ok(mut actual_ast) => {
                     actual_ast.untrack();
