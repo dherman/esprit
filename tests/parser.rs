@@ -11,46 +11,20 @@ extern crate unjson;
 
 use easter::expr::Expr;
 use easter::patt::{AssignTarget, Patt};
-use easter::stmt::{Stmt, StmtListItem, Script};
+use easter::stmt::{Stmt, StmtListItem};
 use esprit::script;
 use estree::IntoScript;
 use glob::glob;
 use joker::track::Untrack;
 use serde_json::value::Value;
+use std::ffi::OsStr;
 use std::fs::{File, read_dir};
 use std::io::Read;
 use std::path::Path;
 use std::{thread, env};
 use test::{TestDesc, TestDescAndFn, TestName, TestFn, test_main};
 use test::ShouldPanic::No;
-use unjson::{Unjson, ExtractField};
-use unjson::ty::Array;
-
-struct ParserTest {
-    pub filename: Option<String>,
-    pub source: String,
-    pub expected: Option<Result<Script, String>>
-}
-
-fn deserialize_parser_tests(src: &str) -> Vec<ParserTest> {
-    let arr: Array = serde_json::from_str(src).unwrap();
-    arr.into_iter().map(|v| {
-        let mut obj = v.into_object().unwrap();
-        ParserTest {
-            filename: obj.extract_string("filename").ok(),
-            source: obj.extract_string("source").unwrap(),
-            expected: obj.extract_object_opt("expected").unwrap().map(|obj| obj.into_script().map_err(|err| {
-                format!("failed to deserialize script: {}", err)
-            }))
-        }
-    }).collect()
-}
-
-/*
-fn deserialize_parser_integration_tests(modpath: &str) -> () {
-
-}
-*/
+use unjson::Unjson;
 
 fn add_test<F: FnOnce() + Send + 'static>(tests: &mut Vec<TestDescAndFn>, name: String, f: F) {
     tests.push(TestDescAndFn {
@@ -103,19 +77,43 @@ fn stack_size() -> usize {
 }
 
 fn integration_tests(target: &mut Vec<TestDescAndFn>) {
-    let child = thread::Builder::new().stack_size(stack_size()).spawn(|| {
-        deserialize_parser_tests(include_str!("../tests/build/integration.json"))
-    }).unwrap();
-    let tests = child.join().unwrap();
-    for ParserTest { filename, source, expected } in tests {
-        add_test(target, filename.unwrap(), move || {
-            let expected_ast = expected.unwrap().unwrap();
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+
+    let fixtures = {
+        let mut fixtures = root.to_path_buf();
+        fixtures.push("tests");
+        fixtures.push("esprima");
+        fixtures.push("test");
+        fixtures.push("3rdparty");
+        fixtures
+    };
+
+    let syntax = fixtures.join("syntax");
+
+    let files =
+        read_dir(syntax).unwrap()
+        .map(|dir| dir.unwrap().path())
+        .filter(|path| path.extension() == Some(OsStr::new("json")))
+        .map(|tree_path| {
+            let mut source_path_buf = fixtures.join(tree_path.file_name().unwrap());
+            source_path_buf.set_extension("js");
+            (tree_path, source_path_buf)
+        });
+
+    for (tree_path, source_path) in files {
+        add_test(target, source_path.strip_prefix(&root).unwrap().to_str().unwrap().to_string(), move || {
+            let expected_ast = thread::Builder::new().stack_size(stack_size()).spawn(|| {
+                let v: Value = serde_json::de::from_reader(File::open(tree_path).unwrap()).unwrap();
+                v.into_object().unwrap().into_script().map_err(|err| {
+                    format!("failed to deserialize script: {}", err)
+                }).unwrap()
+            }).unwrap().join().unwrap();
+            let mut source = String::new();
+            File::open(source_path).unwrap().read_to_string(&mut source).unwrap();
             match script(&source[..]) {
                 Ok(mut actual_ast) => {
                     actual_ast.untrack();
-                    assert!(actual_ast == expected_ast, "integration test got wrong result\n\
-                    expected AST: {:#?}\n\
-                    actual AST: {:#?}", expected_ast, actual_ast);
+                    assert!(actual_ast == expected_ast, "integration test got wrong result");
                 }
                 Err(actual_err) => {
                     panic!("integration test failed to parse:\n{:#?}", actual_err);
@@ -174,12 +172,12 @@ fn unit_tests(target: &mut Vec<TestDescAndFn>) {
             match script(&source[..]) {
                 Ok(mut actual_ast) => {
                     actual_ast.untrack();
-                    assert!(actual_ast == expected_ast, "integration test got wrong result\n\
+                    assert!(actual_ast == expected_ast, "unit test got wrong result\n\
                     expected AST: {:#?}\n\
                     actual AST: {:#?}", expected_ast, actual_ast);
                 }
                 Err(actual_err) => {
-                    panic!("integration test failed to parse:\n{:#?}", actual_err);
+                    panic!("unit test failed to parse:\n{:#?}", actual_err);
                 }
             }
         });

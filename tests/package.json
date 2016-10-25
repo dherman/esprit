@@ -1,9 +1,0 @@
-{
-  "description": "Build script for generating parser tests.",
-  "homepage": "https://github.com/dherman/esprit",
-  "repository": "https://github.com/dherman/esprit",
-  "dependencies": {
-    "esprima": "2.2.0",
-    "serialize-js": "1.1.0"
-  }
-}
