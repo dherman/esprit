@@ -487,8 +487,12 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 for _ in 0..3 {
                     match self.peek() {
                         Some(ch) if ch.is_digit(8) => {
+                            let new_code = (code << 3) + ch.to_digit(8).unwrap();
+                            if new_code > 255 {
+                                break;
+                            }
                             source.push(self.reread(ch));
-                            code = (code << 3) + ch.to_digit(8).unwrap();
+                            code = new_code;
                         },
                         _ => { break; }
                     }
