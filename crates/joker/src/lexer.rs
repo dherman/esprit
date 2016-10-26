@@ -364,24 +364,11 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }, Error::MissingBinaryDigits)
     }
 
-    fn read_deprecated_oct_int(&mut self) -> Token {
-        let span = self.start();
-        self.skip();
-        let mut s = String::new();
-        self.read_into_until(&mut s, &|ch| !ch.is_digit(10));
-        span.end(self, if s.chars().all(|ch| ch.is_es_oct_digit()) {
-            NumberSource::RadixInt(Radix::Oct(None), s).into_token_data()
-        } else {
-            NumberSource::DecimalInt(format!("0{}", s), None).into_token_data()
-        })
-    }
-
     fn read_number(&mut self) -> Result<Token> {
         let result = try!(match self.peek2() {
             (Some('0'), Some('x')) | (Some('0'), Some('X')) => self.read_hex_int(),
             (Some('0'), Some('o')) | (Some('0'), Some('O')) => self.read_oct_int(),
             (Some('0'), Some('b')) | (Some('0'), Some('B')) => self.read_bin_int(),
-            (Some('0'), Some(ch)) if ch.is_digit(10) => Ok(self.read_deprecated_oct_int()),
             (Some('.'), _) => {
                 let span = self.start();
                 self.skip();
@@ -392,21 +379,26 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             (Some(ch), _) => {
                 debug_assert!(ch.is_digit(10));
                 let span = self.start();
-                let pos = self.read_decimal_int();
-                let (dot, frac) = if self.matches('.') {
-                    (true, Some(match self.peek() {
-                        Some(ch) if ch.is_digit(10) => self.read_decimal_digits(),
-                        _ => String::from("")
-                    }))
+                let s = self.read_decimal_int();
+                let value = if ch == '0' && s.len() > 1 && s.chars().skip(1).all(|ch| ch.is_es_oct_digit()) {
+                    NumberSource::RadixInt(Radix::Oct(None), s)
                 } else {
-                    (false, None)
+                    let (dot, frac) = if self.matches('.') {
+                        (true, Some(match self.peek() {
+                            Some(ch) if ch.is_digit(10) => self.read_decimal_digits(),
+                            _ => String::from("")
+                        }))
+                    } else {
+                        (false, None)
+                    };
+                    let exp = try!(self.read_exp_part());
+                    if dot {
+                        NumberSource::Float(Some(s), frac, exp)
+                    } else {
+                        NumberSource::DecimalInt(s, exp)
+                    }
                 };
-                let exp = try!(self.read_exp_part());
-                Ok(span.end(self, if dot {
-                    NumberSource::Float(Some(pos), frac, exp).into_token_data()
-                } else {
-                    NumberSource::DecimalInt(pos, exp).into_token_data()
-                }))
+                Ok(span.end(self, value.into_token_data()))
             }
             (None, _) => { panic!("read_number() called at EOF"); }
         });
