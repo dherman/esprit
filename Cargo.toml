@@ -11,8 +11,8 @@ repository = "https://github.com/dherman/esprit"
 exclude = ["tests/build/**/*"]
 
 [dependencies]
-serde = "0.7.10"
-serde_json = "0.7.1"
+serde = "0.8"
+serde_json = "0.8"
 unjson = { version = "0.0.5", path = "crates/unjson" }
 joker = { version = "0.0.5", path = "crates/joker" }
 easter = { version = "0.0.5", path = "crates/easter" }

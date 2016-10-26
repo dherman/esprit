@@ -10,5 +10,5 @@ homepage = "https://esprit.surge.sh"
 repository = "https://github.com/dherman/esprit"
 
 [dependencies]
-serde_json = "0.7.1"
+serde_json = "0.8"
 unjson = { version = "0.0.5", path = "../unjson" }

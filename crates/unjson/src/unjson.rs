@@ -19,10 +19,10 @@ impl<T> OkType<T> for Option<T> {
 trait ValueEx {
     fn as_number(&self) -> Result<f64>;
 
-    fn as_string_opt(&self) -> Result<Option<&str>>;
+    fn as_str_opt(&self) -> Result<Option<&str>>;
     fn as_array_opt(&self) -> Result<Option<&Vec<Value>>>;
     fn as_object_opt(&self) -> Result<Option<&Object>>;
-    fn as_boolean_opt(&self) -> Result<Option<bool>>;
+    fn as_bool_opt(&self) -> Result<Option<bool>>;
     fn as_i64_opt(&self) -> Result<Option<i64>>;
     fn as_u64_opt(&self) -> Result<Option<u64>>;
     fn as_f64_opt(&self) -> Result<Option<f64>>;
@@ -39,7 +39,7 @@ impl ValueEx for Value {
         })
     }
 
-    fn as_string_opt(&self) -> Result<Option<&str>> {
+    fn as_str_opt(&self) -> Result<Option<&str>> {
         Ok(match self {
             &Value::Null          => None,
             &Value::String(ref s) => Some(&s[..]),
@@ -63,7 +63,7 @@ impl ValueEx for Value {
         })
     }
 
-    fn as_boolean_opt(&self) -> Result<Option<bool>> {
+    fn as_bool_opt(&self) -> Result<Option<bool>> {
         Ok(match self {
             &Value::Null        => None,
             &Value::Bool(ref b) => Some(*b),
@@ -293,11 +293,11 @@ impl GetField for Object {
     }
 
     fn get_string(&self, name: &'static str) -> Result<&str> {
-        self.get_field(name).and_then(|v| v.as_string().ok_type("string", v.ty()))
+        self.get_field(name).and_then(|v| v.as_str().ok_type("string", v.ty()))
     }
 
     fn get_string_opt(&self, name: &'static str) -> Result<Option<&str>> {
-        self.get_field(name).and_then(|v| v.as_string_opt())
+        self.get_field(name).and_then(|v| v.as_str_opt())
     }
 
     fn get_array(&self, name: &'static str) -> Result<&Array> {
@@ -317,11 +317,11 @@ impl GetField for Object {
     }
 
     fn get_bool(&self, name: &'static str) -> Result<bool> {
-        self.get_field(name).and_then(|v| v.as_boolean().ok_type("boolean", v.ty()))
+        self.get_field(name).and_then(|v| v.as_bool().ok_type("boolean", v.ty()))
     }
 
     fn get_bool_opt(&self, name: &'static str) -> Result<Option<bool>> {
-        self.get_field(name).and_then(|v| v.as_boolean_opt())
+        self.get_field(name).and_then(|v| v.as_bool_opt())
     }
 
     fn get_i64(&self, name: &'static str) -> Result<i64> {
