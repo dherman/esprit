@@ -1,4 +1,6 @@
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+use std::fmt::{Debug, Formatter, Result};
+
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub struct Posn {
     pub offset: u32,
     pub line: u32,
@@ -15,10 +17,22 @@ impl Posn {
     }
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+impl Debug for Posn {
+    fn fmt(&self, fmt: &mut Formatter) -> Result {
+        fmt.write_fmt(format_args!("{}:{}", self.line + 1, self.column + 1))
+    }
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub struct Span {
     pub start: Posn,
     pub end: Posn
+}
+
+impl Debug for Span {
+    fn fmt(&self, fmt: &mut Formatter) -> Result {
+        fmt.write_fmt(format_args!("{:?}..{:?}", self.start, self.end))
+    }
 }
 
 pub trait TrackingRef {
