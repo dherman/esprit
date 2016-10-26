@@ -114,16 +114,16 @@ pub trait Unjson {
     fn into_string_opt(self) -> Result<Option<String>>;
     fn into_object(self) -> Result<Object>;
     fn into_object_opt(self) -> Result<Option<Object>>;
-    fn into_bool(self) -> Result<bool>;
-    fn into_bool_opt(self) -> Result<Option<bool>>;
-    fn into_i64(self) -> Result<i64>;
-    fn into_i64_opt(self) -> Result<Option<i64>>;
-    fn into_u64(self) -> Result<u64>;
-    fn into_u64_opt(self) -> Result<Option<u64>>;
-    fn into_f64(self) -> Result<f64>;
-    fn into_f64_opt(self) -> Result<Option<f64>>;
-    fn into_number(self) -> Result<f64>;
-    fn into_number_opt(self) -> Result<Option<f64>>;
+    fn to_bool(&self) -> Result<bool>;
+    fn to_bool_opt(&self) -> Result<Option<bool>>;
+    fn to_i64(&self) -> Result<i64>;
+    fn to_i64_opt(&self) -> Result<Option<i64>>;
+    fn to_u64(&self) -> Result<u64>;
+    fn to_u64_opt(&self) -> Result<Option<u64>>;
+    fn to_f64(&self) -> Result<f64>;
+    fn to_f64_opt(&self) -> Result<Option<f64>>;
+    fn to_number(&self) -> Result<f64>;
+    fn to_number_opt(&self) -> Result<Option<f64>>;
 }
 
 impl Unjson for Value {
@@ -172,68 +172,68 @@ impl Unjson for Value {
         }
     }
 
-    fn into_bool(self) -> Result<bool> {
-        match self {
+    fn to_bool(&self) -> Result<bool> {
+        match *self {
             Value::Bool(b) => Ok(b),
             _ => { return type_error("boolean", self.ty()); }
         }
     }
 
-    fn into_bool_opt(self) -> Result<Option<bool>> {
-        match self {
+    fn to_bool_opt(&self) -> Result<Option<bool>> {
+        match *self {
             Value::Bool(b) => Ok(Some(b)),
             Value::Null    => Ok(None),
             _ => { return type_error("boolean", self.ty()); }
         }
     }
 
-    fn into_i64(self) -> Result<i64> {
-        match self {
+    fn to_i64(&self) -> Result<i64> {
+        match *self {
             Value::I64(i) => Ok(i),
             _ => { return type_error("i64", self.ty()); }
         }
     }
 
-    fn into_i64_opt(self) -> Result<Option<i64>> {
-        match self {
+    fn to_i64_opt(&self) -> Result<Option<i64>> {
+        match *self {
             Value::I64(i) => Ok(Some(i)),
             Value::Null   => Ok(None),
             _ => { return type_error("i64", self.ty()); }
         }
     }
 
-    fn into_u64(self) -> Result<u64> {
-        match self {
+    fn to_u64(&self) -> Result<u64> {
+        match *self {
             Value::U64(u) => Ok(u),
             _ => { return type_error("u64", self.ty()); }
         }
     }
 
-    fn into_u64_opt(self) -> Result<Option<u64>> {
-        match self {
+    fn to_u64_opt(&self) -> Result<Option<u64>> {
+        match *self {
             Value::U64(u) => Ok(Some(u)),
             Value::Null   => Ok(None),
             _ => { return type_error("u64", self.ty()); }
         }
     }
 
-    fn into_f64(self) -> Result<f64> {
-        match self {
+    fn to_f64(&self) -> Result<f64> {
+        match *self {
             Value::F64(f) => Ok(f),
             _ => { return type_error("f64", self.ty()); }
         }
     }
 
-    fn into_f64_opt(self) -> Result<Option<f64>> {
-        match self {
+    fn to_f64_opt(&self) -> Result<Option<f64>> {
+        match *self {
             Value::F64(f) => Ok(Some(f)),
             Value::Null   => Ok(None),
             _ => { return type_error("f64", self.ty()); }
         }
     }
 
-    fn into_number(self) -> Result<f64> {
-        match self {
+    fn to_number(&self) -> Result<f64> {
+        match *self {
             Value::I64(i) => Ok(i as f64),
             Value::U64(u) => Ok(u as f64),
             Value::F64(f) => Ok(f),
@@ -241,8 +241,8 @@ impl Unjson for Value {
         }
     }
 
-    fn into_number_opt(self) -> Result<Option<f64>> {
-        match self {
+    fn to_number_opt(&self) -> Result<Option<f64>> {
+        match *self {
             Value::I64(i) => Ok(Some(i as f64)),
             Value::U64(u) => Ok(Some(u as f64)),
             Value::F64(f) => Ok(Some(f)),
@@ -422,42 +422,42 @@ impl ExtractField for Object {
     }
 
     fn extract_bool(&mut self, name: &'static str) -> Result<bool> {
-        self.extract_field(name).and_then(|v| v.into_bool())
+        self.extract_field(name).and_then(|v| v.to_bool())
     }
 
     fn extract_bool_opt(&mut self, name: &'static str) -> Result<Option<bool>> {
-        self.extract_field(name).and_then(|v| v.into_bool_opt())
+        self.extract_field(name).and_then(|v| v.to_bool_opt())
     }
 
     fn extract_i64(&mut self, name: &'static str) -> Result<i64> {
-        self.extract_field(name).and_then(|v| v.into_i64())
+        self.extract_field(name).and_then(|v| v.to_i64())
     }
 
     fn extract_i64_opt(&mut self, name: &'static str) -> Result<Option<i64>> {
-        self.extract_field(name).and_then(|v| v.into_i64_opt())
+        self.extract_field(name).and_then(|v| v.to_i64_opt())
     }
 
     fn extract_u64(&mut self, name: &'static str) -> Result<u64> {
-        self.extract_field(name).and_then(|v| v.into_u64())
+        self.extract_field(name).and_then(|v| v.to_u64())
     }
 
     fn extract_u64_opt(&mut self, name: &'static str) -> Result<Option<u64>> {
-        self.extract_field(name).and_then(|v| v.into_u64_opt())
+        self.extract_field(name).and_then(|v| v.to_u64_opt())
     }
 
     fn extract_f64(&mut self, name: &'static str) -> Result<f64> {
-        self.extract_field(name).and_then(|v| v.into_f64())
+        self.extract_field(name).and_then(|v| v.to_f64())
     }
 
     fn extract_f64_opt(&mut self, name: &'static str) -> Result<Option<f64>> {
-        self.extract_field(name).and_then(|v| v.into_f64_opt())
+        self.extract_field(name).and_then(|v| v.to_f64_opt())
     }
 
     fn extract_number(&mut self, name: &'static str) -> Result<f64> {
-        self.extract_field(name).and_then(|v| v.into_number())
+        self.extract_field(name).and_then(|v| v.to_number())
     }
 
     fn extract_number_opt(&mut self, name: &'static str) -> Result<Option<f64>> {
-        self.extract_field(name).and_then(|v| v.into_number_opt())
+        self.extract_field(name).and_then(|v| v.to_number_opt())
     }
 }
