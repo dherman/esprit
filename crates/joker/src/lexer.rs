@@ -40,7 +40,8 @@ pub struct Lexer<I> {
     reader: Reader<I>,
     cx: Rc<Cell<Context>>,
     lookahead: Buffer,
-    wordmap: WordMap
+    wordmap: WordMap,
+    empty_line: bool
 }
 
 impl<I> Lexer<I> where I: Iterator<Item=char> {
@@ -51,7 +52,8 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             reader: Reader::new(chars),
             cx: cx,
             lookahead: Buffer::new(),
-            wordmap: WordMap::new()
+            wordmap: WordMap::new(),
+            empty_line: true
         }
     }
 
@@ -105,9 +107,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     // generic lexing utilities
 
     fn read(&mut self) -> char {
-        let ch = self.reader.curr_char().unwrap();
-        self.skip();
-        ch
+        self.reader.next().unwrap()
     }
 
     fn reread(&mut self, ch: char) -> char {
@@ -117,15 +117,15 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn peek(&mut self) -> Option<char> {
-        self.reader.curr_char()
+        self.reader.peek(0)
     }
 
     fn peek2(&mut self) -> (Option<char>, Option<char>) {
-        (self.reader.curr_char(), self.reader.next_char())
+        (self.reader.peek(0), self.reader.peek(1))
     }
 
     fn skip(&mut self) {
-        self.reader.skip();
+        self.read();
     }
 
     fn skip2(&mut self) {
@@ -224,8 +224,10 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         self.skip_while(&|ch| ch.is_es_whitespace());
     }
 
-    fn skip_line_comment(&mut self) {
-        self.skip2();
+    fn skip_line_comment(&mut self, prefix_len: usize) {
+        for _ in 0..prefix_len {
+            self.skip();
+        }
         self.skip_until(&|ch| ch.is_es_newline());
     }
 
@@ -234,9 +236,10 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         let mut found_newline = false;
         loop {
             match self.peek2() {
-                (None, _) | (_, None)  => { return Err(Error::UnterminatedComment); }
+                (None, Some(_)) => unreachable!(),
+                (_, None)  => { return Err(Error::UnterminatedComment); }
                 (Some('*'), Some('/')) => { self.skip2(); break; }
-                (Some(ch), _) => {
+                (Some(ch), Some(_)) => {
                     if ch.is_es_newline() {
                         found_newline = true;
                     }
@@ -336,8 +339,8 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
       where F: Fn(char) -> bool,
             G: Fn(CharCase, String) -> TokenData
     {
-        debug_assert!(self.reader.curr_char() == Some('0'));
-        debug_assert!(self.reader.next_char().map_or(false, |ch| ch.is_alphabetic()));
+        debug_assert!(self.peek() == Some('0'));
+        debug_assert!(self.reader.peek(1).map_or(false, |ch| ch.is_alphabetic()));
         let span = self.start();
         let mut s = String::new();
         self.skip();
@@ -600,14 +603,31 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 (Some(ch), _) if ch.is_es_newline() => {
                     self.skip_newlines();
                     found_newline = true;
+                    self.empty_line = true;
                 }
-                (Some('/'), Some('/')) => { self.skip_line_comment(); }
+                (Some('/'), Some('/')) => { self.skip_line_comment(2); }
                 (Some('/'), Some('*')) => {
                     found_newline = try!(self.skip_block_comment()) || found_newline;
+                }
+                (Some('<'), Some('!')) => {
+                    if self.reader.peek(2) == Some('-') && self.reader.peek(3) == Some('-') {
+                        self.skip_line_comment(4);
+                    } else {
+                        break;
+                    }
+                }
+                (Some('-'), Some('-')) => {
+                    if self.empty_line && self.reader.peek(2) == Some('>') {
+                        self.skip_line_comment(3);
+                    } else {
+                        break;
+                    }
                 }
                 _ => { break; }
             }
         }
+
+        self.empty_line = false;
 
         let mut result = try!(match pair {
             (Some('/'), _) if !self.cx.get().operator    => self.read_regexp(),
