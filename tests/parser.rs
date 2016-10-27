@@ -189,6 +189,10 @@ fn main() {
     let mut tests = Vec::new();
     as_ref_test(&mut tests);
     unit_tests(&mut tests);
-    integration_tests(&mut tests);
+    if env::var_os("ESTREE_INTEGRATION_TESTS") != None {
+        integration_tests(&mut tests);
+    } else {
+        println!("note: Run with `ESTREE_INTEGRATION_TESTS=1` to run with integration tests (much slower).")
+    }
     test_main(&args, tests);
 }
