@@ -496,12 +496,22 @@ impl<I: Iterator<Item=char>> Parser<I> {
             }
             TokenData::Reserved(Reserved::In) => {
                 self.reread(TokenData::Reserved(Reserved::In));
-                let head = Box::new(ForInHead::Expr(lhs));
+                let lhs_location = *lhs.tracking_ref();
+                let lhs = match lhs.into_assign_patt() {
+                    Ok(lhs) => lhs,
+                    Err(cover_err) => { return Err(Error::InvalidLHS(lhs_location, cover_err)); }
+                };
+                let head = Box::new(ForInHead::Patt(lhs));
                 self.more_for_in(head)
             }
             TokenData::Identifier(Name::Atom(Atom::Of)) => {
                 self.reread(TokenData::Identifier(Name::Atom(Atom::Of)));
-                let head = Box::new(ForOfHead::Expr(lhs));
+                let lhs_location = *lhs.tracking_ref();
+                let lhs = match lhs.into_assign_patt() {
+                    Ok(lhs) => lhs,
+                    Err(cover_err) => { return Err(Error::InvalidLHS(lhs_location, cover_err)); }
+                };
+                let head = Box::new(ForOfHead::Patt(lhs));
                 self.more_for_of(head)
             }
             _ => Err(Error::UnexpectedToken(try!(self.read())))
