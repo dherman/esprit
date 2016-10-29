@@ -25,27 +25,7 @@ impl IntoExpr for Object {
         let tag = try!(self.tag());
         Ok(match tag {
             Tag::Identifier => { return Ok(try!(self.into_id()).into_expr()); }
-            Tag::Literal => {
-                let json = try!(self.extract_field("value").map_err(Error::Json));
-                match json {
-                    Value::Null => Expr::Null(None),
-                    Value::Bool(val) => if val { Expr::True(None) } else { Expr::False(None) },
-                    Value::String(value) => Expr::String(None, value.into_string_literal()),
-                    Value::I64(val) => Expr::Number(None, val.into_number_literal()),
-                    Value::U64(val) => Expr::Number(None, val.into_number_literal()),
-                    Value::F64(val) => Expr::Number(None, val.into_number_literal()),
-                    Value::Object(_) => {
-                        let mut regex = try!(self.extract_object("regex").map_err(Error::Json));
-                        let pattern = try!(regex.extract_string("pattern").map_err(Error::Json));
-                        let flags = try!(regex.extract_string("flags").map_err(Error::Json));
-                        Expr::RegExp(None, RegExpLiteral {
-                            pattern: pattern,
-                            flags: flags.chars().collect()
-                        })
-                    }
-                    _ => { return type_error("null, number, boolean, string, or object", json.ty()); }
-                }
-            }
+            Tag::Literal => try!(IntoExpr::into_lit(self)),
             Tag::BinaryExpression => {
                 let str = try!(self.extract_string("operator").map_err(Error::Json));
                 let op: Binop = match str.parse() {
@@ -58,13 +38,17 @@ impl IntoExpr for Object {
             }
             Tag::AssignmentExpression => {
                 let str = try!(self.extract_string("operator").map_err(Error::Json));
-                let op: Assop = match str.parse() {
-                    Ok(op) => op,
-                    Err(_) => { return string_error("assignment operator", str); }
-                };
-                let left = try!(self.extract_assign_patt("left"));
-                let right = try!(self.extract_expr("right"));
-                Expr::Assign(None, op, left, Box::new(right))
+                let right = Box::new(try!(self.extract_expr("right")));
+                match &str[..] {
+                    "=" => Expr::Assign(None, try!(self.extract_assign_patt("left")), right),
+                    _ => {
+                        let op: Assop = match str.parse() {
+                            Ok(op) => op,
+                            Err(_) => { return string_error("assignment operator", str); }
+                        };
+                        Expr::BinAssign(None, op, try!(self.extract_assign_target("left")), right)
+                    }
+                }
             }
             Tag::LogicalExpression => {
                 let str = try!(self.extract_string("operator").map_err(Error::Json));
@@ -87,7 +71,7 @@ impl IntoExpr for Object {
             }
             Tag::UpdateExpression => {
                 let op = try!(self.extract_string("operator").map_err(Error::Json));
-                let arg = Box::new(try!(self.extract_expr("argument")));
+                let arg = Box::new(try!(self.extract_assign_target("argument")));
                 let prefix = try!(self.extract_bool("prefix").map_err(Error::Json));
                 match (&op[..], prefix) {
                     ("++", true)  => Expr::PreInc(None, arg),
@@ -148,13 +132,14 @@ impl IntoExpr for Object {
     fn into_lit(mut self) -> Result<Expr> {
         let json = try!(self.extract_field("value").map_err(Error::Json));
         Ok(match json {
-            Value::Null => Expr::Null(None),
-            Value::Bool(val) => if val { Expr::True(None) } else { Expr::False(None) },
+            Value::Null if !self.contains_key("regex") => Expr::Null(None),
+            Value::Bool(true) => Expr::True(None),
+            Value::Bool(false) => Expr::False(None),
             Value::String(value) => Expr::String(None, value.into_string_literal()),
             Value::I64(val) => Expr::Number(None, val.into_number_literal()),
             Value::U64(val) => Expr::Number(None, val.into_number_literal()),
             Value::F64(val) => Expr::Number(None, val.into_number_literal()),
-            Value::Object(_) => {
+            Value::Null | Value::Object(_) => {
                 let mut regex = try!(self.extract_object("regex").map_err(Error::Json));
                 let pattern = try!(regex.extract_string("pattern").map_err(Error::Json));
                 let flags = try!(regex.extract_string("flags").map_err(Error::Json));

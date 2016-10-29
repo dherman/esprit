@@ -2,11 +2,11 @@ use unjson::ty::Object;
 use unjson::{ExtractField, Unjson};
 use easter::id::Id;
 use easter::expr::Expr;
-use easter::stmt::{Stmt, StmtListItem, Case, Catch};
+use easter::stmt::{Stmt, Case, Catch};
 use easter::patt::{Patt, AssignTarget};
 use easter::obj::Prop;
 use easter::decl::Dtor;
-use easter::cover::IntoAssignPatt;
+use easter::cover::{IntoAssignTarget, IntoAssignPatt};
 
 use error::Error;
 use result::{Result, Map};
@@ -20,6 +20,7 @@ use decl::IntoDecl;
 pub trait ExtractNode {
     fn extract_id(&mut self, &'static str) -> Result<Id>;
     fn extract_id_opt(&mut self, &'static str) -> Result<Option<Id>>;
+    fn extract_assign_target(&mut self, &'static str) -> Result<AssignTarget>;
     fn extract_assign_patt(&mut self, &'static str) -> Result<Patt<AssignTarget>>;
     fn extract_stmt(&mut self, &'static str) -> Result<Stmt>;
     fn extract_expr(&mut self, &'static str) -> Result<Expr>;
@@ -27,7 +28,7 @@ pub trait ExtractNode {
     fn extract_expr_list(&mut self, &'static str) -> Result<Vec<Expr>>;
     fn extract_expr_opt_list(&mut self, &'static str) -> Result<Vec<Option<Expr>>>;
     fn extract_stmt_opt(&mut self, &'static str) -> Result<Option<Stmt>>;
-    fn extract_stmt_list(&mut self, &'static str) -> Result<Vec<StmtListItem>>;
+    fn extract_stmt_list(&mut self, &'static str) -> Result<Vec<Stmt>>;
     fn extract_patt(&mut self, &'static str) -> Result<Patt<Id>>;
     fn extract_patt_list(&mut self, &'static str) -> Result<Vec<Patt<Id>>>;
     fn extract_prop_list(&mut self, &'static str) -> Result<Vec<Prop>>;
@@ -46,6 +47,14 @@ impl ExtractNode for Object {
             Some(obj) => Some(try!(obj.into_id())),
             None      => None
         })
+    }
+
+    fn extract_assign_target(&mut self, name: &'static str) -> Result<AssignTarget> {
+        let expr = try!(self.extract_expr(name));
+        match expr.into_assign_target() {
+            Ok(patt) => Ok(patt),
+            _ => Err(Error::InvalidLHS(name))
+        }
     }
 
     fn extract_assign_patt(&mut self, name: &'static str) -> Result<Patt<AssignTarget>> {
@@ -94,10 +103,10 @@ impl ExtractNode for Object {
         })
     }
 
-    fn extract_stmt_list(&mut self, name: &'static str) -> Result<Vec<StmtListItem>> {
+    fn extract_stmt_list(&mut self, name: &'static str) -> Result<Vec<Stmt>> {
         let list = try!(self.extract_array(name).map_err(Error::Json));
         let objs = try!(list.map(|v| v.into_object().map_err(Error::Json)));
-        objs.map(|o| o.into_stmt_list_item())
+        objs.map(|o| o.into_stmt())
     }
 
     fn extract_patt(&mut self, name: &'static str) -> Result<Patt<Id>> {

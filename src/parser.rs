@@ -5,15 +5,15 @@ use joker::word::{Atom, Name, Reserved};
 use joker::lexer::Lexer;
 use joker::context::Mode;
 use easter::prog::Script;
-use easter::stmt::{Stmt, StmtListItem, ForHead, ForInHead, ForOfHead, Case, Catch};
+use easter::stmt::{Stmt, Block, ForHead, ForInHead, ForOfHead, Case, Catch};
 use easter::expr::Expr;
-use easter::decl::{Decl, Dtor, DtorExt};
+use easter::decl::{Dtor, DtorExt};
 use easter::patt::{Patt, CompoundPatt};
 use easter::fun::{Fun, Params};
 use easter::obj::{PropKey, PropVal, Prop, DotKey};
 use easter::id::{Id, IdExt};
 use easter::punc::{Unop, UnopTag, ToOp, Op};
-use easter::cover::IntoAssignPatt;
+use easter::cover::{IntoAssignTarget, IntoAssignPatt};
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -58,42 +58,21 @@ impl<I: Iterator<Item=char>> Parser<I> {
     }
 
     pub fn script(&mut self) -> Result<Script> {
-        let items = try!(self.statement_list());
-        Ok(Script { location: self.vec_span(&items), body: items })
+        Ok(Script {
+            body: try!(self.statement_list())
+        })
     }
 
-    fn statement_list(&mut self) -> Result<Vec<StmtListItem>> {
+    fn statement_list(&mut self) -> Result<Vec<Stmt>> {
         let mut items = Vec::new();
         while !try!(self.peek()).follow_statement_list() {
-            //println!("statement at: {:?}", try!(self.peek()).location().unwrap().start);
-            match try!(self.declaration_opt()) {
-                Some(decl) => { items.push(StmtListItem::Decl(decl)); }
-                None       => { items.push(StmtListItem::Stmt(try!(self.statement()))); }
-            }
+            items.push(try!(self.statement()));
         }
         Ok(items)
     }
 
-/*
-    pub fn declaration(&mut self) -> Result<Decl> {
-        match try!(self.declaration_opt()) {
-            Some(decl) => Ok(decl),
-            None       => Err(Error::UnexpectedToken(try!(self.read())))
-        }
-    }
-*/
-
-    fn declaration_opt(&mut self) -> Result<Option<Decl>> {
-        match try!(self.peek()).value {
-            TokenData::Reserved(Reserved::Function) => Ok(Some(try!(self.function_declaration()))),
-            _                                       => Ok(None)
-        }
-    }
-
-    fn function_declaration(&mut self) -> Result<Decl> {
-        self.span(&mut |this| {
-            Ok(Decl::Fun(try!(this.function())))
-        })
+    fn function_declaration(&mut self) -> Result<Stmt> {
+        Ok(Stmt::Fun(try!(self.function())))
     }
 
     fn formal_parameters(&mut self) -> Result<Params> {
@@ -143,9 +122,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             this.reread(TokenData::Reserved(Reserved::Function));
             let id = try!(this.id_opt());
             let params = try!(this.formal_parameters());
-            try!(this.expect(TokenData::LBrace));
-            let body = try!(this.statement_list());
-            try!(this.expect(TokenData::RBrace));
+            let body = try!(this.block());
             Ok(Fun { location: None, id: id, params: params, body: body })
         });
         replace(&mut self.parser_cx, outer_cx);
@@ -156,6 +133,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
         match try!(self.peek()).value {
             TokenData::LBrace                       => self.block_statement(),
             TokenData::Reserved(Reserved::Var)      => self.var_statement(),
+            TokenData::Reserved(Reserved::Function) => self.function_declaration(),
             TokenData::Semi                         => self.empty_statement(),
             TokenData::Reserved(Reserved::If)       => self.if_statement(),
             TokenData::Reserved(Reserved::Continue) => self.continue_statement(),
@@ -170,7 +148,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             TokenData::Reserved(Reserved::For)      => self.for_statement(),
             TokenData::Reserved(Reserved::Debugger) => self.debugger_statement(),
             TokenData::Identifier(_)                => {
-                let id = self.id().ok().unwrap();
+                let id = self.id().unwrap();
                 self.id_statement(id)
             }
             _                                       => self.expression_statement()
@@ -195,7 +173,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
         let mut expr_id = None;    // id that starts the statement following the labels, if any
 
         while let TokenData::Identifier(_) = try!(self.peek()).value {
-            let id = self.id().ok().unwrap();
+            let id = self.id().unwrap();
             if !try!(self.matches_op(TokenData::Colon)) {
                 expr_id = Some(id);
                 break;
@@ -220,13 +198,20 @@ impl<I: Iterator<Item=char>> Parser<I> {
         Ok(try!(span.end_with_auto_semi(self, Newline::Required, |semi| Stmt::Expr(None, expr, semi))))
     }
 
-    fn block_statement(&mut self) -> Result<Stmt> {
+    fn block(&mut self) -> Result<Block> {
         self.span(&mut |this| {
-            this.reread(TokenData::LBrace);
+            try!(this.expect(TokenData::LBrace));
             let items = try!(this.statement_list());
             try!(this.expect(TokenData::RBrace));
-            Ok(Stmt::Block(None, items))
+            Ok(Block {
+                location: None,
+                body: items
+            })
         })
+    }
+
+    fn block_statement(&mut self) -> Result<Stmt> {
+        self.block().map(Stmt::Block)
     }
 
     fn var_statement(&mut self) -> Result<Stmt> {
@@ -496,12 +481,22 @@ impl<I: Iterator<Item=char>> Parser<I> {
             }
             TokenData::Reserved(Reserved::In) => {
                 self.reread(TokenData::Reserved(Reserved::In));
-                let head = Box::new(ForInHead::Expr(lhs));
+                let lhs_location = *lhs.tracking_ref();
+                let lhs = match lhs.into_assign_patt() {
+                    Ok(lhs) => lhs,
+                    Err(cover_err) => { return Err(Error::InvalidLHS(lhs_location, cover_err)); }
+                };
+                let head = Box::new(ForInHead::Patt(lhs));
                 self.more_for_in(head)
             }
             TokenData::Identifier(Name::Atom(Atom::Of)) => {
                 self.reread(TokenData::Identifier(Name::Atom(Atom::Of)));
-                let head = Box::new(ForOfHead::Expr(lhs));
+                let lhs_location = *lhs.tracking_ref();
+                let lhs = match lhs.into_assign_patt() {
+                    Ok(lhs) => lhs,
+                    Err(cover_err) => { return Err(Error::InvalidLHS(lhs_location, cover_err)); }
+                };
+                let head = Box::new(ForOfHead::Patt(lhs));
                 self.more_for_of(head)
             }
             _ => Err(Error::UnexpectedToken(try!(self.read())))
@@ -611,18 +606,16 @@ impl<I: Iterator<Item=char>> Parser<I> {
         })
     }
 
-    fn case_body(&mut self) -> Result<Vec<StmtListItem>> {
+    fn case_body(&mut self) -> Result<Vec<Stmt>> {
         let mut items = Vec::new();
         loop {
             match try!(self.peek()).value {
                 TokenData::Reserved(Reserved::Case)
               | TokenData::Reserved(Reserved::Default)
               | TokenData::RBrace => { break; }
-                _ => { }
-            }
-            match try!(self.declaration_opt()) {
-                Some(decl) => { items.push(StmtListItem::Decl(decl)); }
-                None       => { items.push(StmtListItem::Stmt(try!(self.statement()))); }
+                _ => {
+                    items.push(try!(self.statement()));
+                }
             }
         }
         Ok(items)
@@ -721,19 +714,12 @@ impl<I: Iterator<Item=char>> Parser<I> {
         })
     }
 
-    fn block(&mut self) -> Result<Vec<StmtListItem>> {
-        try!(self.expect(TokenData::LBrace));
-        let result = try!(self.statement_list());
-        try!(self.expect(TokenData::RBrace));
-        Ok(result)
-    }
-
     fn try_statement(&mut self) -> Result<Stmt> {
         self.span(&mut |this| {
             this.reread(TokenData::Reserved(Reserved::Try));
             let body = try!(this.block());
             match try!(this.peek()).value {
-                TokenData::Reserved(Reserved::Catch) 
+                TokenData::Reserved(Reserved::Catch)
               | TokenData::Reserved(Reserved::Finally) => { }
                 _ => {
                     return Err(Error::OrphanTry(try!(this.read())));
@@ -762,7 +748,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
         }
     }
 
-    fn finally_opt(&mut self) -> Result<Option<Vec<StmtListItem>>> {
+    fn finally_opt(&mut self) -> Result<Option<Block>> {
         Ok(match try!(self.peek()).value {
             TokenData::Reserved(Reserved::Finally) => {
                 self.reread(TokenData::Reserved(Reserved::Finally));
@@ -920,14 +906,12 @@ impl<I: Iterator<Item=char>> Parser<I> {
                 if let Some(key) = try!(self.property_key_opt()) {
                     let paren_location = Some(try!(self.expect(TokenData::LParen)).location);
                     try!(self.expect(TokenData::RParen));
-                    try!(self.expect(TokenData::LBrace));
                     let outer_cx = replace(&mut self.parser_cx, context::Context::new_function());
-                    let body = self.statement_list();
+                    let body = self.block();
                     replace(&mut self.parser_cx, outer_cx);
                     let body = try!(body);
-                    let end_location = Some(try!(self.expect(TokenData::RBrace)).location);
-                    let val_location = span(&paren_location, &end_location);
-                    let prop_location = span(&key, &end_location);
+                    let val_location = span(&paren_location, &body.location);
+                    let prop_location = span(&key, &body.location);
                     return Ok(Prop {
                         location: prop_location,
                         key: key,
@@ -949,14 +933,12 @@ impl<I: Iterator<Item=char>> Parser<I> {
                     let paren_location = Some(try!(self.expect(TokenData::LParen)).location);
                     let param = try!(self.pattern());
                     try!(self.expect(TokenData::RParen));
-                    try!(self.expect(TokenData::LBrace));
                     let outer_cx = replace(&mut self.parser_cx, context::Context::new_function());
-                    let body = self.statement_list();
+                    let body = self.block();
                     replace(&mut self.parser_cx, outer_cx);
                     let body = try!(body);
-                    let end_location = Some(try!(self.expect(TokenData::RBrace)).location);
-                    let val_location = span(&paren_location, &end_location);
-                    let prop_location = span(&key, &end_location);
+                    let val_location = span(&paren_location, &body.location);
+                    let prop_location = span(&key, &body.location);
                     return Ok(Prop {
                         location: prop_location,
                         key: key,
@@ -1090,7 +1072,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
         }
     }
 */
-    
+
     // Deref ::=
     //   "[" Expression "]"
     //   "." IdentifierName
@@ -1181,9 +1163,15 @@ impl<I: Iterator<Item=char>> Parser<I> {
             result = suffix.append_to(result);
         }
         if let Some(postfix) = try!(self.match_postfix_operator_opt()) {
-            result = match postfix {
-                Postfix::Inc(location) => Expr::PostInc(Some(location), Box::new(result)),
-                Postfix::Dec(location) => Expr::PostDec(Some(location), Box::new(result))
+            let result_location = *result.tracking_ref();
+            result = match result.into_assign_target().map(Box::new) {
+                Ok(target) => {
+                    match postfix {
+                        Postfix::Inc(location) => Expr::PostInc(Some(location), target),
+                        Postfix::Dec(location) => Expr::PostDec(Some(location), target)
+                    }
+                }
+                Err(cover_err) => { return Err(Error::InvalidLHS(result_location, cover_err)); }
             };
         }
         Ok(result)
@@ -1198,9 +1186,15 @@ impl<I: Iterator<Item=char>> Parser<I> {
         }
         let mut arg = try!(self.lhs_expression());
         if let Some(postfix) = try!(self.match_postfix_operator_opt()) {
-            arg = match postfix {
-                Postfix::Inc(location) => Expr::PostInc(Some(location), Box::new(arg)),
-                Postfix::Dec(location) => Expr::PostDec(Some(location), Box::new(arg))
+            let arg_location = *arg.tracking_ref();
+            arg = match arg.into_assign_target().map(Box::new) {
+                Ok(target) => {
+                    match postfix {
+                        Postfix::Inc(location) => Expr::PostInc(Some(location), target),
+                        Postfix::Dec(location) => Expr::PostDec(Some(location), target)
+                    }
+                }
+                Err(cover_err) => { return Err(Error::InvalidLHS(arg_location, cover_err)); }
             };
         }
         for prefix in prefixes.into_iter().rev() {
@@ -1209,8 +1203,19 @@ impl<I: Iterator<Item=char>> Parser<I> {
                     let location = span(&op, &arg);
                     arg = Expr::Unop(location, op, Box::new(arg));
                 }
-                Prefix::Inc(location) => { arg = Expr::PreInc(Some(location), Box::new(arg)); }
-                Prefix::Dec(location) => { arg = Expr::PreDec(Some(location), Box::new(arg)); }
+                _ => {
+                    let arg_location = *arg.tracking_ref();
+                    arg = match arg.into_assign_target().map(Box::new) {
+                        Ok(target) => {
+                            match prefix {
+                                Prefix::Inc(location) => Expr::PreInc(Some(location), target),
+                                Prefix::Dec(location) => Expr::PreDec(Some(location), target),
+                                Prefix::Unop(_) => unreachable!()
+                            }
+                        }
+                        Err(cover_err) => { return Err(Error::InvalidLHS(arg_location, cover_err)); }
+                    };
+                }
             }
         }
         Ok(arg)
@@ -1317,15 +1322,23 @@ impl<I: Iterator<Item=char>> Parser<I> {
 
     fn more_assignment(&mut self, left: Expr) -> Result<Expr> {
         let token = try!(self.read_op());
-        if let Some(op) = token.to_assop() {
-            let left_location = *left.tracking_ref();
+        let left_location = *left.tracking_ref();
+        if token.value == TokenData::Assign {
             let left = match left.into_assign_patt() {
                 Ok(left) => left,
                 Err(cover_err) => { return Err(Error::InvalidLHS(left_location, cover_err)); }
             };
             let right = try!(self.assignment_expression());
             let location = span(&left, &right);
-            return Ok(Expr::Assign(location, op, left, Box::new(right)));
+            return Ok(Expr::Assign(location, left, Box::new(right)));
+        } else if let Some(op) = token.to_assop() {
+            let left = match left.into_assign_target() {
+                Ok(left) => left,
+                Err(cover_err) => { return Err(Error::InvalidLHS(left_location, cover_err)); }
+            };
+            let right = try!(self.assignment_expression());
+            let location = span(&left, &right);
+            return Ok(Expr::BinAssign(location, op, left, Box::new(right)));
         }
         self.lexer.unread_token(token);
         Ok(left)
@@ -1377,126 +1390,5 @@ impl<I: Iterator<Item=char>> Parser<I> {
         }
         let location = self.vec_span(&elts);
         Ok(Expr::Seq(location, elts))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-
-    use std::{thread, env};
-    use test::{deserialize_parser_tests, ParserTest};
-    use easter::stmt::{Stmt, StmtListItem};
-    use easter::expr::Expr;
-    use easter::patt::{AssignTarget, Patt};
-    use joker::track::Untrack;
-    use ::script;
-
-    #[test]
-    pub fn unit_tests() {
-        let tests = deserialize_parser_tests(include_str!("../tests/build/unit.json"));
-        for ParserTest { source, expected, .. } in tests {
-            let result = script(&source[..]);
-            match (result, expected) {
-                (Ok(mut actual_ast), Some(expected_ast)) => {
-                    actual_ast.untrack();
-                    if actual_ast != expected_ast {
-                        println!("");
-                        println!("test:         {}", source);
-                        println!("expected AST: {:#?}", expected_ast);
-                        println!("actual AST:   {:#?}", actual_ast);
-                    }
-                    assert!(actual_ast == expected_ast);
-                }
-                (Err(_), None) => { }
-                (Ok(mut actual_ast), None) => {
-                    actual_ast.untrack();
-                    println!("");
-                    println!("test:                {}", source);
-                    println!("expected error, got: {:?}", actual_ast);
-                    panic!("expected error");
-                }
-                (Err(actual_err), Some(expected_ast)) => {
-                    println!("");
-                    println!("test:         {}", source);
-                    println!("expected AST: {:?}", expected_ast);
-                    println!("actual error: {:?}", actual_err);
-                    panic!("unexpected error");
-                }
-            }
-        }
-    }
-
-    const DEFAULT_MB: usize = 4;
-
-    fn read_envvar() -> Option<usize> {
-        match env::var("ESTREE_STACK_SIZE_MB") {
-            Ok(s) => {
-                match s.parse() {
-                    Ok(x) => Some(x),
-                    Err(_) => None
-                }
-            }
-            Err(env::VarError::NotPresent) => Some(DEFAULT_MB),
-            Err(_) => None
-        }
-    }
-
-    fn stack_size() -> usize {
-        let mb = match read_envvar() {
-            Some(x) => x,
-            None => {
-                println!("warning: invalid ESTREE_STACK_SIZE_MB value; defaulting to 4MB");
-                DEFAULT_MB
-            }
-        };
-        mb * 1024 * 1024
-    }
-
-    #[test]
-    pub fn integration_tests() {
-        let child = thread::Builder::new().stack_size(stack_size()).spawn(|| {
-            deserialize_parser_tests(include_str!("../tests/build/integration.json"))
-        }).unwrap();
-        let tests = child.join().unwrap();
-        for ParserTest { filename, source, expected } in tests {
-            let expected_ast = expected.unwrap();
-            let filename = filename.unwrap();
-            println!("integration test: {}", filename);
-            match script(&source[..]) {
-                Ok(mut actual_ast) => {
-                    actual_ast.untrack();
-                    if actual_ast != expected_ast {
-                        println!("");
-                        println!("test: {}", filename);
-                        //println!("expected AST:");
-                        //println!("{:#?}", expected_ast);
-                        //println!("actual AST:");
-                        //println!("{:#?}", actual_ast);
-                        println!("integration test got wrong result");
-                    }
-                    assert!(actual_ast == expected_ast);
-                }
-                Err(actual_err) => {
-                    println!("");
-                    println!("test: {}", filename);
-                    println!("integration test failed to parse");
-                    println!("actual error: {:?}", actual_err);
-                    panic!("unexpected error");
-                }
-            }
-        }
-    }
-
-
-    #[test]
-    pub fn as_ref_test() {
-        let mut ast = script("foobar = 17;").ok().unwrap();
-        ast.untrack();
-        match ast.body.first().unwrap() {
-            &StmtListItem::Stmt(Stmt::Expr(_, Expr::Assign(_, _, Patt::Simple(AssignTarget::Id(ref id)), _), _)) => {
-                assert!(id.name.as_ref() == "foobar");
-            }
-            _ => { panic!("unexpected AST structure"); }
-        }
     }
 }

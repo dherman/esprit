@@ -3,7 +3,7 @@ use joker::token::{StringLiteral, NumberLiteral};
 
 use id::Id;
 use expr::Expr;
-use stmt::StmtListItem;
+use stmt::Block;
 use patt::Patt;
 
 #[derive(Debug, PartialEq)]
@@ -83,8 +83,8 @@ impl Untrack for PropKey {
 #[derive(Debug, PartialEq)]
 pub enum PropVal {
     Init(Expr),
-    Get(Option<Span>, Vec<StmtListItem>),
-    Set(Option<Span>, Patt<Id>, Vec<StmtListItem>)
+    Get(Option<Span>, Block),
+    Set(Option<Span>, Patt<Id>, Block)
 }
 
 impl TrackingRef for PropVal {

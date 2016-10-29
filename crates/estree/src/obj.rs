@@ -9,6 +9,7 @@ use result::Result;
 use error::{Error, type_error, array_error};
 use node::ExtractNode;
 use expr::IntoExpr;
+use stmt::IntoStmt;
 use fun::IntoFun;
 
 pub trait IntoObj {
@@ -23,7 +24,7 @@ impl IntoObj for Object {
         let kind = try!(self.extract_string("kind").map_err(Error::Json));
         let val = match &kind[..] {
             "init" => PropVal::Init(try!(val.into_expr())),
-            "get" => PropVal::Get(None, try!(try!(val.extract_object("body").map_err(Error::Json)).extract_stmt_list("body"))),
+            "get" => PropVal::Get(None, try!(try!(val.extract_object("body").map_err(Error::Json)).into_block())),
             "set" => {
                 let fun = try!(val.into_fun());
                 let params = fun.params.list;

@@ -10,8 +10,8 @@ homepage = "https://esprit.surge.sh"
 repository = "https://github.com/dherman/esprit"
 
 [dependencies]
-serde = "0.7.10"
-serde_json = "0.7.1"
+serde = "0.8"
+serde_json = "0.8"
 unjson = { version = "0.0.5", path = "../unjson" }
 joker = { version = "0.0.5", path = "../joker" }
 easter = { version = "0.0.5", path = "../easter" }
