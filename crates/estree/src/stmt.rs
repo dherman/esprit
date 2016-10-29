@@ -1,5 +1,4 @@
-use easter::stmt::{Stmt, ForHead, ForInHead, ForOfHead, StmtListItem, Case, Catch};
-use easter::decl::Decl;
+use easter::stmt::{Stmt, Block, ForHead, ForInHead, ForOfHead, Case, Catch};
 use easter::punc::Semi;
 use easter::patt::Patt;
 use easter::cover::IntoAssignPatt;
@@ -119,18 +118,33 @@ impl IntoForOfHead for Object {
 
 pub trait IntoStmt {
     fn into_stmt(self) -> Result<Stmt>;
-    fn into_stmt_list_item(self) -> Result<StmtListItem>;
     fn into_case(self) -> Result<Case>;
     fn into_catch(self) -> Result<Catch>;
+    fn into_block(self) -> Result<Block>;
 }
 
 impl IntoStmt for Object {
+    fn into_block(mut self) -> Result<Block> {
+        match try!(self.tag()) {
+            Tag::BlockStatement => {
+                Ok(Block {
+                    location: None,
+                    body: try!(self.extract_stmt_list("body"))
+                })
+            }
+            tag => node_type_error("BlockStatement", tag)
+        }
+    }
+
     fn into_stmt(mut self) -> Result<Stmt> {
         let tag = try!(self.tag());
         Ok(match tag {
             Tag::VariableDeclaration => {
                 let dtors = try!(self.extract_dtor_list("declarations"));
                 Stmt::Var(None, dtors, Semi::Explicit(None))
+            }
+            Tag::FunctionDeclaration => {
+                Stmt::Fun(try!(self.into_fun()))
             }
             Tag::EmptyStatement => Stmt::Empty(None),
             Tag::ExpressionStatement => {
@@ -176,8 +190,7 @@ impl IntoStmt for Object {
                 Stmt::ForOf(None, Box::new(left), right, Box::new(body))
             }
             Tag::BlockStatement => {
-                let body = try!(self.extract_stmt_list("body"));
-                Stmt::Block(None, body)
+                Stmt::Block(try!(self.into_block()))
             }
             Tag::ReturnStatement => {
                 let arg = try!(self.extract_expr_opt("argument"));
@@ -214,24 +227,15 @@ impl IntoStmt for Object {
                 Stmt::Debugger(None, Semi::Explicit(None))
             }
             Tag::TryStatement => {
-                let mut block = try!(self.extract_object("block").map_err(Error::Json));
-                let body = try!(block.extract_stmt_list("body"));
+                let body = try!(try!(self.extract_object("block").map_err(Error::Json)).into_block());
                 let catch = try!(self.extract_catch_opt("handler")).map(Box::new);
                 let finally = match try!(self.extract_object_opt("finalizer").map_err(Error::Json)) {
-                    Some(mut finalizer) => Some(try!(finalizer.extract_stmt_list("body"))),
+                    Some(mut finalizer) => Some(try!(finalizer.into_block())),
                     None                => None
                 };
                 Stmt::Try(None, body, catch, finally)
             }
             _ => { return node_type_error("statement", tag); }
-        })
-    }
-
-    fn into_stmt_list_item(self) -> Result<StmtListItem> {
-        Ok(if try!(self.tag()) == Tag::FunctionDeclaration {
-            StmtListItem::Decl(Decl::Fun(try!(self.into_fun())))
-        } else {
-            StmtListItem::Stmt(try!(self.into_stmt()))
         })
     }
 
@@ -243,8 +247,7 @@ impl IntoStmt for Object {
 
     fn into_catch(mut self) -> Result<Catch> {
         let param = try!(self.extract_patt("param"));
-        let mut body = try!(self.extract_object("body").map_err(Error::Json));
-        let body = try!(body.extract_stmt_list("body"));
+        let body = try!(try!(self.extract_object("body").map_err(Error::Json)).into_block());
         Ok(Catch { location: None, param: param, body: body })
     }
 }

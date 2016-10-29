@@ -5,9 +5,9 @@ use joker::word::{Atom, Name, Reserved};
 use joker::lexer::Lexer;
 use joker::context::Mode;
 use easter::prog::Script;
-use easter::stmt::{Stmt, StmtListItem, ForHead, ForInHead, ForOfHead, Case, Catch};
+use easter::stmt::{Stmt, Block, ForHead, ForInHead, ForOfHead, Case, Catch};
 use easter::expr::Expr;
-use easter::decl::{Decl, Dtor, DtorExt};
+use easter::decl::{Dtor, DtorExt};
 use easter::patt::{Patt, CompoundPatt};
 use easter::fun::{Fun, Params};
 use easter::obj::{PropKey, PropVal, Prop, DotKey};
@@ -58,42 +58,21 @@ impl<I: Iterator<Item=char>> Parser<I> {
     }
 
     pub fn script(&mut self) -> Result<Script> {
-        let items = try!(self.statement_list());
-        Ok(Script { location: self.vec_span(&items), body: items })
+        Ok(Script {
+            body: try!(self.statement_list())
+        })
     }
 
-    fn statement_list(&mut self) -> Result<Vec<StmtListItem>> {
+    fn statement_list(&mut self) -> Result<Vec<Stmt>> {
         let mut items = Vec::new();
         while !try!(self.peek()).follow_statement_list() {
-            //println!("statement at: {:?}", try!(self.peek()).location().unwrap().start);
-            match try!(self.declaration_opt()) {
-                Some(decl) => { items.push(StmtListItem::Decl(decl)); }
-                None       => { items.push(StmtListItem::Stmt(try!(self.statement()))); }
-            }
+            items.push(try!(self.statement()));
         }
         Ok(items)
     }
 
-/*
-    pub fn declaration(&mut self) -> Result<Decl> {
-        match try!(self.declaration_opt()) {
-            Some(decl) => Ok(decl),
-            None       => Err(Error::UnexpectedToken(try!(self.read())))
-        }
-    }
-*/
-
-    fn declaration_opt(&mut self) -> Result<Option<Decl>> {
-        match try!(self.peek()).value {
-            TokenData::Reserved(Reserved::Function) => Ok(Some(try!(self.function_declaration()))),
-            _                                       => Ok(None)
-        }
-    }
-
-    fn function_declaration(&mut self) -> Result<Decl> {
-        self.span(&mut |this| {
-            Ok(Decl::Fun(try!(this.function())))
-        })
+    fn function_declaration(&mut self) -> Result<Stmt> {
+        Ok(Stmt::Fun(try!(self.function())))
     }
 
     fn formal_parameters(&mut self) -> Result<Params> {
@@ -143,9 +122,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             this.reread(TokenData::Reserved(Reserved::Function));
             let id = try!(this.id_opt());
             let params = try!(this.formal_parameters());
-            try!(this.expect(TokenData::LBrace));
-            let body = try!(this.statement_list());
-            try!(this.expect(TokenData::RBrace));
+            let body = try!(this.block());
             Ok(Fun { location: None, id: id, params: params, body: body })
         });
         replace(&mut self.parser_cx, outer_cx);
@@ -156,6 +133,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
         match try!(self.peek()).value {
             TokenData::LBrace                       => self.block_statement(),
             TokenData::Reserved(Reserved::Var)      => self.var_statement(),
+            TokenData::Reserved(Reserved::Function) => self.function_declaration(),
             TokenData::Semi                         => self.empty_statement(),
             TokenData::Reserved(Reserved::If)       => self.if_statement(),
             TokenData::Reserved(Reserved::Continue) => self.continue_statement(),
@@ -220,13 +198,20 @@ impl<I: Iterator<Item=char>> Parser<I> {
         Ok(try!(span.end_with_auto_semi(self, Newline::Required, |semi| Stmt::Expr(None, expr, semi))))
     }
 
-    fn block_statement(&mut self) -> Result<Stmt> {
+    fn block(&mut self) -> Result<Block> {
         self.span(&mut |this| {
-            this.reread(TokenData::LBrace);
+            try!(this.expect(TokenData::LBrace));
             let items = try!(this.statement_list());
             try!(this.expect(TokenData::RBrace));
-            Ok(Stmt::Block(None, items))
+            Ok(Block {
+                location: None,
+                body: items
+            })
         })
+    }
+
+    fn block_statement(&mut self) -> Result<Stmt> {
+        self.block().map(Stmt::Block)
     }
 
     fn var_statement(&mut self) -> Result<Stmt> {
@@ -621,18 +606,16 @@ impl<I: Iterator<Item=char>> Parser<I> {
         })
     }
 
-    fn case_body(&mut self) -> Result<Vec<StmtListItem>> {
+    fn case_body(&mut self) -> Result<Vec<Stmt>> {
         let mut items = Vec::new();
         loop {
             match try!(self.peek()).value {
                 TokenData::Reserved(Reserved::Case)
               | TokenData::Reserved(Reserved::Default)
               | TokenData::RBrace => { break; }
-                _ => { }
-            }
-            match try!(self.declaration_opt()) {
-                Some(decl) => { items.push(StmtListItem::Decl(decl)); }
-                None       => { items.push(StmtListItem::Stmt(try!(self.statement()))); }
+                _ => {
+                    items.push(try!(self.statement()));
+                }
             }
         }
         Ok(items)
@@ -731,13 +714,6 @@ impl<I: Iterator<Item=char>> Parser<I> {
         })
     }
 
-    fn block(&mut self) -> Result<Vec<StmtListItem>> {
-        try!(self.expect(TokenData::LBrace));
-        let result = try!(self.statement_list());
-        try!(self.expect(TokenData::RBrace));
-        Ok(result)
-    }
-
     fn try_statement(&mut self) -> Result<Stmt> {
         self.span(&mut |this| {
             this.reread(TokenData::Reserved(Reserved::Try));
@@ -772,7 +748,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
         }
     }
 
-    fn finally_opt(&mut self) -> Result<Option<Vec<StmtListItem>>> {
+    fn finally_opt(&mut self) -> Result<Option<Block>> {
         Ok(match try!(self.peek()).value {
             TokenData::Reserved(Reserved::Finally) => {
                 self.reread(TokenData::Reserved(Reserved::Finally));
@@ -930,14 +906,12 @@ impl<I: Iterator<Item=char>> Parser<I> {
                 if let Some(key) = try!(self.property_key_opt()) {
                     let paren_location = Some(try!(self.expect(TokenData::LParen)).location);
                     try!(self.expect(TokenData::RParen));
-                    try!(self.expect(TokenData::LBrace));
                     let outer_cx = replace(&mut self.parser_cx, context::Context::new_function());
-                    let body = self.statement_list();
+                    let body = self.block();
                     replace(&mut self.parser_cx, outer_cx);
                     let body = try!(body);
-                    let end_location = Some(try!(self.expect(TokenData::RBrace)).location);
-                    let val_location = span(&paren_location, &end_location);
-                    let prop_location = span(&key, &end_location);
+                    let val_location = span(&paren_location, &body.location);
+                    let prop_location = span(&key, &body.location);
                     return Ok(Prop {
                         location: prop_location,
                         key: key,
@@ -959,14 +933,12 @@ impl<I: Iterator<Item=char>> Parser<I> {
                     let paren_location = Some(try!(self.expect(TokenData::LParen)).location);
                     let param = try!(self.pattern());
                     try!(self.expect(TokenData::RParen));
-                    try!(self.expect(TokenData::LBrace));
                     let outer_cx = replace(&mut self.parser_cx, context::Context::new_function());
-                    let body = self.statement_list();
+                    let body = self.block();
                     replace(&mut self.parser_cx, outer_cx);
                     let body = try!(body);
-                    let end_location = Some(try!(self.expect(TokenData::RBrace)).location);
-                    let val_location = span(&paren_location, &end_location);
-                    let prop_location = span(&key, &end_location);
+                    let val_location = span(&paren_location, &body.location);
+                    let prop_location = span(&key, &body.location);
                     return Ok(Prop {
                         location: prop_location,
                         key: key,

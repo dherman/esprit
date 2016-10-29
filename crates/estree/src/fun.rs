@@ -22,10 +22,7 @@ impl IntoFun for Object {
         };
         let obj = try!(self.extract_object("body").map_err(Error::Json));
         let tag = try!(obj.tag());
-        let body = match try!(obj.into_stmt()) {
-            Stmt::Block(None, items) => items,
-            _ => { return node_type_error("BlockStatement", tag); }
-        };
+        let body = try!(obj.into_block());
         Ok(Fun { location: None, id: id, params: params, body: body })
     }
 }

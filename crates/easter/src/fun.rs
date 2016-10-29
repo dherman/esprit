@@ -2,7 +2,7 @@ use joker::track::*;
 
 use id::Id;
 use patt::Patt;
-use stmt::StmtListItem;
+use stmt::Block;
 
 #[derive(Debug, PartialEq)]
 pub struct Params {
@@ -30,7 +30,7 @@ pub struct Fun {
     pub location: Option<Span>,
     pub id: Option<Id>,
     pub params: Params,
-    pub body: Vec<StmtListItem>
+    pub body: Block
 }
 
 impl TrackingRef for Fun {

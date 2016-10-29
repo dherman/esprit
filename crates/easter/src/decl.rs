@@ -1,35 +1,8 @@
 use joker::track::*;
 
 use id::Id;
-use fun::Fun;
 use patt::{Patt, CompoundPatt};
 use expr::Expr;
-
-#[derive(Debug, PartialEq)]
-pub enum Decl {
-    Fun(Fun)
-}
-
-impl TrackingRef for Decl {
-    fn tracking_ref(&self) -> &Option<Span> {
-        let Decl::Fun(ref fun) = *self;
-        fun.tracking_ref()
-    }
-}
-
-impl TrackingMut for Decl {
-    fn tracking_mut(&mut self) -> &mut Option<Span> {
-        let Decl::Fun(ref mut fun) = *self;
-        fun.tracking_mut()
-    }
-}
-
-impl Untrack for Decl {
-    fn untrack(&mut self) {
-        let Decl::Fun(ref mut fun) = *self;
-        fun.untrack();
-    }
-}
 
 #[derive(Debug, PartialEq)]
 pub enum Dtor {
