@@ -19,37 +19,23 @@ pub trait State {
 
 impl<I: Iterator<Item=char>> State for Parser<I> {
     fn skip(&mut self) -> Result<()> {
-        self.lexer.skip_token().map_err(Error::LexError)
+        self.lexer.skip_token(false).map_err(Error::LexError)
     }
 
     fn read(&mut self) -> Result<Token> {
-        self.lexer.read_token().map_err(Error::LexError)
+        self.lexer.read_token(false).map_err(Error::LexError)
     }
 
     fn read_op(&mut self) -> Result<Token> {
-        let mut cx = self.shared_cx.get();
-        cx.operator = true;
-        self.shared_cx.set(cx);
-        let result = self.lexer.read_token().map_err(Error::LexError);
-        let mut cx = self.shared_cx.get();
-        cx.operator = false;
-        self.shared_cx.set(cx);
-        result
+        self.lexer.read_token(true).map_err(Error::LexError)
     }
 
     fn peek(&mut self) -> Result<&Token> {
-        self.lexer.peek_token().map_err(Error::LexError)
+        self.lexer.peek_token(false).map_err(Error::LexError)
     }
 
     fn peek_op(&mut self) -> Result<&Token> {
-        let mut cx = self.shared_cx.get();
-        cx.operator = true;
-        self.shared_cx.set(cx);
-        let result = self.lexer.peek_token().map_err(Error::LexError);
-        let mut cx = self.shared_cx.get();
-        cx.operator = false;
-        self.shared_cx.set(cx);
-        result
+        self.lexer.peek_token(true).map_err(Error::LexError)
     }
 
     fn expect(&mut self, expected: TokenData) -> Result<Token> {

@@ -20,7 +20,7 @@ mod lit;
 
 use serde::de::Error;
 use serde::de::{Deserialize, Deserializer};
-use easter::prog::Script;
+use easter::stmt::Script;
 use unjson::ty::Object;
 pub use prog::IntoScript;
 

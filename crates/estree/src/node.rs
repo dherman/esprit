@@ -2,7 +2,7 @@ use unjson::ty::Object;
 use unjson::{ExtractField, Unjson};
 use easter::id::Id;
 use easter::expr::Expr;
-use easter::stmt::{Stmt, StmtListItem, Case, Catch};
+use easter::stmt::{Stmt, StmtListItem, Case, Catch, Script};
 use easter::patt::{Patt, AssignTarget};
 use easter::obj::Prop;
 use easter::decl::Dtor;
@@ -34,6 +34,16 @@ pub trait ExtractNode {
     fn extract_dtor_list(&mut self, &'static str) -> Result<Vec<Dtor>>;
     fn extract_case_list(&mut self, &'static str) -> Result<Vec<Case>>;
     fn extract_catch_opt(&mut self, &'static str) -> Result<Option<Catch>>;
+    fn extract_script(&mut self, &'static str) -> Result<Script>;
+}
+
+fn split_prefix<T, F>(v: &mut Vec<T>, mut p: F) -> Vec<T>
+  where F: FnMut(&T) -> bool
+{
+    match v.iter().position(|x| !p(x)) {
+        Some(i) => v.split_off(i),
+        None => Vec::new()
+    }
 }
 
 impl ExtractNode for Object {
@@ -132,6 +142,19 @@ impl ExtractNode for Object {
         Ok(match try!(self.extract_object_opt(name).map_err(Error::Json)) {
             Some(o) => Some(try!(o.into_catch())),
             None => None
+        })
+    }
+
+    fn extract_script(&mut self, name: &'static str) -> Result<Script> {
+        let mut list = try!(self.extract_stmt_list(name));
+        let items = split_prefix(&mut list, |s| s.is_directive());
+        let prolog = list.iter()
+                         .filter_map(|s| s.to_directive())
+                         .collect();
+        Ok(Script {
+            location: None,
+            dirs: prolog,
+            items: items
         })
     }
 

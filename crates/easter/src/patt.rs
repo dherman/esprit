@@ -4,7 +4,7 @@ use id::Id;
 use expr::Expr;
 use obj::{PropKey, DotKey};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum CompoundPatt<T> {
     Arr(Option<Span>, Vec<Option<Patt<T>>>),
     Obj(Option<Span>, Vec<PropPatt<T>>)
@@ -43,7 +43,7 @@ impl<T: Untrack> Untrack for CompoundPatt<T> {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct PropPatt<T> {
     pub location: Option<Span>,
     pub key: PropKey,
@@ -66,7 +66,7 @@ impl<T: Untrack> Untrack for PropPatt<T> {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Patt<T> {
     Simple(T),
     Compound(CompoundPatt<T>)
@@ -108,7 +108,7 @@ impl<T: Untrack> Untrack for Patt<T> {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum AssignTarget {
     Id(Id),
     Dot(Option<Span>, Box<Expr>, DotKey),

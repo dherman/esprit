@@ -1,5 +1,5 @@
 use unjson::ty::Object;
-use easter::prog::Script;
+use easter::stmt::Script;
 use result::Result;
 use node::ExtractNode;
 
@@ -9,7 +9,6 @@ pub trait IntoScript {
 
 impl IntoScript for Object {
     fn into_script(mut self) -> Result<Script> {
-        let body = try!(self.extract_stmt_list("body"));
-        Ok(Script { location: None, body: body })
+        self.extract_script("body")
     }
 }

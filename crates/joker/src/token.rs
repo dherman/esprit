@@ -3,7 +3,7 @@ use std::fmt::{Debug, Formatter};
 use track::{Span, Posn};
 use word::{Reserved, Name};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Token {
     pub location: Span,
     pub newline: bool,    // was there a newline between the preceding token and this one?
@@ -20,7 +20,7 @@ impl Token {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum TokenData {
     Reserved(Reserved),
 
@@ -85,6 +85,16 @@ pub enum TokenData {
     EOF
 }
 
+impl TokenData {
+    pub fn is_string(&self) -> bool {
+        match *self {
+            TokenData::String(_) => true,
+            _ => false
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct RegExpLiteral {
     pub pattern: String,
     pub flags: Vec<char>
@@ -118,6 +128,7 @@ impl PartialEq for RegExpLiteral {
     }
 }
 
+#[derive(Clone)]
 pub struct StringLiteral {
     pub source: Option<String>,
     pub value: String
@@ -137,6 +148,7 @@ impl PartialEq for StringLiteral {
     }
 }
 
+#[derive(Clone)]
 pub struct NumberLiteral {
     pub source: Option<NumberSource>,
     pub value: f64
@@ -156,7 +168,7 @@ impl PartialEq for NumberLiteral {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum NumberSource {
     DecimalInt(String, Option<Exp>),
     RadixInt(Radix, String),
@@ -212,7 +224,7 @@ impl NumberSource {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Exp {
     pub e: CharCase,
     pub sign: Option<Sign>,

@@ -1,12 +1,13 @@
 use joker::track::*;
+use joker::token::StringLiteral;
 
 use id::Id;
 use expr::Expr;
-use decl::{Decl, Dtor};
+use decl::{Decl, Dtor, Import, Export};
 use patt::Patt;
 use punc::Semi;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Stmt {
     Empty(Option<Span>),
     Block(Option<Span>, Vec<StmtListItem>),
@@ -27,6 +28,66 @@ pub enum Stmt {
     ForIn(Option<Span>, Box<ForInHead>, Expr, Box<Stmt>),
     ForOf(Option<Span>, Box<ForOfHead>, Expr, Box<Stmt>),
     Debugger(Option<Span>, Semi)
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Body<Item> {
+    pub location: Option<Span>,
+    pub dirs: Vec<Dir>,
+    pub items: Vec<Item>
+}
+
+impl<Item> TrackingRef for Body<Item> {
+    fn tracking_ref(&self) -> &Option<Span> { &self.location }
+}
+
+impl<Item> TrackingMut for Body<Item> {
+    fn tracking_mut(&mut self) -> &mut Option<Span> { &mut self.location }
+}
+
+impl<Item: Untrack> Untrack for Body<Item> {
+    fn untrack(&mut self) {
+        self.location = None;
+        self.dirs.untrack();
+        self.items.untrack();
+    }
+}
+
+pub type Script = Body<StmtListItem>;
+
+pub type Module = Body<ModItem>;
+
+impl Stmt {
+    pub fn is_directive(&self) -> bool {
+        match *self {
+            Stmt::Expr(_, Expr::String(_, _), _) => true,
+            _ => false
+        }
+    }
+
+    pub fn to_directive(&self) -> Option<Dir> {
+        match *self {
+            Stmt::Expr(location, Expr::String(_, ref s@StringLiteral { .. }), semi) => Some(Dir {
+                location: location,
+                string: s.clone(),
+                semi: semi
+            }),
+            _ => None
+        }
+    }
+
+    pub fn into_directive(self) -> Result<Dir, Stmt> {
+        match self {
+            Stmt::Expr(location, Expr::String(_, s), semi) => {
+                Ok(Dir {
+                    location: location,
+                    string: s,
+                    semi: semi
+                })
+            }
+            _ => Err(self)
+        }
+    }
 }
 
 impl TrackingRef for Stmt {
@@ -108,7 +169,7 @@ impl Untrack for Stmt {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum ForHead {
     Var(Option<Span>, Vec<Dtor>),
     Let(Option<Span>, Vec<Dtor>),
@@ -151,7 +212,7 @@ impl Untrack for ForHead {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum ForInHead {
     VarInit(Option<Span>, Id, Expr),
     Var(Option<Span>, Patt<Id>),
@@ -201,7 +262,7 @@ impl Untrack for ForInHead {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum ForOfHead {
     Var(Option<Span>, Patt<Id>),
     Let(Option<Span>, Patt<Id>),
@@ -241,7 +302,7 @@ impl Untrack for ForOfHead {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Catch {
     pub location: Option<Span>,
     pub param: Patt<Id>,
@@ -264,7 +325,7 @@ impl Untrack for Catch {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Case {
     pub location: Option<Span>,
     pub test: Option<Expr>,
@@ -287,10 +348,113 @@ impl Untrack for Case {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
+pub struct Dir {
+    pub location: Option<Span>,
+    pub string: StringLiteral,
+    pub semi: Semi
+}
+
+impl Dir {
+    pub fn pragma(&self) -> &str {
+        if let Some(ref source) = self.string.source {
+            source
+        } else {
+            &self.string.value
+        }
+    }
+}
+
+impl TrackingRef for Dir {
+    fn tracking_ref(&self) -> &Option<Span> { &self.location }
+}
+
+impl TrackingMut for Dir {
+    fn tracking_mut(&mut self) -> &mut Option<Span> { &mut self.location }
+}
+
+impl Untrack for Dir {
+    fn untrack(&mut self) {
+        self.location = None;
+        self.semi.untrack();
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum ModItem {
+    Import(Import),
+    Export(Export),
+    Decl(Decl),
+    Stmt(Stmt)
+}
+
+impl TrackingRef for ModItem {
+    fn tracking_ref(&self) -> &Option<Span> {
+        match *self {
+            ModItem::Import(ref import) => import.tracking_ref(),
+            ModItem::Export(ref export) => export.tracking_ref(),
+            ModItem::Decl(ref decl) => decl.tracking_ref(),
+            ModItem::Stmt(ref stmt) => stmt.tracking_ref()
+        }
+    }
+}
+
+impl TrackingMut for ModItem {
+    fn tracking_mut(&mut self) -> &mut Option<Span> {
+        match *self {
+            ModItem::Import(ref mut import) => import.tracking_mut(),
+            ModItem::Export(ref mut export) => export.tracking_mut(),
+            ModItem::Decl(ref mut decl) => decl.tracking_mut(),
+            ModItem::Stmt(ref mut stmt) => stmt.tracking_mut()
+        }
+    }
+}
+
+impl Untrack for ModItem {
+    fn untrack(&mut self) {
+        match *self {
+            ModItem::Import(ref mut import) => { import.untrack(); }
+            ModItem::Export(ref mut export) => { export.untrack(); }
+            ModItem::Decl(ref mut decl) => { decl.untrack(); }
+            ModItem::Stmt(ref mut stmt) => { stmt.untrack(); }
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum StmtListItem {
     Decl(Decl),
     Stmt(Stmt)
+}
+
+impl StmtListItem {
+    pub fn is_directive(&self) -> bool {
+        match *self {
+            StmtListItem::Stmt(ref stmt) => stmt.is_directive(),
+            _ => false
+        }
+    }
+
+    pub fn to_directive(&self) -> Option<Dir> {
+        match *self {
+            StmtListItem::Stmt(ref stmt) => stmt.to_directive(),
+            _ => None
+        }
+    }
+
+    pub fn into_directive(self) -> Result<Dir, StmtListItem> {
+        match self {
+            StmtListItem::Stmt(stmt) => stmt.into_directive().map_err(StmtListItem::Stmt),
+            StmtListItem::Decl(decl) => Err(StmtListItem::Decl(decl))
+        }
+    }
+
+    pub fn into_mod_item(self) -> ModItem {
+        match self {
+            StmtListItem::Stmt(stmt) => ModItem::Stmt(stmt),
+            StmtListItem::Decl(decl) => ModItem::Decl(decl)
+        }
+    }
 }
 
 impl TrackingRef for StmtListItem {

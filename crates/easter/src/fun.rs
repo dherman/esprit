@@ -2,9 +2,9 @@ use joker::track::*;
 
 use id::Id;
 use patt::Patt;
-use stmt::StmtListItem;
+use stmt::Script;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Params {
     pub location: Option<Span>,
     pub list: Vec<Patt<Id>>
@@ -25,12 +25,12 @@ impl Untrack for Params {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Fun {
     pub location: Option<Span>,
     pub id: Option<Id>,
     pub params: Params,
-    pub body: Vec<StmtListItem>
+    pub body: Script
 }
 
 impl TrackingRef for Fun {

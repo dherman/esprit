@@ -130,6 +130,13 @@ pub enum Name {
 }
 
 impl Name {
+    pub fn atom(&self) -> Option<Atom> {
+        match *self {
+            Name::Atom(ref atom) => Some(*atom),
+            _ => None
+        }
+    }
+
     pub fn into_string(self) -> String {
         match self {
             Name::Atom(atom) => atom.name().to_string(),

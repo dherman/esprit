@@ -4,9 +4,6 @@ use track::*;
 use token::{Token, TokenData, Exp, CharCase, Sign, NumberSource, Radix, StringLiteral, RegExpLiteral};
 use word::Map as WordMap;
 
-use std::cell::Cell;
-use std::rc::Rc;
-use context::Context;
 use char::ESCharExt;
 use reader::Reader;
 use lookahead::Buffer;
@@ -38,7 +35,6 @@ impl SpanTracker {
 
 pub struct Lexer<I> {
     reader: Reader<I>,
-    cx: Rc<Cell<Context>>,
     lookahead: Buffer,
     wordmap: WordMap
 }
@@ -46,10 +42,9 @@ pub struct Lexer<I> {
 impl<I> Lexer<I> where I: Iterator<Item=char> {
     // constructor
 
-    pub fn new(chars: I, cx: Rc<Cell<Context>>) -> Lexer<I> {
+    pub fn new(chars: I) -> Lexer<I> {
         Lexer {
             reader: Reader::new(chars),
-            cx: cx,
             lookahead: Buffer::new(),
             wordmap: WordMap::new()
         }
@@ -57,9 +52,9 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     // public methods
 
-    pub fn peek_token(&mut self) -> Result<&Token> {
+    pub fn peek_token(&mut self, operator: bool) -> Result<&Token> {
         if self.lookahead.is_empty() {
-            let token = try!(self.read_next_token());
+            let token = try!(self.read_next_token(operator));
             self.lookahead.push_token(token);
         }
         Ok(self.lookahead.peek_token())
@@ -70,8 +65,8 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         self.lookahead.peek_token()
     }
 
-    pub fn skip_token(&mut self) -> Result<()> {
-        try!(self.read_token());
+    pub fn skip_token(&mut self, operator: bool) -> Result<()> {
+        try!(self.read_token(operator));
         Ok(())
     }
 
@@ -80,9 +75,9 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         self.lookahead.read_token()
     }
 
-    pub fn read_token(&mut self) -> Result<Token> {
+    pub fn read_token(&mut self, operator: bool) -> Result<Token> {
         if self.lookahead.is_empty() {
-            self.read_next_token()
+            self.read_next_token(operator)
         } else {
             Ok(self.lookahead.read_token())
         }
@@ -592,7 +587,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         span.end(self, value)
     }
 
-    fn read_next_token(&mut self) -> Result<Token> {
+    fn read_next_token(&mut self, operator: bool) -> Result<Token> {
         let mut pair;
         let mut found_newline = false;
 
@@ -614,7 +609,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }
 
         let mut result = try!(match pair {
-            (Some('/'), _) if !self.cx.get().operator    => self.read_regexp(),
+            (Some('/'), _) if !operator                  => self.read_regexp(),
             (Some('/'), Some('='))                       => {
                 Ok(self.read_punc2(TokenData::SlashAssign))
             }
@@ -709,35 +704,19 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 }
 
-impl<I> Iterator for Lexer<I> where I: Iterator<Item=char> {
-    type Item = Token;
-
-    fn next(&mut self) -> Option<Token> {
-        match self.read_token() {
-            Ok(Token { value: TokenData::EOF, .. }) => None,
-            Ok(t) => Some(t),
-            Err(_) => None
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
 
     use test::{deserialize_lexer_tests, LexerTest};
     use lexer::Lexer;
     use result::Result;
-    use context::Context;
     use token::{Token, TokenData};
-    use std::cell::Cell;
-    use std::rc::Rc;
     use std;
 
-    fn lex2(source: &String, context: Context) -> Result<(Token, Token)> {
+    fn lex2(source: &String, operator: bool) -> Result<(Token, Token)> {
         let chars = source.chars();
-        let cx = Rc::new(Cell::new(context));
-        let mut lexer = Lexer::new(chars, cx.clone());
-        Ok((try!(lexer.read_token()), try!(lexer.read_token())))
+        let mut lexer = Lexer::new(chars);
+        Ok((try!(lexer.read_token(operator)), try!(lexer.read_token(operator))))
     }
 
     fn assert_test2(source: &str, expected: &std::result::Result<TokenData, String>, expected_next: TokenData, actual: Result<(Token, Token)>) {
@@ -764,12 +743,12 @@ mod tests {
     #[test]
     pub fn go() {
         let tests = deserialize_lexer_tests(include_str!("../tests/unit.json"));
-        for LexerTest { source, context, expected } in tests {
-            assert_test2(&source[..], &expected, TokenData::EOF, lex2(&source, context));
-            assert_test2(&source[..], &expected, TokenData::EOF, lex2(&format!("{} ", source), context));
-            assert_test2(&source[..], &expected, TokenData::EOF, lex2(&format!(" {}", source), context));
-            assert_test2(&source[..], &expected, TokenData::EOF, lex2(&format!(" {} ", source), context));
-            assert_test2(&source[..], &expected, TokenData::Semi, lex2(&format!("{};", source), context));
+        for LexerTest { source, operator, expected } in tests {
+            assert_test2(&source[..], &expected, TokenData::EOF, lex2(&source, operator));
+            assert_test2(&source[..], &expected, TokenData::EOF, lex2(&format!("{} ", source), operator));
+            assert_test2(&source[..], &expected, TokenData::EOF, lex2(&format!(" {}", source), operator));
+            assert_test2(&source[..], &expected, TokenData::EOF, lex2(&format!(" {} ", source), operator));
+            assert_test2(&source[..], &expected, TokenData::Semi, lex2(&format!("{};", source), operator));
         }
     }
 

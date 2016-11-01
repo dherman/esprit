@@ -11,3 +11,4 @@ repository = "https://github.com/dherman/esprit"
 
 [dependencies]
 joker = { version = "0.0.5", path = "../joker" }
+tristate = "0.1.1"

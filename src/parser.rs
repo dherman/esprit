@@ -1,11 +1,8 @@
-use joker;
 use joker::track::*;
-use joker::token::{Token, TokenData};
+use joker::token::{Token, TokenData, StringLiteral};
 use joker::word::{Atom, Name, Reserved};
 use joker::lexer::Lexer;
-use joker::context::Mode;
-use easter::prog::Script;
-use easter::stmt::{Stmt, StmtListItem, ForHead, ForInHead, ForOfHead, Case, Catch};
+use easter::stmt::{Stmt, StmtListItem, ForHead, ForInHead, ForOfHead, Case, Catch, Script, Dir, ModItem, Module};
 use easter::expr::Expr;
 use easter::decl::{Decl, Dtor, DtorExt};
 use easter::patt::{Patt, CompoundPatt};
@@ -15,51 +12,373 @@ use easter::id::{Id, IdExt};
 use easter::punc::{Unop, UnopTag, ToOp, Op};
 use easter::cover::IntoAssignPatt;
 
-use std::cell::Cell;
 use std::rc::Rc;
 use std::mem::replace;
-use std::convert::From;
-use std::str::Chars;
-use context;
-use context::{LabelType, WithContext};
+use context::{Context, LabelType, WithContext, Goal, Mode};
 use tokens::{First, Follows, HasLabelType};
 use atom::AtomExt;
 use track::Newline;
 use result::Result;
-use error::Error;
+use error::{Error, Check};
 use track::Tracking;
 use state::State;
 use expr::{Deref, Suffix, Arguments, Prefix, Postfix};
 use stack::{Stack, Infix};
 
+pub use tristate::TriState as Strict;
+
 pub struct Parser<I> {
+    pub goal: Goal,
+    pub validate: bool,       // should we do strict mode validation as eagerly as possible?
+    pub deferred: Vec<Check>, // strict mode checks that haven't been performed yet
     pub lexer: Lexer<I>,
-    pub shared_cx: Rc<Cell<joker::context::Context>>,
-    pub parser_cx: context::Context
+    pub context: Context
 }
 
-impl<'a> From<&'a str> for Parser<Chars<'a>> {
-    fn from(s: &'a str) -> Parser<Chars<'a>> {
-        Parser::from(s.chars())
+struct StringToken(Option<Span>, StringLiteral);
+
+enum DirectiveMatch {
+    Directive(Dir),
+    StringStatement(StringToken),
+    Other
+}
+
+enum ProgramItems {
+    Script(Vec<StmtListItem>),
+    Module(Vec<ModItem>)
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Program {
+    Ambiguous(Vec<Check>, Script),
+    Module(Module)
+}
+
+impl TrackingRef for Program {
+    fn tracking_ref(&self) -> &Option<Span> {
+        match *self {
+            Program::Ambiguous(_, ref script) => script.tracking_ref(),
+            Program::Module(ref module) => module.tracking_ref()
+        }
     }
 }
 
-impl<I: Iterator<Item=char>> From<I> for Parser<I> {
-    fn from(i: I) -> Parser<I> {
-        let cx = Rc::new(Cell::new(joker::context::Context::new(Mode::Sloppy)));
-        let lexer = Lexer::new(i, cx.clone());
-        Parser::new(lexer, cx.clone())
+impl TrackingMut for Program {
+    fn tracking_mut(&mut self) -> &mut Option<Span> {
+        match *self {
+            Program::Ambiguous(_, ref mut script) => script.tracking_mut(),
+            Program::Module(ref mut module) => module.tracking_mut()
+        }
+    }
+}
+
+impl Untrack for Program {
+    fn untrack(&mut self) {
+        match *self {
+            Program::Ambiguous(_, ref mut script) => script.untrack(),
+            Program::Module(ref mut module) => module.untrack()
+        }
+    }
+}
+
+fn unexpected_module(module: Module) -> Error {
+    let Module { location, dirs, items } = module;
+
+    // If there's a "use module" pragma, blame that.
+    if let Some(Dir { location, string, .. }) = dirs.into_iter().find(|dir| dir.pragma() == "use module") {
+        return Error::UnexpectedDirective(location, string);
+    }
+
+    // If there's an import or export, blame that.
+    for item in items {
+        match item {
+            ModItem::Import(import) => { return Error::ImportInScript(import); }
+            ModItem::Export(export) => { return Error::ExportInScript(export); }
+            _ => { }
+        }
+    }
+
+    // We determined it's a module for some other reason. For
+    // now this should never happen, but serves as catch-all
+    // for any future reasons we might determine a program unit
+    // is a module.
+    return Error::UnexpectedModule(location);
+}
+
+impl Program {
+    pub fn script(self) -> Result<Script> {
+        match self {
+            Program::Ambiguous(_, script) => Ok(script),
+            Program::Module(module) => { return Err(unexpected_module(module)); }
+        }
+    }
+
+    pub fn strict(self) -> Result<Script> {
+        match self {
+            Program::Ambiguous(checks, script) => {
+                for check in checks {
+                    try!(check.perform(false));
+                }
+
+                Ok(script)
+            }
+            Program::Module(module) => { return Err(unexpected_module(module)); }
+        }
+    }
+
+    pub fn module(self) -> Result<Module> {
+        match self {
+            Program::Ambiguous(checks, script) => {
+                for check in checks {
+                    try!(check.perform(true));
+                }
+
+                let Script { location, dirs, items } = script;
+
+                Ok(Module {
+                    location: location,
+                    dirs: dirs,
+                    items: items.into_iter().map(|item| item.into_mod_item()).collect()
+                })
+            }
+            Program::Module(module) => Ok(module)
+        }
     }
 }
 
 impl<I: Iterator<Item=char>> Parser<I> {
-    pub fn new(lexer: Lexer<I>, cx: Rc<Cell<joker::context::Context>>) -> Parser<I> {
-        Parser { lexer: lexer, shared_cx: cx, parser_cx: context::Context::new() }
+    pub fn from_chars(goal: Goal, i: I) -> Parser<I> {
+        let lexer = Lexer::new(i);
+        Parser::new(goal, true, lexer)
+    }
+
+    pub fn new(goal: Goal, validate: bool, lexer: Lexer<I>) -> Parser<I> {
+        Parser {
+            goal: goal,
+            validate: validate,
+            deferred: Vec::new(),
+            lexer: lexer,
+            context: Context::new()
+        }
+    }
+
+    fn take_deferred(&mut self) -> Vec<Check> {
+        replace(&mut self.deferred, Vec::new())
+    }
+
+    fn match_directive(&mut self) -> Result<DirectiveMatch> {
+        let span = self.start();
+        let token1 = try!(self.read());
+        let (location, literal) = match token1.value {
+            TokenData::String(literal) => (token1.location, literal),
+            _ => {
+                self.lexer.unread_token(token1);
+                return Ok(DirectiveMatch::Other);
+            }
+        };
+
+        if try!(self.peek()).expression_continuation() {
+            return Ok(DirectiveMatch::StringStatement(StringToken(Some(location), literal)));
+        }
+
+        let dir = try!(span.end_with_auto_semi(self, Newline::Required, |semi| Dir {
+            location: None,
+            string: literal,
+            semi: semi
+        }));
+
+        Ok(DirectiveMatch::Directive(dir))
+    }
+
+    pub fn module(&mut self) -> Result<Module> {
+        debug_assert!(self.goal.definitely_module());
+        self.span(&mut |this| {
+            let (dirs, string) = try!(this.body_directives());
+
+            this.interpret_directives(&dirs);
+
+            let items = try!(this.module_items(string));
+
+            Ok(Module {
+                location: None,
+                dirs: dirs,
+                items: items
+            })
+        })
+    }
+
+    pub fn program(&mut self) -> Result<Program> {
+        debug_assert!(!self.goal.definitely_script());
+        debug_assert!(!self.goal.definitely_module());
+        self.span(&mut |this| {
+            let (dirs, string) = try!(this.body_directives());
+
+            this.interpret_directives(&dirs);
+
+            match try!(this.program_items(string)) {
+                ProgramItems::Script(items) => {
+                    let checks = this.take_deferred();
+                    Ok(Program::Ambiguous(checks, Script {
+                        location: None,
+                        dirs: dirs,
+                        items: items
+                    }))
+                }
+                ProgramItems::Module(items) => Ok(Program::Module(Module {
+                    location: None,
+                    dirs: dirs,
+                    items: items
+                }))
+            }
+        })
     }
 
     pub fn script(&mut self) -> Result<Script> {
-        let items = try!(self.statement_list());
-        Ok(Script { location: self.vec_span(&items), body: items })
+        self.span(&mut |this| {
+            let (dirs, string) = try!(this.body_directives());
+
+            this.interpret_directives(&dirs);
+
+            let items = try!(this.body_items(string));
+
+            Ok(Script {
+                location: None,
+                dirs: dirs,
+                items: items
+            })
+        })
+    }
+
+    fn body_directives(&mut self) -> Result<(Vec<Dir>, Option<StringToken>)> {
+        let mut dirs = Vec::new();
+
+        loop {
+            match try!(self.match_directive()) {
+                DirectiveMatch::Directive(dir) => { dirs.push(dir); }
+                DirectiveMatch::StringStatement(token) => {
+                    return Ok((dirs, Some(token)));
+                }
+                DirectiveMatch::Other => {
+                    return Ok((dirs, None));
+                }
+            }
+        }
+    }
+
+    fn interpret_directives(&mut self, dirs: &[Dir]) {
+        let use_strict = dirs.iter().any(|dir| dir.pragma() == "use strict");
+        let use_module = dirs.iter().any(|dir| dir.pragma() == "use module");
+
+        if self.context.function.is_some() {
+            if use_strict {
+                self.context.function = Some(Strict::Yes);
+            }
+        } else {
+            if use_module {
+                self.goal = Goal::Module;
+            } else if use_strict {
+                self.goal = Goal::Script(Strict::Yes);
+            }
+        }
+    }
+
+    fn body_items(&mut self, string: Option<StringToken>) -> Result<Vec<StmtListItem>> {
+        let mut items = Vec::new();
+
+        if let Some(string) = string {
+            let stmt = try!(self.string_statement(string));
+            items.push(StmtListItem::Stmt(stmt));
+        }
+
+        while !try!(self.peek()).follow_statement_list() {
+            match try!(self.declaration_opt()) {
+                Some(decl) => { items.push(StmtListItem::Decl(decl)); }
+                None => {
+                    let stmt = try!(self.statement());
+                    items.push(StmtListItem::Stmt(stmt));
+                }
+            }
+        }
+
+        Ok(items)
+    }
+
+    fn force_deferred_module_validation(&mut self) -> Result<()> {
+        if !self.validate {
+            return Ok(());
+        }
+
+        let deferred = self.take_deferred();
+
+        for check in deferred {
+            try!(check.perform(true));
+        }
+
+        Ok(())
+    }
+
+    fn program_items(&mut self, string: Option<StringToken>) -> Result<ProgramItems> {
+        let mut stmts = Vec::new();
+
+        if let Some(string) = string {
+            let stmt = try!(self.string_statement(string));
+            stmts.push(StmtListItem::Stmt(stmt));
+        }
+
+        while !try!(self.peek()).follow_statement_list() {
+            match try!(self.peek()).value {
+                TokenData::Reserved(Reserved::Import)
+              | TokenData::Reserved(Reserved::Export) => {
+                    try!(self.force_deferred_module_validation());
+                    let items = try!(self.more_module_items(stmts.into_iter().map(|stmt| stmt.into_mod_item()).collect()));
+                    return Ok(ProgramItems::Module(items));
+                }
+                _ => { }
+            }
+
+            match try!(self.declaration_opt()) {
+                Some(decl) => { stmts.push(StmtListItem::Decl(decl)); }
+                None => {
+                    let stmt = try!(self.statement());
+                    stmts.push(StmtListItem::Stmt(stmt));
+                }
+            }
+        }
+
+        Ok(ProgramItems::Script(stmts))
+    }
+
+    fn module_items(&mut self, string: Option<StringToken>) -> Result<Vec<ModItem>> {
+        let mut items = Vec::new();
+
+        if let Some(string) = string {
+            let stmt = try!(self.string_statement(string));
+            items.push(ModItem::Stmt(stmt));
+        }
+
+        self.more_module_items(items)
+    }
+
+    fn more_module_items(&mut self, mut items: Vec<ModItem>) -> Result<Vec<ModItem>> {
+        while !try!(self.peek()).follow_statement_list() {
+            match try!(self.peek()).value {
+                // ES6: import declaration
+                TokenData::Reserved(Reserved::Import) => unimplemented!(),
+                // ES6: export declaration
+                TokenData::Reserved(Reserved::Export) => unimplemented!(),
+                _ => { }
+            }
+
+            match try!(self.declaration_opt()) {
+                Some(decl) => { items.push(ModItem::Decl(decl)); }
+                None => {
+                    let stmt = try!(self.statement());
+                    items.push(ModItem::Stmt(stmt));
+                }
+            }
+        }
+
+        Ok(items)
     }
 
     fn statement_list(&mut self) -> Result<Vec<StmtListItem>> {
@@ -137,19 +456,36 @@ impl<I: Iterator<Item=char>> Parser<I> {
         Err(Error::UnsupportedFeature("destructuring"))
     }
 
-    fn function(&mut self) -> Result<Fun> {
-        let outer_cx = replace(&mut self.parser_cx, context::Context::new_function());
-        let result = self.span(&mut |this| {
-            this.reread(TokenData::Reserved(Reserved::Function));
-            let id = try!(this.id_opt());
-            let params = try!(this.formal_parameters());
-            try!(this.expect(TokenData::LBrace));
-            let body = try!(this.statement_list());
-            try!(this.expect(TokenData::RBrace));
-            Ok(Fun { location: None, id: id, params: params, body: body })
-        });
-        replace(&mut self.parser_cx, outer_cx);
+    fn strict(&self) -> Strict {
+        match self.context.function {
+            Some(strict) => strict,
+            None => self.goal.strict()
+        }
+    }
+
+    fn in_function<T, F>(&mut self, f: &mut F) -> T
+        where F: FnMut(&mut Self) -> T
+    {
+        let strict = self.strict();
+        let outer = replace(&mut self.context, Context::new_function(strict));
+        let result = f(self);
+        replace(&mut self.context, outer);
         result
+    }
+
+    fn function(&mut self) -> Result<Fun> {
+        self.in_function(&mut |this| {
+            this.span(&mut |this| {
+                this.reread(TokenData::Reserved(Reserved::Function));
+                let id = try!(this.id_opt());
+                let params = try!(this.formal_parameters());
+                try!(this.expect(TokenData::LBrace));
+                // ES6: if the body has "use strict" check for simple parameters
+                let body = try!(this.script());
+                try!(this.expect(TokenData::RBrace));
+                Ok(Fun { location: None, id: id, params: params, body: body })
+            })
+        })
     }
 
     fn statement(&mut self) -> Result<Stmt> {
@@ -186,6 +522,12 @@ impl<I: Iterator<Item=char>> Parser<I> {
                 Ok(try!(span.end_with_auto_semi(self, Newline::Required, |semi| Stmt::Expr(None, expr, semi))))
             }
         }
+    }
+
+    fn string_statement(&mut self, string: StringToken) -> Result<Stmt> {
+        let span = self.start();
+        let expr = try!(self.string_expression(string));
+        Ok(try!(span.end_with_auto_semi(self, Newline::Required, |semi| Stmt::Expr(None, expr, semi))))
     }
 
     fn labelled_statement(&mut self, id: Id) -> Result<Stmt> {
@@ -247,8 +589,17 @@ impl<I: Iterator<Item=char>> Parser<I> {
 
     fn binding_id(&mut self) -> Result<Id> {
         let id = try!(self.id());
-        if self.shared_cx.get().mode.is_strict() && id.name.is_illegal_strict_binding() {
-            return Err(Error::IllegalStrictBinding(id));
+        if id.name.is_illegal_strict_binding() {
+            let error = Error::IllegalStrictBinding(id.tracking_ref().unwrap(), id.name.atom().unwrap());
+            if self.goal.definitely_strict() {
+                if !self.validate {
+                    self.deferred.push(Check::Failed(error));
+                } else {
+                    return Err(error);
+                }
+            } else if !self.goal.definitely_sloppy() {
+                self.deferred.push(Check::Strict(error));
+            }
         }
         Ok(id)
     }
@@ -257,11 +608,16 @@ impl<I: Iterator<Item=char>> Parser<I> {
         let Token { location, newline, value: data } = try!(self.read());
         match data {
             TokenData::Identifier(name) => {
-                if name.is_reserved(self.shared_cx.get().mode) {
-                    return Err(Error::ContextualKeyword(Id {
-                        location: Some(location),
-                        name: name
-                    }));
+                let reserved = name.is_reserved(self.goal);
+                if reserved.unknown() {
+                    self.deferred.push(Check::Reserved(location, name.atom().unwrap()));
+                } else if reserved.yes() {
+                    let error = Error::ContextualKeyword(location, name.atom().unwrap());
+                    if !self.validate {
+                        self.deferred.push(Check::Failed(error));
+                    } else {
+                        return Err(error);
+                    }
                 }
                 Ok(Id { location: Some(location), name: name })
             }
@@ -328,9 +684,9 @@ impl<I: Iterator<Item=char>> Parser<I> {
     }
 
     fn iteration_body(&mut self) -> Result<Stmt> {
-        let iteration = replace(&mut self.parser_cx.iteration, true);
+        let iteration = replace(&mut self.context.iteration, true);
         let result = self.statement();
-        replace(&mut self.parser_cx.iteration, iteration);
+        replace(&mut self.context.iteration, iteration);
         result
     }
 
@@ -572,9 +928,9 @@ impl<I: Iterator<Item=char>> Parser<I> {
         self.span(&mut |this| {
             this.reread(TokenData::Reserved(Reserved::Switch));
             let disc = try!(this.paren_expression());
-            let outer_switch = replace(&mut this.parser_cx.switch, true);
+            let outer_switch = replace(&mut this.context.switch, true);
             let cases = this.switch_cases();
-            replace(&mut this.parser_cx.switch, outer_switch);
+            replace(&mut this.context.switch, outer_switch);
             Ok(Stmt::Switch(None, disc, try!(cases)))
         })
     }
@@ -642,12 +998,12 @@ impl<I: Iterator<Item=char>> Parser<I> {
         let break_token = self.reread(TokenData::Reserved(Reserved::Break));
         let arg = if try!(self.has_arg_same_line()) {
             let id = try!(self.id());
-            if !self.parser_cx.labels.contains_key(&Rc::new(id.name.clone())) {
+            if !self.context.labels.contains_key(&Rc::new(id.name.clone())) {
                 return Err(Error::InvalidLabel(id));
             }
             Some(id)
         } else {
-            if !self.parser_cx.iteration && !self.parser_cx.switch {
+            if !self.context.iteration && !self.context.switch {
                 return Err(Error::IllegalBreak(break_token));
             }
             None
@@ -662,14 +1018,14 @@ impl<I: Iterator<Item=char>> Parser<I> {
         let continue_token = self.reread(TokenData::Reserved(Reserved::Continue));
         let arg = if try!(self.has_arg_same_line()) {
             let id = try!(self.id());
-            match self.parser_cx.labels.get(&Rc::new(id.name.clone())) {
+            match self.context.labels.get(&Rc::new(id.name.clone())) {
                 None                        => { return Err(Error::InvalidLabel(id)); }
                 Some(&LabelType::Statement) => { return Err(Error::InvalidLabelType(id)); }
                 _                           => { }
             }
             Some(id)
         } else {
-            if !self.parser_cx.iteration {
+            if !self.context.iteration {
                 return Err(Error::IllegalContinue(continue_token));
             }
             None
@@ -690,7 +1046,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
         let result = try!(span.end_with_auto_semi(self, Newline::Required, |semi| {
             Stmt::Return(None, arg, semi)
         }));
-        if !self.parser_cx.function {
+        if self.context.function.is_none() {
             Err(Error::TopLevelReturn(result.tracking_ref().unwrap()))
         } else {
             Ok(result)
@@ -700,8 +1056,15 @@ impl<I: Iterator<Item=char>> Parser<I> {
     fn with_statement(&mut self) -> Result<Stmt> {
         self.span(&mut |this| {
             let token = this.reread(TokenData::Reserved(Reserved::With));
-            if this.shared_cx.get().mode.is_strict() {
-                return Err(Error::StrictWith(token));
+            if this.goal.definitely_strict() {
+                let error = Error::StrictWith(token);
+                if !this.validate {
+                    this.deferred.push(Check::Failed(error));
+                } else {
+                    return Err(error);
+                }
+            } else if !this.goal.definitely_sloppy() {
+                this.deferred.push(Check::Strict(Error::StrictWith(token)));
             }
             let obj = try!(this.paren_expression());
             let body = Box::new(try!(this.statement()));
@@ -777,12 +1140,6 @@ impl<I: Iterator<Item=char>> Parser<I> {
         self.reread(TokenData::Reserved(Reserved::Debugger));
         Ok(try!(span.end_with_auto_semi(self, Newline::Required, |semi| Stmt::Debugger(None, semi))))
     }
-
-/*
-    pub fn module(&mut self) -> Result<Module> {
-        unimplemented!()
-    }
-*/
 
     fn paren_expression(&mut self) -> Result<Expr> {
         try!(self.expect(TokenData::LParen));
@@ -921,10 +1278,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                     let paren_location = Some(try!(self.expect(TokenData::LParen)).location);
                     try!(self.expect(TokenData::RParen));
                     try!(self.expect(TokenData::LBrace));
-                    let outer_cx = replace(&mut self.parser_cx, context::Context::new_function());
-                    let body = self.statement_list();
-                    replace(&mut self.parser_cx, outer_cx);
-                    let body = try!(body);
+                    let body = try!(self.in_function(&mut |this| this.script()));
                     let end_location = Some(try!(self.expect(TokenData::RBrace)).location);
                     let val_location = span(&paren_location, &end_location);
                     let prop_location = span(&key, &end_location);
@@ -950,10 +1304,8 @@ impl<I: Iterator<Item=char>> Parser<I> {
                     let param = try!(self.pattern());
                     try!(self.expect(TokenData::RParen));
                     try!(self.expect(TokenData::LBrace));
-                    let outer_cx = replace(&mut self.parser_cx, context::Context::new_function());
-                    let body = self.statement_list();
-                    replace(&mut self.parser_cx, outer_cx);
-                    let body = try!(body);
+                    // ES6: if the body has "use strict" check for simple parameters
+                    let body = try!(self.in_function(&mut |this| this.script()));
                     let end_location = Some(try!(self.expect(TokenData::RBrace)).location);
                     let val_location = span(&paren_location, &end_location);
                     let prop_location = span(&key, &end_location);
@@ -1175,7 +1527,16 @@ impl<I: Iterator<Item=char>> Parser<I> {
     // IDUnaryExpression ::=
     //   IdentifierReference Suffix* PostfixOperator?
     fn id_unary_expression(&mut self, id: Id) -> Result<Expr> {
-        let mut result = Expr::Id(id);
+        self.unary_suffixes(Expr::Id(id))
+    }
+
+    // StringUnaryExpression ::=
+    //   StringLiteral Suffix* PostfixOperator?
+    fn string_unary_expression(&mut self, string: StringToken) -> Result<Expr> {
+        self.unary_suffixes(Expr::String(string.0, string.1))
+    }
+
+    fn unary_suffixes(&mut self, mut result: Expr) -> Result<Expr> {
         let suffixes = try!(self.suffixes());
         for suffix in suffixes {
             result = suffix.append_to(result);
@@ -1287,6 +1648,14 @@ impl<I: Iterator<Item=char>> Parser<I> {
         self.more_conditional(test)
     }
 
+    // StringConditionalExpression ::=
+    //   StringUnaryExpression (Infix UnaryExpression)* ("?" AssignmentExpression ":" AssignmentExpression)?
+    fn string_conditional_expression(&mut self, string: StringToken) -> Result<Expr> {
+        let left = try!(self.string_unary_expression(string));
+        let test = try!(self.more_infix_expressions(left));
+        self.more_conditional(test)
+    }
+
     fn more_conditional(&mut self, left: Expr) -> Result<Expr> {
         if try!(self.matches_op(TokenData::Question)) {
             let cons = try!(self.allow_in(true, |this| this.assignment_expression()));
@@ -1307,11 +1676,16 @@ impl<I: Iterator<Item=char>> Parser<I> {
     }
 
     // IDAssignmentExpression ::=
-    //   YieldPrefix* "yield"
-    //   YieldPrefix+ ConditionalExpression (("=" | AssignmentOperator) AssignmentExpression)?
     //   IDConditionalExpression (("=" | AssignmentOperator) AssignmentExpression)?
     fn id_assignment_expression(&mut self, id: Id) -> Result<Expr> {
         let left = try!(self.id_conditional_expression(id));
+        self.more_assignment(left)
+    }
+
+    // StringAssignmentExpression ::=
+    //   StringConditionalExpression (("=" | AssignmentOperator) AssignmentExpression)?
+    fn string_assignment_expression(&mut self, string: StringToken) -> Result<Expr> {
+        let left = try!(self.string_conditional_expression(string));
         self.more_assignment(left)
     }
 
@@ -1344,7 +1718,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
 
     fn match_infix(&mut self) -> Result<Option<Infix>> {
         let token = try!(self.read_op());
-        let result = token.to_binop(self.parser_cx.allow_in).map_or_else(|| {
+        let result = token.to_binop(self.context.allow_in).map_or_else(|| {
             token.to_logop().map(Infix::Logop)
         }, |op| Some(Infix::Binop(op)));
         if result.is_none() {
@@ -1364,6 +1738,13 @@ impl<I: Iterator<Item=char>> Parser<I> {
     //   IDAssignmentExpression ("," AssignmentExpression)*
     fn id_expression(&mut self, id: Id) -> Result<Expr> {
         let first = try!(self.id_assignment_expression(id));
+        self.more_expressions(first)
+    }
+
+    // StringExpression ::=
+    //   StringAssignmentExpression ("," AssignmentExpression)*
+    fn string_expression(&mut self, string: StringToken) -> Result<Expr> {
+        let first = try!(self.string_assignment_expression(string));
         self.more_expressions(first)
     }
 
@@ -1492,7 +1873,7 @@ mod tests {
     pub fn as_ref_test() {
         let mut ast = script("foobar = 17;").ok().unwrap();
         ast.untrack();
-        match ast.body.first().unwrap() {
+        match ast.items.first().unwrap() {
             &StmtListItem::Stmt(Stmt::Expr(_, Expr::Assign(_, _, Patt::Simple(AssignTarget::Id(ref id)), _), _)) => {
                 assert!(id.name.as_ref() == "foobar");
             }
