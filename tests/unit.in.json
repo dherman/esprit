@@ -338,6 +338,10 @@
 
   "x.null;": true,
 
+  "0; \"it's\"": true,
+  "0; \"it\\'s\"": true,
+  "0; 'it\\'s'": true,
+
   "\"it's\"": true,
   "\"it\\'s\"": true,
   "'it\\'s'": true,

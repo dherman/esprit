@@ -7782,6 +7782,66 @@
     }]
   }
 }, {
+  "source": "0; \"it's\"",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "Literal",
+        "value": 0,
+        "raw": "0"
+      }
+    }, {
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "Literal",
+        "value": "it's",
+        "raw": "\"it's\""
+      }
+    }]
+  }
+}, {
+  "source": "0; \"it\\'s\"",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "Literal",
+        "value": 0,
+        "raw": "0"
+      }
+    }, {
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "Literal",
+        "value": "it's",
+        "raw": "\"it\\'s\""
+      }
+    }]
+  }
+}, {
+  "source": "0; 'it\\'s'",
+  "expected": {
+    "type": "Program",
+    "body": [{
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "Literal",
+        "value": 0,
+        "raw": "0"
+      }
+    }, {
+      "type": "ExpressionStatement",
+      "expression": {
+        "type": "Literal",
+        "value": "it's",
+        "raw": "'it\\'s'"
+      }
+    }]
+  }
+}, {
   "source": "\"it's\"",
   "expected": {
     "type": "Program",

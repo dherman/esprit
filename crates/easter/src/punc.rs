@@ -17,7 +17,7 @@ impl Untrack for Semi {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub enum UnopTag {
     Minus,
     Plus,
@@ -45,7 +45,7 @@ impl FromStr for UnopTag {
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct Op<T> {
     pub location: Option<Span>,
     pub tag: T
@@ -102,7 +102,7 @@ impl<T: Precedence> Precedence for Op<T> {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub enum BinopTag {
     Eq,
     NEq,
@@ -216,7 +216,7 @@ impl Display for BinopTag {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub enum LogopTag {
     Or,
     And
@@ -254,7 +254,7 @@ impl Display for LogopTag {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub enum AssopTag {
     Eq,
     PlusEq,

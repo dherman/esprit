@@ -9,6 +9,7 @@ use punc::{Unop, Binop, Assop, Logop};
 use id::Id;
 use patt::{Patt, AssignTarget};
 
+#[derive(Clone)]
 pub enum Expr {
     This(Option<Span>),
     Id(Id),

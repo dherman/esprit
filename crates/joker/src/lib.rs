@@ -4,7 +4,6 @@ extern crate unjson;
 pub mod word;
 pub mod token;
 pub mod lexer;
-pub mod context;
 mod char;
 mod reader;
 mod lookahead;

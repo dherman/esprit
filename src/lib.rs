@@ -9,6 +9,7 @@
 
 extern crate serde;
 extern crate serde_json;
+extern crate tristate;
 extern crate estree;
 extern crate unjson;
 extern crate easter;
@@ -28,10 +29,25 @@ mod test;
 
 // type Parser<I: Iterator<Item=char>> = parser::Parser<I>;
 
-use easter::prog::Script;
-use parser::Parser;
+use context::Goal;
+use easter::stmt::{Script, Module};
+use parser::{Parser, Strict};
 use result::Result;
 
+pub use parser::Program;
+
 pub fn script(s: &str) -> Result<Script> {
-    Parser::from(s).script()
+    Parser::from_chars(Goal::Script(Strict::Unknown), s.chars()).script()
+}
+
+pub fn strict(s: &str) -> Result<Script> {
+    Parser::from_chars(Goal::Script(Strict::Yes), s.chars()).script()
+}
+
+pub fn module(s: &str) -> Result<Module> {
+    Parser::from_chars(Goal::Module, s.chars()).module()
+}
+
+pub fn program(s: &str) -> Result<Program> {
+    Parser::from_chars(Goal::Unknown, s.chars()).program()
 }

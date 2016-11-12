@@ -3,7 +3,7 @@
 use serde_json;
 use unjson::ty::Array;
 use unjson::{Unjson, ExtractField};
-use easter::prog::Script;
+use easter::stmt::Script;
 use estree::IntoScript;
 
 pub struct ParserTest {

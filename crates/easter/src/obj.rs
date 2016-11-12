@@ -3,10 +3,10 @@ use joker::token::{StringLiteral, NumberLiteral};
 
 use id::Id;
 use expr::Expr;
-use stmt::StmtListItem;
+use stmt::Script;
 use patt::Patt;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct DotKey {
     pub location: Option<Span>,
     pub value: String
@@ -24,7 +24,7 @@ impl Untrack for DotKey {
     fn untrack(&mut self) { self.location = None; }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Prop {
     pub location: Option<Span>,
     pub key: PropKey,
@@ -47,7 +47,7 @@ impl Untrack for Prop {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum PropKey {
     Id(Option<Span>, String),
     String(Option<Span>, StringLiteral),
@@ -80,11 +80,11 @@ impl Untrack for PropKey {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum PropVal {
     Init(Expr),
-    Get(Option<Span>, Vec<StmtListItem>),
-    Set(Option<Span>, Patt<Id>, Vec<StmtListItem>)
+    Get(Option<Span>, Script),
+    Set(Option<Span>, Patt<Id>, Script)
 }
 
 impl TrackingRef for PropVal {

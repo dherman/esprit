@@ -5,7 +5,7 @@ use expr::Expr;
 use patt::{Patt, AssignTarget, CompoundPatt, PropPatt};
 use obj::{Prop, PropVal};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Error {
     InvalidAssignTarget(Option<Span>),
     InvalidPropPatt(Option<Span>)

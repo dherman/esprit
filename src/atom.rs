@@ -1,16 +1,17 @@
-use joker::context::Mode;
 use joker::word::{Atom, Name};
+use context::{Goal, Mode};
+use tristate::TriState;
 
 pub trait AtomExt {
-    fn is_reserved(&self, Mode) -> bool;
+    fn is_reserved(&self, Goal) -> TriState;
     fn is_illegal_strict_binding(&self) -> bool;
 }
 
 impl AtomExt for Name {
-    fn is_reserved(&self, mode: Mode) -> bool {
+    fn is_reserved(&self, goal: Goal) -> TriState {
         match self {
-            &Name::Atom(ref atom) => atom.is_reserved(mode),
-            _ => false
+            &Name::Atom(ref atom) => atom.is_reserved(goal),
+            _ => TriState::No
         }
     }
 
@@ -23,10 +24,17 @@ impl AtomExt for Name {
 }
 
 impl AtomExt for Atom {
-    fn is_reserved(&self, mode: Mode) -> bool {
-        // 12.1.1
-        if mode.is_strict() {
+    fn is_reserved(&self, goal: Goal) -> TriState {
+        if goal.definitely_strict() {
             match *self {
+                // 11.6.2.2
+                Atom::Await => if goal.definitely_module() {
+                    TriState::Yes
+                } else {
+                    TriState::No
+                },
+
+                // 12.1.1
                 Atom::Implements
               | Atom::Interface
               | Atom::Let
@@ -35,12 +43,13 @@ impl AtomExt for Atom {
               | Atom::Protected
               | Atom::Public
               | Atom::Static
-              | Atom::Yield => true,
-                _ => false
+              | Atom::Yield => TriState::Yes,
+                _ => TriState::No
             }
-        // 11.6.2.2
+        } else if goal.definitely_sloppy() {
+            TriState::No
         } else {
-            mode == Mode::Module && *self == Atom::Await
+            TriState::Unknown
         }
     }
 
