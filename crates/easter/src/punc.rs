@@ -256,7 +256,6 @@ impl Display for LogopTag {
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum AssopTag {
-    Eq,
     PlusEq,
     MinusEq,
     TimesEq,
@@ -275,7 +274,6 @@ impl FromStr for AssopTag {
 
     fn from_str(s: &str) -> Result<AssopTag, ()> {
         Ok(match s {
-            "="    => AssopTag::Eq,
             "+="   => AssopTag::PlusEq,
             "-="   => AssopTag::MinusEq,
             "*="   => AssopTag::TimesEq,
@@ -301,7 +299,6 @@ pub type Assop = Op<AssopTag>;
 impl Display for AssopTag {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         fmt.write_str(match *self {
-            AssopTag::Eq        => "=",
             AssopTag::PlusEq    => "+=",
             AssopTag::MinusEq   => "-=",
             AssopTag::TimesEq   => "*=",
@@ -369,7 +366,6 @@ impl ToOp for Token {
         Some(Op {
             location: Some(self.location),
             tag: match self.value {
-                TokenData::Assign        => AssopTag::Eq,
                 TokenData::PlusAssign    => AssopTag::PlusEq,
                 TokenData::MinusAssign   => AssopTag::MinusEq,
                 TokenData::StarAssign    => AssopTag::TimesEq,

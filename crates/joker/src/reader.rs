@@ -1,36 +1,47 @@
 use track::Posn;
+use std::collections::VecDeque;
 
 pub struct Reader<I> {
     chars: I,
-    curr_char: Option<char>,
-    next_char: Option<char>,
+    ahead: VecDeque<char>,
     curr_posn: Posn
 }
 
 impl<I> Reader<I> where I: Iterator<Item=char> {
-    pub fn new(mut chars: I) -> Reader<I> {
-        let curr_char = chars.next();
-        let next_char = if curr_char.is_some() { chars.next() } else { None };
+    pub fn new(chars: I) -> Reader<I> {
         Reader {
             chars: chars,
-            curr_char: curr_char,
-            next_char: next_char,
+            ahead: VecDeque::with_capacity(4),
             curr_posn: Posn::origin()
         }
     }
 
-    pub fn curr_char(&mut self) -> Option<char> { self.curr_char }
+    pub fn peek(&mut self, n: usize) -> Option<char> {
+        for _ in self.ahead.len()..(n + 1) {
+            match self.chars.next() {
+                Some(ch) => {
+                    self.ahead.push_back(ch)
+                }
+                None => {
+                    return None
+                }
+            }
+        }
+        self.ahead.get(n).map(|&x| x)
+    }
+
     pub fn curr_posn(&self) -> Posn { self.curr_posn }
-    pub fn next_char(&mut self) -> Option<char> { self.next_char }
+}
 
-    pub fn skip(&mut self) {
-        let curr_char = self.next_char;
-        let next_char = if curr_char.is_some() { self.chars.next() } else { None };
+impl<I> Iterator for Reader<I> where I: Iterator<Item=char> {
+    type Item = char;
 
-        self.curr_char = curr_char;
-        self.next_char = next_char;
+    fn next(&mut self) -> Option<char> {
+        let curr_char = self.ahead.pop_front().or_else(|| {
+            self.chars.next()
+        });
 
-        if (curr_char == Some('\r') && next_char != Some('\n')) ||
+        if (curr_char == Some('\r') && self.peek(0) != Some('\n')) ||
            curr_char == Some('\n') ||
            curr_char == Some('\u{2028}') ||
            curr_char == Some('\u{2029}') {
@@ -41,5 +52,7 @@ impl<I> Reader<I> where I: Iterator<Item=char> {
         }
 
         self.curr_posn.offset += 1;
+
+        curr_char
     }
 }
