@@ -108,7 +108,7 @@ pub trait TagOf {
 
 impl TagOf for Object {
     fn tag(&self) -> Result<Tag> {
-        let str = try!(self.get_string("type").map_err(Error::Json));
+        let str = self.get_string("type").map_err(Error::Json)?;
         str.parse()
            .map_err(|_| Error::InvalidTypeTag(String::from(str)))
     }

@@ -11,7 +11,7 @@ impl<T, U> Map<T, U> for Vec<T> {
     fn map<F: Fn(T) -> Result<U>>(self, f: F) -> Result<Vec<U>> {
         let mut list = Vec::with_capacity(self.len());
         for data in self {
-            list.push(try!(f(data)));
+            list.push(f(data)?);
         }
         Ok(list)
     }
