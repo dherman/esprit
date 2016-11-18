@@ -286,17 +286,13 @@ impl<I: Iterator<Item=char>> Parser<I> {
         let mut items = Vec::new();
 
         if let Some(string) = string {
-            let stmt = self.string_statement(string)?;
-            items.push(StmtListItem::Stmt(stmt));
+            items.push(StmtListItem::Stmt(self.string_statement(string)?));
         }
 
         while !self.peek()?.follow_statement_list() {
             match self.declaration_opt()? {
                 Some(decl) => { items.push(StmtListItem::Decl(decl)); }
-                None => {
-                    let stmt = self.statement()?;
-                    items.push(StmtListItem::Stmt(stmt));
-                }
+                None       => { items.push(StmtListItem::Stmt(self.statement()?)); }
             }
         }
 
@@ -321,8 +317,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
         let mut stmts = Vec::new();
 
         if let Some(string) = string {
-            let stmt = self.string_statement(string)?;
-            stmts.push(StmtListItem::Stmt(stmt));
+            stmts.push(StmtListItem::Stmt(self.string_statement(string)?));
         }
 
         while !self.peek()?.follow_statement_list() {
@@ -338,10 +333,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
 
             match self.declaration_opt()? {
                 Some(decl) => { stmts.push(StmtListItem::Decl(decl)); }
-                None => {
-                    let stmt = self.statement()?;
-                    stmts.push(StmtListItem::Stmt(stmt));
-                }
+                None       => { stmts.push(StmtListItem::Stmt(self.statement()?)); }
             }
         }
 
@@ -352,8 +344,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
         let mut items = Vec::new();
 
         if let Some(string) = string {
-            let stmt = self.string_statement(string)?;
-            items.push(ModItem::Stmt(stmt));
+            items.push(ModItem::Stmt(self.string_statement(string)?));
         }
 
         self.more_module_items(items)
@@ -371,10 +362,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
 
             match self.declaration_opt()? {
                 Some(decl) => { items.push(ModItem::Decl(decl)); }
-                None => {
-                    let stmt = self.statement()?;
-                    items.push(ModItem::Stmt(stmt));
-                }
+                None       => { items.push(ModItem::Stmt(self.statement()?)); }
             }
         }
 
@@ -1185,8 +1173,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             TokenData::LBrace                    => { return self.object_literal(token); }
             TokenData::Reserved(Reserved::Function) => {
                 self.lexer.unread_token(token);
-                let fun = self.function()?;
-                return Ok(Expr::Fun(fun));
+                return Ok(Expr::Fun(self.function()?));
             }
             TokenData::LParen => {
                 self.lexer.unread_token(token);
@@ -1204,8 +1191,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             return Ok(Expr::Arr(span(&start_location, &Some(end.location)), elts));
         }
         loop {
-            let elt = self.array_element()?;
-            elts.push(elt);
+            elts.push(self.array_element()?);
             if !self.matches(TokenData::Comma)? {
                 break;
             }
@@ -1233,8 +1219,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             return Ok(Expr::Obj(span(&start_location, &Some(end.location)), props));
         }
         loop {
-            let prop = self.object_property()?;
-            props.push(prop);
+            props.push(self.object_property()?);
             if !self.matches(TokenData::Comma)? {
                 break;
             }
@@ -1485,15 +1470,13 @@ impl<I: Iterator<Item=char>> Parser<I> {
 
     fn deref_dot(&mut self) -> Result<Deref> {
         self.reread(TokenData::Dot);
-        let key = self.id_name()?;
-        Ok(Deref::Dot(key))
+        Ok(Deref::Dot(self.id_name()?))
     }
 
     // MemberBaseExpression . Suffix*
     fn more_call_expression(&mut self, base: Expr) -> Result<Expr> {
         let mut result = base;
-        let suffixes = self.suffixes()?;
-        for suffix in suffixes {
+        for suffix in self.suffixes()? {
             result = suffix.append_to(result);
         }
         Ok(result)
@@ -1547,8 +1530,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
     }
 
     fn unary_suffixes(&mut self, mut result: Expr) -> Result<Expr> {
-        let suffixes = self.suffixes()?;
-        for suffix in suffixes {
+        for suffix in self.suffixes()? {
             result = suffix.append_to(result);
         }
         if let Some(postfix) = self.match_postfix_operator_opt()? {

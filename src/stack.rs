@@ -148,11 +148,11 @@ impl Display for Stack {
         let width = self.frames.iter().fold(usize::MIN, |max, f| cmp::max(max, f.width()));
         let border = format!("+{}+", "-".to_string().repeat(width + 2));
         for frame in self.frames.iter() {
-            try!(fmt.write_str(&border[..]));
-            try!(fmt.write_fmt(format_args!("\n| {}{} |\n", frame, " ".to_string().repeat(width - frame.width()))));
+            fmt.write_str(&border[..])?;
+            fmt.write_fmt(format_args!("\n| {}{} |\n", frame, " ".to_string().repeat(width - frame.width())))?;
         }
-        try!(fmt.write_str(&border[..]));
-        try!(fmt.write_str("\n"));
+        fmt.write_str(&border[..])?;
+        fmt.write_str("\n")?;
         Ok(())
     }
 }

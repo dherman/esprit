@@ -38,7 +38,7 @@ impl<I> Tracking for Parser<I> where I: Iterator<Item=char> {
             T: TrackingMut
     {
         let start = self.posn();
-        let mut value = try!(parse(self));
+        let mut value = parse(self)?;
         let end = self.posn();
         *value.tracking_mut() = Some(Span { start: start, end: end });
         Ok(value)
@@ -71,7 +71,7 @@ impl SpanTracker {
             T: TrackingMut
     {
         let before = parser.posn();
-        match try!(parser.peek()) {
+        match parser.peek()? {
             &Token { value: TokenData::Semi, location, .. } => {
                 parser.reread(TokenData::Semi);
                 let mut result = cons(Semi::Explicit(Some(location.start)));
@@ -86,7 +86,7 @@ impl SpanTracker {
             }
             &Token { newline: found_newline, .. } => {
                 if newline == Newline::Required && !found_newline {
-                    let token = try!(parser.read());
+                    let token = parser.read()?;
                     return Err(Error::FailedASI(token));
                 }
                 let mut result = cons(Semi::Inserted);
