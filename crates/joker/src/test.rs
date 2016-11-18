@@ -44,7 +44,7 @@ impl IntoTestSuite for Array {
     fn into_lexer_test_suite(self) -> Result<Vec<LexerTest>> {
         let mut result = Vec::with_capacity(self.len());
         for data in self {
-            result.push(try!(data.into_lexer_test()));
+            result.push(data.into_lexer_test()?);
         }
         Ok(result)
     }
@@ -58,12 +58,12 @@ impl IntoTestSuite for Value {
 
 impl IntoTest for Object {
     fn into_lexer_test(mut self) -> Result<LexerTest> {
-        let source = try!(self.extract_string("source"));
-        let set = try!(self.extract_array("context").and_then(|arr| arr.into_string_set()));
+        let source = self.extract_string("source")?;
+        let set = self.extract_array("context").and_then(|arr| arr.into_string_set())?;
         let expected = if self.contains_key("error") {
-            Err(try!(self.extract_string("error")))
+            Err(self.extract_string("error")?)
         } else {
-            Ok(try!(self.extract_field("expected").and_then(|data| data.into_token())))
+            Ok(self.extract_field("expected").and_then(|data| data.into_token())?)
         };
         let operator = set.contains("operator");
         Ok(LexerTest {
@@ -88,7 +88,7 @@ impl IntoStringSet for Array {
     fn into_string_set(self) -> Result<HashSet<String>> {
         let mut set = HashSet::new();
         for data in self {
-            set.insert(try!(data.into_string()));
+            set.insert(data.into_string()?);
         }
         Ok(set)
     }
@@ -100,7 +100,7 @@ pub trait IntoName {
 
 impl IntoName for Value {
     fn into_name(self) -> Result<Name> {
-        Ok(Name::from(try!(self.into_string())))
+        Ok(Name::from(self.into_string()?))
     }
 }
 
@@ -194,7 +194,7 @@ fn validate_token(arr: Array) -> Result<Array> {
 
 impl IntoToken for Value {
     fn into_char_case(self) -> Result<CharCase> {
-        let s = try!(self.into_string());
+        let s = self.into_string()?;
         if s.len() == 0 {
             return string_error("lowercase or uppercase letter", s);
         }
@@ -219,14 +219,14 @@ impl IntoToken for Value {
         match self {
             Value::Null => Ok(None),
             _ => {
-                let arr = try!(self.into_array());
+                let arr = self.into_array()?;
                 if arr.len() != 3 {
                     return array_error(3, arr.len());
                 }
                 let (e, sign, value) = tuplify!(arr, ((), (), ()));
                 Ok(Some(Exp {
-                    e: try!(e.into_char_case()),
-                    sign: match try!(sign.into_string_opt()) {
+                    e: e.into_char_case()?,
+                    sign: match sign.into_string_opt()? {
                         None    => None,
                         Some(s) => {
                             if s.len() != 1 {
@@ -239,24 +239,24 @@ impl IntoToken for Value {
                             }
                         }
                     },
-                    value: try!(value.into_string())
+                    value: value.into_string()?
                 }))
             }
         }
     }
 
     fn into_token(self) -> Result<TokenData> {
-        let mut arr = try!(self.into_array());
+        let mut arr = self.into_array()?;
 
         // Check the array lengths in an external validation helper.
         // This lets us modularize the validation and avoids having to patch
         // the array back up to return in the error struct.
-        arr = try!(validate_token(arr));
+        arr = validate_token(arr)?;
 
-        let ty = try!(arr.remove(0).into_string());
+        let ty = arr.remove(0).into_string()?;
         Ok(match &ty[..] {
             "Reserved"      => {
-                let word = try!(arr.remove(0).into_string().and_then(|str| str.into_reserved()));
+                let word = arr.remove(0).into_string().and_then(|str| str.into_reserved())?;
                 TokenData::Reserved(word)
             }
             "LBrace"        => TokenData::LBrace,
@@ -312,37 +312,37 @@ impl IntoToken for Value {
             "EOF"           => TokenData::EOF,
             "DecimalInt"    => {
                 let (value, exp) = tuplify!(arr, ((), ()));
-                let value = try!(value.into_string());
-                let exp = try!(exp.into_exp_opt());
+                let value = value.into_string()?;
+                let exp = exp.into_exp_opt()?;
                 NumberSource::DecimalInt(value, exp).into_token_data()
             }
             "BinaryInt"     => {
                 let (flag, value) = tuplify!(arr, ((), ()));
-                let flag = try!(flag.into_char_case());
-                let value = try!(value.into_string());
+                let flag = flag.into_char_case()?;
+                let value = value.into_string()?;
                 NumberSource::RadixInt(Radix::Bin(flag), value).into_token_data()
             }
             "OctalInt"      => {
                 let (flag, value) = tuplify!(arr, ((), ()));
-                let flag = try!(flag.into_char_case_opt());
-                let value = try!(value.into_string());
+                let flag = flag.into_char_case_opt()?;
+                let value = value.into_string()?;
                 NumberSource::RadixInt(Radix::Oct(flag), value).into_token_data()
             }
             "HexInt"        => {
                 let (flag, value) = tuplify!(arr, ((), ()));
-                let flag = try!(flag.into_char_case());
-                let value = try!(value.into_string());
+                let flag = flag.into_char_case()?;
+                let value = value.into_string()?;
                 NumberSource::RadixInt(Radix::Hex(flag), value).into_token_data()
             }
             "Float"         => {
                 let (int, frac, exp) = tuplify!(arr, ((), (), ()));
-                let int = try!(int.into_string_opt());
-                let frac = try!(frac.into_string_opt());
-                let exp = try!(exp.into_exp_opt());
+                let int = int.into_string_opt()?;
+                let frac = frac.into_string_opt()?;
+                let exp = exp.into_exp_opt()?;
                 NumberSource::Float(int, frac, exp).into_token_data()
             }
             "String"        => {
-                let value = try!(arr.remove(0).into_string());
+                let value = arr.remove(0).into_string()?;
                 TokenData::String(StringLiteral {
                     source: Some(format!("{:?}", Value::String(value.to_string()))),
                     value: value
@@ -350,14 +350,14 @@ impl IntoToken for Value {
             }
             "RegExp"        => {
                 let (pattern, flags) = tuplify!(arr, ((), ()));
-                let pattern = try!(pattern.into_string());
-                let flags = try!(flags.into_string()).chars().collect();
+                let pattern = pattern.into_string()?;
+                let flags = flags.into_string()?.chars().collect();
                 TokenData::RegExp(RegExpLiteral {
                     pattern: pattern,
                     flags: flags
                 })
             }
-            "Identifier"    => TokenData::Identifier(try!(arr.remove(0).into_name())),
+            "Identifier"    => TokenData::Identifier(arr.remove(0).into_name()?),
             _               => { return type_error("token", Ty::Array); }
         })
     }
