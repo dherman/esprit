@@ -49,7 +49,7 @@ impl IntoAssignPatt for Expr {
             Expr::Obj(location, props) => {
                 let mut prop_patts = Vec::with_capacity(props.len());
                 for prop in props {
-                    prop_patts.push(try!(prop.into_assign_prop()));
+                    prop_patts.push(prop.into_assign_prop()?);
                 }
                 Patt::Compound(CompoundPatt::Obj(location, prop_patts))
             }
@@ -57,7 +57,7 @@ impl IntoAssignPatt for Expr {
                 let mut patts = Vec::with_capacity(exprs.len());
                 for expr in exprs {
                     patts.push(match expr {
-                        Some(expr) => Some(try!(expr.into_assign_patt())),
+                        Some(expr) => Some(expr.into_assign_patt()?),
                         None => None
                     });
                 }
@@ -77,7 +77,7 @@ impl IntoAssignProp for Prop {
         let location = *self.tracking_ref();
         let key = self.key;
         let patt = match self.val {
-            PropVal::Init(expr) => try!(expr.into_assign_patt()),
+            PropVal::Init(expr) => expr.into_assign_patt()?,
             _ => { return Err(Error::InvalidPropPatt(*self.val.tracking_ref())); }
         };
         Ok(PropPatt { location: location, key: key, patt: patt })
