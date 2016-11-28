@@ -20,7 +20,7 @@ use atom::AtomExt;
 use track::Newline;
 use result::Result;
 use error::{Error, Check};
-use track::Tracking;
+use track::{SpanTracker, Tracking};
 use state::State;
 use expr::{Deref, Suffix, Arguments, Prefix, Postfix};
 use stack::{Stack, Infix};
@@ -512,9 +512,14 @@ impl<I: Iterator<Item=char>> Parser<I> {
         match self.peek_op()?.value {
             TokenData::Colon => self.labelled_statement(id),
             _                => {
-                let span = self.start();
-                let expr = self.id_expression(id)?;
-                Ok(span.end_with_auto_semi(self, Newline::Required, |semi| Stmt::Expr(None, expr, semi))?)
+                match id.name {
+                    Name::Atom(Atom::Let) => self.let_statement(id),
+                    _ => {
+                        let span = self.start();
+                        let expr = self.id_expression(id)?;
+                        Ok(span.end_with_auto_semi(self, Newline::Required, |semi| Stmt::Expr(None, expr, semi))?)
+                    }
+                }
             }
         }
     }
@@ -570,7 +575,13 @@ impl<I: Iterator<Item=char>> Parser<I> {
         let span = self.start();
         self.reread(TokenData::Reserved(Reserved::Var));
         let dtors = self.declarator_list()?;
-        Ok(span.end_with_auto_semi(self, Newline::Required, |semi| Stmt::Var(None, dtors, semi))?)
+        span.end_with_auto_semi(self, Newline::Required, |semi| Stmt::Var(None, dtors, semi))
+    }
+
+    fn let_statement(&mut self, id: Id) -> Result<Stmt> {
+        let span = SpanTracker::new(id.tracking_ref().unwrap().start);
+        let dtors = self.declarator_list()?;
+        span.end_with_auto_semi(self, Newline::Required, |semi| Stmt::Let(None, dtors, semi))
     }
 
     fn declarator_list(&mut self) -> Result<Vec<Dtor>> {

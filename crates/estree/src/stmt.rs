@@ -130,7 +130,12 @@ impl IntoStmt for Object {
         Ok(match tag {
             Tag::VariableDeclaration => {
                 let dtors = self.extract_dtor_list("declarations")?;
-                Stmt::Var(None, dtors, Semi::Explicit(None))
+                let kind = self.extract_string("kind").map_err(Error::Json)?;
+                match &kind[..] {
+                    "var" => Stmt::Var(None, dtors, Semi::Explicit(None)),
+                    "let" => Stmt::Let(None, dtors, Semi::Explicit(None)),
+                    _ => { return string_error("var or let", kind); }
+                }
             }
             Tag::EmptyStatement => Stmt::Empty(None),
             Tag::ExpressionStatement => {
