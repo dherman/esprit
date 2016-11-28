@@ -30,7 +30,7 @@ impl<I> Tracking for Parser<I> where I: Iterator<Item=char> {
     }
 
     fn start(&self) -> SpanTracker {
-        SpanTracker { start: self.posn() }
+        SpanTracker::new(self.posn())
     }
 
     fn span<F, T>(&mut self, parse: &mut F) -> Result<T>
@@ -63,6 +63,10 @@ impl SpanTracker {
         Tracked { value: value, location: Some(Span { start: self.start, end: parser.posn() }) }
     }
 */
+
+    pub fn new(start: Posn) -> Self {
+        SpanTracker { start: start }
+    }
 
     pub fn end_with_auto_semi<I, T, F>(&self, parser: &mut Parser<I>, newline: Newline, cons: F)
         -> Result<T>
