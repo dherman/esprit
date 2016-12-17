@@ -1360,7 +1360,6 @@ impl<I: Iterator<Item=char>> Parser<I> {
             }
             args_lists.push(self.arguments()?);
         }
-        let suffixes = self.suffixes()?;
         for deref in derefs {
             base = deref.append_to(base);
         }
@@ -1372,10 +1371,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             let location = span(&Some(new.location), &base);
             base = Expr::New(location, Box::new(base), None);
         }
-        for suffix in suffixes {
-            base = suffix.append_to(base);
-        }
-        Ok(base)
+        self.more_suffixes(base)
     }
 
     // CallExpression ::=
@@ -1383,7 +1379,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
     fn call_expression(&mut self) -> Result<Expr> {
         // ES6: super
         let base = self.primary_expression()?;
-        self.more_call_expression(base)
+        self.more_suffixes(base)
     }
 
     // Suffix ::=
@@ -1468,20 +1464,11 @@ impl<I: Iterator<Item=char>> Parser<I> {
     }
 
     // MemberBaseExpression . Suffix*
-    fn more_call_expression(&mut self, base: Expr) -> Result<Expr> {
-        let mut result = base;
-        for suffix in self.suffixes()? {
+    fn more_suffixes(&mut self, mut result: Expr) -> Result<Expr> {
+        while let Some(suffix) = self.suffix_opt()? {
             result = suffix.append_to(result);
         }
         Ok(result)
-    }
-
-    fn suffixes(&mut self) -> Result<Vec<Suffix>> {
-        let mut suffixes = Vec::new();
-        while let Some(suffix) = self.suffix_opt()? {
-            suffixes.push(suffix);
-        }
-        Ok(suffixes)
     }
 
     // LHSExpression ::=
@@ -1501,7 +1488,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                 if news.len() > 0 {
                     self.more_new_expression(news, new_target)
                 } else {
-                    self.more_call_expression(new_target)
+                    self.more_suffixes(new_target)
                 }
             } else {
                 self.new_expression(news)
@@ -1524,9 +1511,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
     }
 
     fn unary_suffixes(&mut self, mut result: Expr) -> Result<Expr> {
-        for suffix in self.suffixes()? {
-            result = suffix.append_to(result);
-        }
+        result = self.more_suffixes(result)?;
         if let Some(postfix) = self.match_postfix_operator_opt()? {
             let result_location = *result.tracking_ref();
             result = match result.into_assign_target().map(Box::new) {
