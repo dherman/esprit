@@ -1,5 +1,5 @@
 use joker::track::*;
-use joker::token::{Token, TokenData, StringLiteral};
+use joker::token::{Token, TokenData};
 use joker::word::{Atom, Name, Reserved};
 use joker::lexer::Lexer;
 use easter::stmt::{Stmt, StmtListItem, ForHead, ForInHead, ForOfHead, Case, Catch, Script, Dir, ModItem, Module};
@@ -33,14 +33,6 @@ pub struct Parser<I> {
     pub deferred: Vec<Check>, // strict mode checks that haven't been performed yet
     pub lexer: Lexer<I>,
     pub context: Context
-}
-
-struct StringToken(Option<Span>, StringLiteral);
-
-enum DirectiveMatch {
-    Directive(Dir),
-    StringStatement(StringToken),
-    Other
 }
 
 enum ProgramItems {
@@ -166,43 +158,31 @@ impl<I: Iterator<Item=char>> Parser<I> {
         replace(&mut self.deferred, Vec::new())
     }
 
-    fn match_directive(&mut self) -> Result<DirectiveMatch> {
+    fn match_directive_opt(&mut self) -> Result<Option<Dir>> {
         let span = self.start();
         let token1 = self.read()?;
-        let (location, literal) = match token1.value {
-            TokenData::String(literal) => (token1.location, literal),
-            _ => {
-                self.lexer.unread_token(token1);
-                return Ok(DirectiveMatch::Other);
-            }
-        };
 
-        if self.peek()?.expression_continuation() {
-            return Ok(DirectiveMatch::StringStatement(StringToken(Some(location), literal)));
+        if let TokenData::String(ref literal) = token1.value {
+            if !self.peek()?.expression_continuation() {
+                return Ok(Some(span.end_with_auto_semi(self, Newline::Required, |semi| Dir {
+                    location: None,
+                    string: literal.clone(),
+                    semi: semi
+                })?));
+            }
         }
 
-        let dir = span.end_with_auto_semi(self, Newline::Required, |semi| Dir {
-            location: None,
-            string: literal,
-            semi: semi
-        })?;
-
-        Ok(DirectiveMatch::Directive(dir))
+        self.lexer.unread_token(token1);
+        Ok(None)
     }
 
     pub fn module(&mut self) -> Result<Module> {
         debug_assert!(self.goal.definitely_module());
         self.span(&mut |this| {
-            let (dirs, string) = this.body_directives()?;
-
-            this.interpret_directives(&dirs);
-
-            let items = this.module_items(string)?;
-
             Ok(Module {
                 location: None,
-                dirs: dirs,
-                items: items
+                dirs: this.body_directives()?,
+                items: this.module_items()?
             })
         })
     }
@@ -211,11 +191,9 @@ impl<I: Iterator<Item=char>> Parser<I> {
         debug_assert!(!self.goal.definitely_script());
         debug_assert!(!self.goal.definitely_module());
         self.span(&mut |this| {
-            let (dirs, string) = this.body_directives()?;
+            let dirs = this.body_directives()?;
 
-            this.interpret_directives(&dirs);
-
-            match this.program_items(string)? {
+            match this.program_items()? {
                 ProgramItems::Script(items) => {
                     let checks = this.take_deferred();
                     Ok(Program::Ambiguous(checks, Script {
@@ -235,39 +213,27 @@ impl<I: Iterator<Item=char>> Parser<I> {
 
     pub fn script(&mut self) -> Result<Script> {
         self.span(&mut |this| {
-            let (dirs, string) = this.body_directives()?;
-
-            this.interpret_directives(&dirs);
-
-            let items = this.body_items(string)?;
-
             Ok(Script {
                 location: None,
-                dirs: dirs,
-                items: items
+                dirs: this.body_directives()?,
+                items: this.statement_list()?
             })
         })
     }
 
-    fn body_directives(&mut self) -> Result<(Vec<Dir>, Option<StringToken>)> {
+    fn body_directives(&mut self) -> Result<Vec<Dir>> {
         let mut dirs = Vec::new();
+        let mut use_strict = false;
+        let mut use_module = false;
 
-        loop {
-            match self.match_directive()? {
-                DirectiveMatch::Directive(dir) => { dirs.push(dir); }
-                DirectiveMatch::StringStatement(token) => {
-                    return Ok((dirs, Some(token)));
-                }
-                DirectiveMatch::Other => {
-                    return Ok((dirs, None));
-                }
+        while let Some(dir) = self.match_directive_opt()? {
+            match dir.pragma() {
+                "use strict" => { use_strict = true; }
+                "use module" => { use_module = true; }
+                _ => {}
             }
+            dirs.push(dir);
         }
-    }
-
-    fn interpret_directives(&mut self, dirs: &[Dir]) {
-        let use_strict = dirs.iter().any(|dir| dir.pragma() == "use strict");
-        let use_module = dirs.iter().any(|dir| dir.pragma() == "use module");
 
         if self.context.function.is_some() {
             if use_strict {
@@ -280,23 +246,8 @@ impl<I: Iterator<Item=char>> Parser<I> {
                 self.goal = Goal::Script(Strict::Yes);
             }
         }
-    }
 
-    fn body_items(&mut self, string: Option<StringToken>) -> Result<Vec<StmtListItem>> {
-        let mut items = Vec::new();
-
-        if let Some(string) = string {
-            items.push(StmtListItem::Stmt(self.string_statement(string)?));
-        }
-
-        while !self.peek()?.follow_statement_list() {
-            match self.declaration_opt()? {
-                Some(decl) => { items.push(StmtListItem::Decl(decl)); }
-                None       => { items.push(StmtListItem::Stmt(self.statement()?)); }
-            }
-        }
-
-        Ok(items)
+        Ok(dirs)
     }
 
     fn force_deferred_module_validation(&mut self) -> Result<()> {
@@ -313,12 +264,8 @@ impl<I: Iterator<Item=char>> Parser<I> {
         Ok(())
     }
 
-    fn program_items(&mut self, string: Option<StringToken>) -> Result<ProgramItems> {
-        let mut stmts = Vec::new();
-
-        if let Some(string) = string {
-            stmts.push(StmtListItem::Stmt(self.string_statement(string)?));
-        }
+    fn program_items(&mut self) -> Result<ProgramItems> {
+        let mut stmts: Vec<StmtListItem> = Vec::new();
 
         while !self.peek()?.follow_statement_list() {
             match self.peek()?.value {
@@ -340,14 +287,8 @@ impl<I: Iterator<Item=char>> Parser<I> {
         Ok(ProgramItems::Script(stmts))
     }
 
-    fn module_items(&mut self, string: Option<StringToken>) -> Result<Vec<ModItem>> {
-        let mut items = Vec::new();
-
-        if let Some(string) = string {
-            items.push(ModItem::Stmt(self.string_statement(string)?));
-        }
-
-        self.more_module_items(items)
+    fn module_items(&mut self) -> Result<Vec<ModItem>> {
+        self.more_module_items(Vec::new())
     }
 
     fn more_module_items(&mut self, mut items: Vec<ModItem>) -> Result<Vec<ModItem>> {
@@ -521,12 +462,6 @@ impl<I: Iterator<Item=char>> Parser<I> {
                 Ok(span.end_with_auto_semi(self, Newline::Required, |semi| Stmt::Expr(None, expr, semi))?)
             }
         }
-    }
-
-    fn string_statement(&mut self, string: StringToken) -> Result<Stmt> {
-        let span = self.start();
-        let expr = self.string_expression(string)?;
-        Ok(span.end_with_auto_semi(self, Newline::Required, |semi| Stmt::Expr(None, expr, semi))?)
     }
 
     fn labelled_statement(&mut self, id: Id) -> Result<Stmt> {
@@ -1495,12 +1430,6 @@ impl<I: Iterator<Item=char>> Parser<I> {
         self.unary_suffixes(Expr::Id(id))
     }
 
-    // StringUnaryExpression ::=
-    //   StringLiteral Suffix* PostfixOperator?
-    fn string_unary_expression(&mut self, string: StringToken) -> Result<Expr> {
-        self.unary_suffixes(Expr::String(string.0, string.1))
-    }
-
     fn unary_suffixes(&mut self, mut result: Expr) -> Result<Expr> {
         result = self.more_suffixes(result)?;
         if let Some(postfix) = self.match_postfix_operator_opt()? {
@@ -1633,14 +1562,6 @@ impl<I: Iterator<Item=char>> Parser<I> {
         self.more_conditional(test)
     }
 
-    // StringConditionalExpression ::=
-    //   StringUnaryExpression (Infix UnaryExpression)* ("?" AssignmentExpression ":" AssignmentExpression)?
-    fn string_conditional_expression(&mut self, string: StringToken) -> Result<Expr> {
-        let left = self.string_unary_expression(string)?;
-        let test = self.more_infix_expressions(left)?;
-        self.more_conditional(test)
-    }
-
     fn more_conditional(&mut self, left: Expr) -> Result<Expr> {
         if self.matches_op(TokenData::Question)? {
             let cons = self.allow_in(true, |this| this.assignment_expression())?;
@@ -1664,13 +1585,6 @@ impl<I: Iterator<Item=char>> Parser<I> {
     //   IDConditionalExpression (("=" | AssignmentOperator) AssignmentExpression)?
     fn id_assignment_expression(&mut self, id: Id) -> Result<Expr> {
         let left = self.id_conditional_expression(id)?;
-        self.more_assignment(left)
-    }
-
-    // StringAssignmentExpression ::=
-    //   StringConditionalExpression (("=" | AssignmentOperator) AssignmentExpression)?
-    fn string_assignment_expression(&mut self, string: StringToken) -> Result<Expr> {
-        let left = self.string_conditional_expression(string)?;
         self.more_assignment(left)
     }
 
@@ -1731,13 +1645,6 @@ impl<I: Iterator<Item=char>> Parser<I> {
     //   IDAssignmentExpression ("," AssignmentExpression)*
     fn id_expression(&mut self, id: Id) -> Result<Expr> {
         let first = self.id_assignment_expression(id)?;
-        self.more_expressions(first)
-    }
-
-    // StringExpression ::=
-    //   StringAssignmentExpression ("," AssignmentExpression)*
-    fn string_expression(&mut self, string: StringToken) -> Result<Expr> {
-        let first = self.string_assignment_expression(string)?;
         self.more_expressions(first)
     }
 
