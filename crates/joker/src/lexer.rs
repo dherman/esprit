@@ -57,7 +57,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     pub fn peek_token(&mut self, operator: bool) -> Result<&Token> {
         if self.lookahead.is_empty() {
             let token = self.read_next_token(operator)?;
-            self.lookahead.push_token(token);
+            self.lookahead.unread_token(token);
         }
         Ok(self.lookahead.peek_token())
     }
