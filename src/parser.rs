@@ -739,6 +739,10 @@ impl<I: Iterator<Item=char>> Parser<I> {
     // 'for' '(' 'let' .
     fn for_let(&mut self) -> Result<Stmt> {
         let let_token = self.reread(TokenData::Identifier(Name::Atom(Atom::Let)));
+        if !self.peek()?.first_binding() {
+            self.lexer.unread_token(let_token);
+            return self.for_expr();
+        }
         let let_location = Some(let_token.location);
         // 'for' '(' 'let' . !{id, patt} ==> error
         let lhs = self.pattern()?;
