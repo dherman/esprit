@@ -26,11 +26,11 @@ use test::{TestDesc, TestDescAndFn, TestName, TestFn, test_main};
 use test::ShouldPanic::No;
 use unjson::Unjson;
 
-fn add_test<F: FnOnce() + Send + 'static>(tests: &mut Vec<TestDescAndFn>, name: String, f: F) {
+fn add_test<F: FnOnce() + Send + 'static>(tests: &mut Vec<TestDescAndFn>, name: String, ignore: bool, f: F) {
     tests.push(TestDescAndFn {
         desc: TestDesc {
             name: TestName::DynTestName(name),
-            ignore: false,
+            ignore: ignore,
             should_panic: No
         },
         testfn: TestFn::dyn_test_fn(f)
@@ -38,7 +38,7 @@ fn add_test<F: FnOnce() + Send + 'static>(tests: &mut Vec<TestDescAndFn>, name: 
 }
 
 fn as_ref_test(tests: &mut Vec<TestDescAndFn>) {
-    add_test(tests, "reference test".to_string(), || {
+    add_test(tests, "reference test".to_string(), false, || {
         let mut ast = script("foobar = 17;").unwrap();
         ast.untrack();
         match ast.items.first().unwrap() {
@@ -76,7 +76,7 @@ fn stack_size() -> usize {
     mb * 1024 * 1024
 }
 
-fn integration_tests(target: &mut Vec<TestDescAndFn>) {
+fn integration_tests(target: &mut Vec<TestDescAndFn>, ignore: bool) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
 
     let fixtures = {
@@ -101,7 +101,7 @@ fn integration_tests(target: &mut Vec<TestDescAndFn>) {
         });
 
     for (tree_path, source_path) in files {
-        add_test(target, source_path.strip_prefix(&root).unwrap().to_str().unwrap().to_string(), move || {
+        add_test(target, source_path.strip_prefix(&root).unwrap().to_str().unwrap().to_string(), ignore, move || {
             let expected_ast = thread::Builder::new().stack_size(stack_size()).spawn(|| {
                 let v: Value = serde_json::de::from_reader(File::open(tree_path).unwrap()).unwrap();
                 v.into_object().unwrap().into_script().map_err(|err| {
@@ -135,18 +135,16 @@ fn unit_tests(target: &mut Vec<TestDescAndFn>) {
         fixtures
     };
 
+    let testignore: Vec<_> =
+        include_str!(".testignore")
+        .lines()
+        .filter(|s| !s.is_empty() && !s.starts_with("#"))
+        .map(|s| glob::Pattern::new(s).unwrap())
+        .collect();
+
     let files =
         read_dir(fixtures.as_path()).unwrap()
-        .map(|dir| dir.unwrap())
-        .filter(|dir| match dir.file_name().to_str().unwrap() {
-            "ES2016" |
-            "es2017" |
-            "ES6" |
-            "JSX" |
-            "tolerant-parse" => false,
-            _ => true
-        })
-        .flat_map(|dir| glob(&format!("{}/**/*.tree.json", dir.path().to_str().unwrap())).unwrap())
+        .flat_map(|dir| glob(&format!("{}/**/*.tree.json", dir.unwrap().path().to_str().unwrap())).unwrap())
         .filter_map(|entry| {
             let tree_path = entry.unwrap();
             let source_path = {
@@ -155,14 +153,18 @@ fn unit_tests(target: &mut Vec<TestDescAndFn>) {
                 tree_path.with_file_name(source_file_name)
             };
             if source_path.exists() {
-                Some((tree_path, source_path))
+                let ignore = {
+                    let local_tree_path = tree_path.strip_prefix(&fixtures).unwrap();
+                    testignore.iter().any(|ignore| ignore.matches_path(&local_tree_path))
+                };
+                Some((tree_path, source_path, ignore))
             } else {
                 None
             }
         });
 
-    for (tree_path, source_path) in files {
-        add_test(target, source_path.strip_prefix(&root).unwrap().to_str().unwrap().to_string(), move || {
+    for (tree_path, source_path, ignore) in files {
+        add_test(target, source_path.strip_prefix(&root).unwrap().to_str().unwrap().to_string(), ignore, move || {
             let v: Value = serde_json::de::from_reader(File::open(tree_path).unwrap()).unwrap();
             let expected_ast = v.into_object().unwrap().into_script().map_err(|err| {
                 format!("failed to deserialize script: {}", err)
@@ -189,10 +191,10 @@ fn main() {
     let mut tests = Vec::new();
     as_ref_test(&mut tests);
     unit_tests(&mut tests);
-    if env::var_os("ESTREE_INTEGRATION_TESTS") != None {
-        integration_tests(&mut tests);
-    } else {
-        println!("note: Run with `ESTREE_INTEGRATION_TESTS=1` to run with integration tests (much slower).")
+    let ignore_integration_tests = env::var_os("ESTREE_INTEGRATION_TESTS") == None;
+    if ignore_integration_tests {
+        println!("note: Run with `ESTREE_INTEGRATION_TESTS=1` to run with integration tests (much slower).");
     }
+    integration_tests(&mut tests, ignore_integration_tests);
     test_main(&args, tests);
 }
