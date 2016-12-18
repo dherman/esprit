@@ -1185,18 +1185,15 @@ impl<I: Iterator<Item=char>> Parser<I> {
     }
 
     fn array_literal(&mut self, start: Token) -> Result<Expr> {
-        let mut elts = Vec::new();
         let start_location = Some(start.location);
-        if let Some(end) = self.matches_token(TokenData::RBrack)? {
-            return Ok(Expr::Arr(span(&start_location, &Some(end.location)), elts));
-        }
+        let mut elts = Vec::new();
         loop {
-            elts.push(self.array_element()?);
-            if !self.matches(TokenData::Comma)? {
-                break;
-            }
             // Optional final comma does not count as an element.
             if self.peek()?.value == TokenData::RBrack {
+                break;
+            }
+            elts.push(self.array_element()?);
+            if !self.matches(TokenData::Comma)? {
                 break;
             }
         }
@@ -1213,17 +1210,14 @@ impl<I: Iterator<Item=char>> Parser<I> {
     }
 
     fn object_literal(&mut self, start: Token) -> Result<Expr> {
-        let mut props = Vec::new();
         let start_location = Some(start.location);
-        if let Some(end) = self.matches_token(TokenData::RBrace)? {
-            return Ok(Expr::Obj(span(&start_location, &Some(end.location)), props));
-        }
+        let mut props = Vec::new();
         loop {
-            props.push(self.object_property()?);
-            if !self.matches(TokenData::Comma)? {
+            if self.peek()?.value == TokenData::RBrace {
                 break;
             }
-            if self.peek()?.value == TokenData::RBrace {
+            props.push(self.object_property()?);
+            if !self.matches(TokenData::Comma)? {
                 break;
             }
         }
