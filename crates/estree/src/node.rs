@@ -53,14 +53,14 @@ impl ExtractNode for Object {
     }
 
     fn extract_id_opt(&mut self, name: &'static str) -> Result<Option<Id>> {
-        Ok(match try!(self.extract_object_opt(name).map_err(Error::Json)) {
-            Some(obj) => Some(try!(obj.into_id())),
+        Ok(match self.extract_object_opt(name).map_err(Error::Json)? {
+            Some(obj) => Some(obj.into_id()?),
             None      => None
         })
     }
 
     fn extract_assign_target(&mut self, name: &'static str) -> Result<AssignTarget> {
-        let expr = try!(self.extract_expr(name));
+        let expr = self.extract_expr(name)?;
         match expr.into_assign_target() {
             Ok(patt) => Ok(patt),
             _ => Err(Error::InvalidLHS(name))
@@ -68,7 +68,7 @@ impl ExtractNode for Object {
     }
 
     fn extract_assign_patt(&mut self, name: &'static str) -> Result<Patt<AssignTarget>> {
-        let expr = try!(self.extract_expr(name));
+        let expr = self.extract_expr(name)?;
         match expr.into_assign_patt() {
             Ok(patt) => Ok(patt),
             _ => Err(Error::InvalidLHS(name))
@@ -84,22 +84,22 @@ impl ExtractNode for Object {
     }
 
     fn extract_expr_opt(&mut self, name: &'static str) -> Result<Option<Expr>> {
-        Ok(match try!(self.extract_object_opt(name).map_err(Error::Json)) {
-            Some(o) => Some(try!(o.into_expr())),
+        Ok(match self.extract_object_opt(name).map_err(Error::Json)? {
+            Some(o) => Some(o.into_expr()?),
             None => None
         })
     }
 
     fn extract_expr_list(&mut self, name: &'static str) -> Result<Vec<Expr>> {
-        let list = try!(self.extract_array(name).map_err(Error::Json));
-        let objs = try!(list.map(|v| v.into_object().map_err(Error::Json)));
+        let list = self.extract_array(name).map_err(Error::Json)?;
+        let objs = list.map(|v| v.into_object().map_err(Error::Json))?;
         objs.map(|o| o.into_expr())
     }
 
     fn extract_expr_opt_list(&mut self, name: &'static str) -> Result<Vec<Option<Expr>>> {
-        let list = try!(self.extract_array(name).map_err(Error::Json));
+        let list = self.extract_array(name).map_err(Error::Json)?;
         list.map(|v| {
-            match try!(v.into_object_opt().map_err(Error::Json)) {
+            match v.into_object_opt().map_err(Error::Json)? {
                 None => Ok(None),
                 Some(o) => o.into_expr().map(Some)
             }
@@ -107,15 +107,15 @@ impl ExtractNode for Object {
     }
 
     fn extract_stmt_opt(&mut self, name: &'static str) -> Result<Option<Stmt>> {
-        Ok(match try!(self.extract_object_opt(name).map_err(Error::Json)) {
-            Some(o) => Some(try!(o.into_stmt())),
+        Ok(match self.extract_object_opt(name).map_err(Error::Json)? {
+            Some(o) => Some(o.into_stmt()?),
             None => None
         })
     }
 
     fn extract_stmt_list(&mut self, name: &'static str) -> Result<Vec<StmtListItem>> {
-        let list = try!(self.extract_array(name).map_err(Error::Json));
-        let objs = try!(list.map(|v| v.into_object().map_err(Error::Json)));
+        let list = self.extract_array(name).map_err(Error::Json)?;
+        let objs = list.map(|v| v.into_object().map_err(Error::Json))?;
         objs.map(|o| o.into_stmt_list_item())
     }
 
@@ -124,38 +124,38 @@ impl ExtractNode for Object {
     }
 
     fn extract_patt_list(&mut self, name: &'static str) -> Result<Vec<Patt<Id>>> {
-        let list = try!(self.extract_array(name).map_err(Error::Json));
-        let objs = try!(list.map(|v| v.into_object().map_err(Error::Json)));
+        let list = self.extract_array(name).map_err(Error::Json)?;
+        let objs = list.map(|v| v.into_object().map_err(Error::Json))?;
         objs.map(|o| o.into_patt())
     }
 
     fn extract_prop_list(&mut self, name: &'static str) -> Result<Vec<Prop>> {
-        let list = try!(self.extract_array(name).map_err(Error::Json));
-        let objs = try!(list.map(|v| v.into_object().map_err(Error::Json)));
+        let list = self.extract_array(name).map_err(Error::Json)?;
+        let objs = list.map(|v| v.into_object().map_err(Error::Json))?;
         objs.map(|o| o.into_prop())
     }
 
     fn extract_dtor_list(&mut self, name: &'static str) -> Result<Vec<Dtor>> {
-        let list = try!(self.extract_array(name).map_err(Error::Json));
-        let objs = try!(list.map(|v| v.into_object().map_err(Error::Json)));
+        let list = self.extract_array(name).map_err(Error::Json)?;
+        let objs = list.map(|v| v.into_object().map_err(Error::Json))?;
         objs.map(|o| o.into_dtor())
     }
 
     fn extract_case_list(&mut self, name: &'static str) -> Result<Vec<Case>> {
-        let list = try!(self.extract_array(name).map_err(Error::Json));
-        let objs = try!(list.map(|v| v.into_object().map_err(Error::Json)));
+        let list = self.extract_array(name).map_err(Error::Json)?;
+        let objs = list.map(|v| v.into_object().map_err(Error::Json))?;
         objs.map(|o| o.into_case())
     }
 
     fn extract_catch_opt(&mut self, name: &'static str) -> Result<Option<Catch>> {
-        Ok(match try!(self.extract_object_opt(name).map_err(Error::Json)) {
-            Some(o) => Some(try!(o.into_catch())),
+        Ok(match self.extract_object_opt(name).map_err(Error::Json)? {
+            Some(o) => Some(o.into_catch()?),
             None => None
         })
     }
 
     fn extract_script(&mut self, name: &'static str) -> Result<Script> {
-        let mut list = try!(self.extract_stmt_list(name));
+        let mut list = self.extract_stmt_list(name)?;
         let items = split_prefix(&mut list, |s| s.is_directive());
         let prolog = list.iter()
                          .filter_map(|s| s.to_directive())

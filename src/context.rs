@@ -30,7 +30,7 @@ impl<I: Iterator<Item=char>> WithContext for Parser<I> {
         for label in label_strings {
             self.context.labels.remove(&label);
         }
-        let mut body = try!(result);
+        let mut body = result?;
         labels.reverse();
         for id in labels {
             let location = span(&id, &body);

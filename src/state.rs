@@ -39,7 +39,7 @@ impl<I: Iterator<Item=char>> State for Parser<I> {
     }
 
     fn expect(&mut self, expected: TokenData) -> Result<Token> {
-        let token = try!(self.read());
+        let token = self.read()?;
         if token.value != expected {
             return Err(Error::UnexpectedToken(token));
         }
@@ -47,7 +47,7 @@ impl<I: Iterator<Item=char>> State for Parser<I> {
     }
 
     fn matches_token(&mut self, expected: TokenData) -> Result<Option<Token>> {
-        let token = try!(self.read());
+        let token = self.read()?;
         if token.value != expected {
             self.lexer.unread_token(token);
             return Ok(None);
@@ -56,7 +56,7 @@ impl<I: Iterator<Item=char>> State for Parser<I> {
     }
 
     fn matches(&mut self, expected: TokenData) -> Result<bool> {
-        let token = try!(self.read());
+        let token = self.read()?;
         if token.value != expected {
             self.lexer.unread_token(token);
             return Ok(false);
@@ -65,7 +65,7 @@ impl<I: Iterator<Item=char>> State for Parser<I> {
     }
 
     fn matches_op(&mut self, expected: TokenData) -> Result<bool> {
-        let token = try!(self.read_op());
+        let token = self.read_op()?;
         if token.value != expected {
             self.lexer.unread_token(token);
             return Ok(false);
@@ -81,7 +81,7 @@ impl<I: Iterator<Item=char>> State for Parser<I> {
     }
 
     fn has_arg_same_line(&mut self) -> Result<bool> {
-        let next = try!(self.peek());
+        let next = self.peek()?;
         Ok(!next.newline && next.value != TokenData::Semi && next.value != TokenData::RBrace)
     }
 }

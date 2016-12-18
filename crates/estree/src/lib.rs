@@ -28,7 +28,7 @@ pub struct ESTreeScript(Script);
 
 impl Deserialize for ESTreeScript {
     fn deserialize<D: Deserializer>(de: &mut D) -> ::std::result::Result<Self, D::Error> {
-        let json: Object = try!(Deserialize::deserialize(de));
+        let json: Object = Deserialize::deserialize(de)?;
         match json.into_script() {
             Ok(script) => Ok(ESTreeScript(script)),
             Err(err)   => Err(D::Error::custom(&format!("{}", err)[..]))
@@ -41,7 +41,7 @@ pub struct ESTreeStmt(Stmt);
 
 impl Deserialize for ESTreeStmt {
     fn deserialize<D: Deserializer>(de: &mut D) -> ::std::result::Result<Self, D::Error> {
-        let json: Object = try!(Deserialize::deserialize(de));
+        let json: Object = Deserialize::deserialize(de)?;
         match json.into_stmt() {
             Ok(stmt) => Ok(ESTreeStmt(stmt)),
             Err(err) => Err(D::Error::syntax(&format!("{}", err)[..]))
