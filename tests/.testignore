@@ -1,0 +1,45 @@
+# Extended identifier chars
+ES6/identifier/**
+
+# Modules
+ES6/import-declaration/**
+ES6/export-declaration/**
+
+# Array / object / default patterns
+**/*array-pattern*
+**/*object-pattern*
+declaration/function/empty-param.*
+ES6/default-parameter-value/**
+expression/primary/object/migrated_003[4568].*
+statement/iteration/pattern-in-for-in.*
+
+# Spread / rest
+ES6/rest-parameter/**
+ES6/spread-element/**
+
+# Meta properties
+ES6/meta-property/**
+ES6/super-property/**
+
+# Generators
+ES6/generator/**
+ES6/yield/**
+
+# Const
+declaration/const/**
+ES6/for-of/for-of-with-const.*
+statement/iteration/const_forin.*
+
+# Some other ES6 features
+ES6/arrow-function/**
+ES6/class/**
+ES6/method-definition/**
+ES6/object-initialiser/proto-*
+ES6/object-literal-property-value-shorthand/**
+ES6/template-literals/**
+
+# Unsupported syntax extensions
+ES2016/**
+es2017/**
+JSX/**
+tolerant-parse/**
