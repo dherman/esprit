@@ -19,10 +19,10 @@ use joker::track::Untrack;
 use serde_json::value::Value;
 use std::ffi::OsStr;
 use std::fs::{File, read_dir};
-use std::io::Read;
+use std::io::{Read, Write, stdout};
 use std::path::Path;
 use std::{thread, env};
-use test::{TestDesc, TestDescAndFn, TestName, TestFn, test_main};
+use test::{TestDesc, TestDescAndFn, TestName, TestFn, Bencher, TDynBenchFn, test_main};
 use test::ShouldPanic::No;
 use unjson::{ExtractField, Unjson};
 
@@ -34,6 +34,27 @@ fn add_test<F: FnOnce() + Send + 'static>(tests: &mut Vec<TestDescAndFn>, name: 
             should_panic: No
         },
         testfn: TestFn::dyn_test_fn(f)
+    });
+}
+
+struct DynBenchFn<F> {
+    run: F
+}
+
+impl<F: Fn(&mut Bencher) + Send + 'static> TDynBenchFn for DynBenchFn<F> {
+    fn run(&self, harness: &mut Bencher) {
+        (self.run)(harness);
+    }
+}
+
+fn add_bench<F: Fn(&mut Bencher) + Send + 'static>(tests: &mut Vec<TestDescAndFn>, name: String, ignore: bool, f: F) {
+    tests.push(TestDescAndFn {
+        desc: TestDesc {
+            name: TestName::DynTestName(name),
+            ignore: ignore,
+            should_panic: No
+        },
+        testfn: TestFn::DynBenchFn(Box::new(DynBenchFn { run: f }))
     });
 }
 
@@ -101,25 +122,37 @@ fn integration_tests(target: &mut Vec<TestDescAndFn>, ignore: bool) {
         });
 
     for (tree_path, source_path) in files {
-        add_test(target, source_path.strip_prefix(&root).unwrap().to_str().unwrap().to_string(), ignore, move || {
+        let name = source_path.strip_prefix(&root).unwrap().to_str().unwrap().to_string();
+        if !ignore {
+            let mut source = String::new();
+            File::open(source_path.clone()).unwrap().read_to_string(&mut source).unwrap();
+            print!("Parsing JSON {:?}...", tree_path);
+            stdout().flush().unwrap();
             let expected_ast = thread::Builder::new().stack_size(stack_size()).spawn(|| {
                 let v: Value = serde_json::de::from_reader(File::open(tree_path).unwrap()).unwrap();
                 v.into_object().unwrap().into_script().map_err(|err| {
                     format!("failed to deserialize script: {}", err)
                 }).unwrap()
             }).unwrap().join().unwrap();
-            let mut source = String::new();
-            File::open(source_path).unwrap().read_to_string(&mut source).unwrap();
-            match script(&source[..]) {
-                Ok(mut actual_ast) => {
-                    actual_ast.untrack();
-                    assert!(actual_ast == expected_ast, "integration test got wrong result");
+            println!(" done");
+            add_bench(target, name, ignore, move |mut bench| {
+                let mut result = None;
+                bench.iter(|| {
+                    result = Some(script(&source[..]))
+                });
+                match result.unwrap() {
+                    Ok(mut actual_ast) => {
+                        actual_ast.untrack();
+                        assert!(actual_ast == expected_ast, "integration test got wrong result");
+                    }
+                    Err(actual_err) => {
+                        panic!("integration test failed to parse:\n{:#?}", actual_err);
+                    }
                 }
-                Err(actual_err) => {
-                    panic!("integration test failed to parse:\n{:#?}", actual_err);
-                }
-            }
-        });
+            });
+        } else {
+            add_bench(target, name, ignore, |_| {});
+        }
     }
 }
 
@@ -198,10 +231,13 @@ fn unit_tests(target: &mut Vec<TestDescAndFn>) {
 
 fn main() {
     let args: Vec<_> = env::args().collect();
+    let bench = args.contains(&"--bench".to_string());
     let mut tests = Vec::new();
-    as_ref_test(&mut tests);
-    unit_tests(&mut tests);
-    let ignore_integration_tests = env::var_os("ESTREE_INTEGRATION_TESTS") == None;
+    if !bench {
+        as_ref_test(&mut tests);
+        unit_tests(&mut tests);
+    }
+    let ignore_integration_tests = !bench && env::var_os("ESTREE_INTEGRATION_TESTS") == None;
     if ignore_integration_tests {
         println!("note: Run with `ESTREE_INTEGRATION_TESTS=1` to run with integration tests (much slower).");
     }
