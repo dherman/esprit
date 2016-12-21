@@ -126,7 +126,7 @@ fn integration_tests(target: &mut Vec<TestDescAndFn>, ignore: bool) {
         if !ignore {
             let mut source = String::new();
             File::open(source_path.clone()).unwrap().read_to_string(&mut source).unwrap();
-            print!("Parsing JSON {:?}...", tree_path);
+            print!("Parsing JSON {}...", tree_path.strip_prefix(&root).unwrap().to_str().unwrap());
             stdout().flush().unwrap();
             let expected_ast = thread::Builder::new().stack_size(stack_size()).spawn(|| {
                 let v: Value = serde_json::de::from_reader(File::open(tree_path).unwrap()).unwrap();
