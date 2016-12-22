@@ -24,9 +24,13 @@ rustc-test = "0.1"
 glob = "0.2"
 
 [[test]]
-name = "parser"
+name = "parser-test"
 harness = false
-bench = true
+
+[[bench]]
+name = "parser-bench"
+harness = false
+test = true
 
 [workspace]
 # Implicitly crawled from dependencies.*.path
