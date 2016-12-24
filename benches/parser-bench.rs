@@ -41,22 +41,6 @@ fn add_bench<F: Fn(&mut Bencher) + Send + 'static>(tests: &mut Vec<TestDescAndFn
     });
 }
 
-const DEFAULT_MB: usize = 4;
-
-fn stack_size() -> usize {
-    match env::var("ESTREE_STACK_SIZE_MB") {
-        Ok(s) => match s.parse() {
-            Ok(x) => Some(x),
-            Err(_) => None
-        },
-        Err(env::VarError::NotPresent) => Some(DEFAULT_MB),
-        Err(_) => None
-    }.unwrap_or_else(|| {
-        println!("warning: invalid ESTREE_STACK_SIZE_MB value; defaulting to {}MB", DEFAULT_MB);
-        DEFAULT_MB
-    }) * 1024 * 1024
-}
-
 fn integration_tests(target: &mut Vec<TestDescAndFn>, ignore: bool) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
 
@@ -123,9 +107,9 @@ fn main() {
     if ignore_integration_tests {
         println!("note: Run with `ESTREE_INTEGRATION_TESTS=1` to run with integration tests (much slower).");
     }
-    thread::Builder::new().stack_size(stack_size()).spawn(move || {
+    thread::spawn(move || {
         let mut tests = Vec::new();
         integration_tests(&mut tests, ignore_integration_tests);
         test_main(&args, tests);
-    }).unwrap().join().unwrap();
+    }).join().unwrap();
 }
