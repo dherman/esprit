@@ -88,12 +88,12 @@ fn integration_tests(target: &mut Vec<TestDescAndFn>, ignore: bool) {
             File::open(source_path.clone()).unwrap().read_to_string(&mut source).unwrap();
             print!("Parsing JSON {}...", tree_path.strip_prefix(&root).unwrap().to_str().unwrap());
             stdout().flush().unwrap();
-            let expected_ast = thread::Builder::new().stack_size(stack_size()).spawn(|| {
+            let expected_ast = {
                 let v: Value = serde_json::de::from_reader(File::open(tree_path).unwrap()).unwrap();
                 v.into_object().unwrap().into_script().map_err(|err| {
                     format!("failed to deserialize script: {}", err)
                 }).unwrap()
-            }).unwrap().join().unwrap();
+            };
             println!(" done");
             add_bench(target, name, ignore, move |mut bench| {
                 let mut result = None;
@@ -119,11 +119,13 @@ fn integration_tests(target: &mut Vec<TestDescAndFn>, ignore: bool) {
 fn main() {
     let args: Vec<_> = env::args().collect();
     let bench = args.contains(&"--bench".to_string());
-    let mut tests = Vec::new();
     let ignore_integration_tests = !bench && env::var_os("ESTREE_INTEGRATION_TESTS") == None;
     if ignore_integration_tests {
         println!("note: Run with `ESTREE_INTEGRATION_TESTS=1` to run with integration tests (much slower).");
     }
-    integration_tests(&mut tests, ignore_integration_tests);
-    test_main(&args, tests);
+    thread::Builder::new().stack_size(stack_size()).spawn(move || {
+        let mut tests = Vec::new();
+        integration_tests(&mut tests, ignore_integration_tests);
+        test_main(&args, tests);
+    }).unwrap().join().unwrap();
 }
