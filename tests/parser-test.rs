@@ -6,7 +6,12 @@ extern crate estree;
 extern crate glob;
 extern crate joker;
 extern crate serde_json;
+
+// From 'rustc-test' crate.
+// Mirrors Rust's internal 'libtest'.
+// https://doc.rust-lang.org/1.1.0/test/index.html
 extern crate test;
+
 extern crate unjson;
 
 use easter::expr::Expr;
