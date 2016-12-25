@@ -9,7 +9,7 @@ use punc::{Unop, Binop, Assop, Logop};
 use id::Id;
 use patt::{Patt, AssignTarget};
 
-#[derive(Clone)]
+#[derive(Clone, TrackingRef, TrackingMut)]
 pub enum Expr {
     This(Option<Span>),
     Id(Id),
@@ -38,74 +38,6 @@ pub enum Expr {
     Number(Option<Span>, NumberLiteral),
     RegExp(Option<Span>, RegExpLiteral),
     String(Option<Span>, StringLiteral)
-}
-
-impl TrackingRef for Expr {
-    fn tracking_ref(&self) -> &Option<Span> {
-        match *self {
-            Expr::This(ref location)
-          | Expr::Arr(ref location, _)
-          | Expr::Obj(ref location, _)
-          | Expr::Seq(ref location, _)
-          | Expr::Unop(ref location, _, _)
-          | Expr::Binop(ref location, _, _, _)
-          | Expr::Logop(ref location, _, _, _)
-          | Expr::PreInc(ref location, _)
-          | Expr::PostInc(ref location, _)
-          | Expr::PreDec(ref location, _)
-          | Expr::PostDec(ref location, _)
-          | Expr::Assign(ref location, _, _)
-          | Expr::BinAssign(ref location, _, _, _)
-          | Expr::Cond(ref location, _, _, _)
-          | Expr::Call(ref location, _, _)
-          | Expr::New(ref location, _, _)
-          | Expr::Dot(ref location, _, _)
-          | Expr::Brack(ref location, _, _)
-          | Expr::NewTarget(ref location)
-          | Expr::True(ref location)
-          | Expr::False(ref location)
-          | Expr::Null(ref location)
-          | Expr::Number(ref location, _)
-          | Expr::RegExp(ref location, _)
-          | Expr::String(ref location, _) => location,
-            Expr::Id(ref id) => id.tracking_ref(),
-            Expr::Fun(ref fun) => fun.tracking_ref()
-        }
-    }
-}
-
-impl TrackingMut for Expr {
-    fn tracking_mut(&mut self) -> &mut Option<Span> {
-        match *self {
-            Expr::This(ref mut location)
-          | Expr::Arr(ref mut location, _)
-          | Expr::Obj(ref mut location, _)
-          | Expr::Seq(ref mut location, _)
-          | Expr::Unop(ref mut location, _, _)
-          | Expr::Binop(ref mut location, _, _, _)
-          | Expr::Logop(ref mut location, _, _, _)
-          | Expr::PreInc(ref mut location, _)
-          | Expr::PostInc(ref mut location, _)
-          | Expr::PreDec(ref mut location, _)
-          | Expr::PostDec(ref mut location, _)
-          | Expr::Assign(ref mut location, _, _)
-          | Expr::BinAssign(ref mut location, _, _, _)
-          | Expr::Cond(ref mut location, _, _, _)
-          | Expr::Call(ref mut location, _, _)
-          | Expr::New(ref mut location, _, _)
-          | Expr::Dot(ref mut location, _, _)
-          | Expr::Brack(ref mut location, _, _)
-          | Expr::NewTarget(ref mut location)
-          | Expr::True(ref mut location)
-          | Expr::False(ref mut location)
-          | Expr::Null(ref mut location)
-          | Expr::Number(ref mut location, _)
-          | Expr::RegExp(ref mut location, _)
-          | Expr::String(ref mut location, _) => location,
-            Expr::Id(ref mut id) => id.tracking_mut(),
-            Expr::Fun(ref mut fun) => fun.tracking_mut()
-        }
-    }
 }
 
 impl PartialEq for Expr {
