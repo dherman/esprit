@@ -11,7 +11,7 @@ pub struct Buffer {
 impl Buffer {
     pub fn new() -> Buffer {
         Buffer {
-            tokens: VecDeque::with_capacity(4)
+            tokens: VecDeque::with_capacity(2)
         }
     }
 
@@ -28,6 +28,7 @@ impl Buffer {
     }
 
     pub fn unread_token(&mut self, token: Token) {
+        debug_assert!(self.tokens.len() < self.tokens.capacity(), "Lookahead buffer is full");
         self.tokens.push_front(token)
     }
 }
