@@ -6,7 +6,7 @@ use expr::Expr;
 use decl::Dtor;
 use patt::Patt;
 
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone, TrackingRef, TrackingMut)]
 pub struct Id {
     pub location: Option<Span>,
     pub name: Name
@@ -24,14 +24,6 @@ impl DerefMut for Id {
     fn deref_mut(&mut self) -> &mut Option<Span> {
         &mut self.location
     }
-}
-
-impl TrackingRef for Id {
-    fn tracking_ref(&self) -> &Option<Span> { &self.location }
-}
-
-impl TrackingMut for Id {
-    fn tracking_mut(&mut self) -> &mut Option<Span> { &mut self.location }
 }
 
 impl Untrack for Id {

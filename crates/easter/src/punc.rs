@@ -45,7 +45,7 @@ impl FromStr for UnopTag {
     }
 }
 
-#[derive(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone, TrackingRef, TrackingMut)]
 pub struct Op<T> {
     pub location: Option<Span>,
     pub tag: T
@@ -60,14 +60,6 @@ impl<T: FromStr> FromStr for Op<T> {
             Err(_)  => Err(())
         }
     }
-}
-
-impl<T> TrackingRef for Op<T> {
-    fn tracking_ref(&self) -> &Option<Span> { &self.location }
-}
-
-impl<T> TrackingMut for Op<T> {
-    fn tracking_mut(&mut self) -> &mut Option<Span> { &mut self.location }
 }
 
 impl<T: Debug> Debug for Op<T> {

@@ -4,7 +4,7 @@ extern crate syn;
 extern crate quote;
 
 use std::env;
-use std::path::Path as FilePath;
+use std::path::{PathBuf, Path as FilePath};
 
 use syn::*;
 use quote::Tokens;
@@ -148,9 +148,20 @@ pub fn expand_file<S, D>(src: S, dst: D) -> Result<(), String>
 
 fn main() {
     let out_dir = env::var_os("OUT_DIR").unwrap();
+    let out_path = FilePath::new(&out_dir);
 
-    let src = FilePath::new("src/stmt.rs");
-    let dst = FilePath::new(&out_dir).join("stmt.rs");
+    let src_path = {
+        let mut buf = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        buf.push("src");
+        buf
+    };
 
-    expand_file(&src, &dst).unwrap();
+    for entry in src_path.read_dir().unwrap() {
+        let path = entry.unwrap().path();
+        let file_name = path.file_name().unwrap();
+        if file_name != "lib.rs" {
+            let dest = out_path.join(file_name);
+            expand_file(&path, &dest).unwrap();
+        }
+    }
 }
