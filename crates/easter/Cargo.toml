@@ -1,5 +1,4 @@
 [package]
-
 name = "easter"
 version = "0.0.5"
 authors = ["Dave Herman <dherman@mozilla.com>"]
@@ -8,7 +7,12 @@ description = "Type definitions for ECMAScript abstract syntax trees."
 documentation = "https://esprit.surge.sh"
 homepage = "https://esprit.surge.sh"
 repository = "https://github.com/dherman/esprit"
+build = "build.rs"
 
 [dependencies]
 joker = { version = "0.0.5", path = "../joker" }
 tristate = "0.1.1"
+
+[build-dependencies]
+syn = { version = "0.10.5", features = ["parsing", "printing", "expand", "pretty"] }
+quote = "0.3.10"
