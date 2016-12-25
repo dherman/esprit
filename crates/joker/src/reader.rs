@@ -17,6 +17,7 @@ impl<I> Reader<I> where I: Iterator<Item=char> {
     }
 
     pub fn peek(&mut self, n: usize) -> Option<char> {
+        debug_assert!(n < self.ahead.capacity(), "Lookahead buffer can't hold that many items");
         for _ in self.ahead.len()..(n + 1) {
             match self.chars.next() {
                 Some(ch) => {
