@@ -82,29 +82,10 @@ impl<T: Untrack> Untrack for Patt<T> {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut)]
+#[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut, Untrack)]
 pub enum AssignTarget {
     Id(Id),
     Dot(Option<Span>, Box<Expr>, DotKey),
     Brack(Option<Span>, Box<Expr>, Box<Expr>)
 }
 
-impl Untrack for AssignTarget {
-    fn untrack(&mut self) {
-        match *self {
-            AssignTarget::Id(ref mut id) => {
-                id.untrack();
-            }
-            AssignTarget::Dot(ref mut location, ref mut obj, ref mut prop) => {
-                *location = None;
-                obj.untrack();
-                prop.untrack();
-            }
-            AssignTarget::Brack(ref mut location, ref mut obj, ref mut prop) => {
-                *location = None;
-                obj.untrack();
-                prop.untrack();
-            }
-        }
-    }
-}
