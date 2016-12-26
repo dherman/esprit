@@ -7,75 +7,28 @@ use patt::{Patt, CompoundPatt};
 use expr::Expr;
 use punc::Semi;
 
-#[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut)]
+#[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut, Untrack)]
 pub enum Import {
     // ES6: more import forms
     ForEffect(Option<Span>, StringLiteral)
 }
 
-impl Untrack for Import {
-    fn untrack(&mut self) {
-        match *self {
-            Import::ForEffect(ref mut location, _) => { *location = None; }
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut)]
+#[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut, Untrack)]
 pub enum Export {
     // ES6: more export forms
     Var(Option<Span>, Vec<Dtor>, Semi),
     Decl(Decl)
 }
 
-impl Untrack for Export {
-    fn untrack(&mut self) {
-        match *self {
-            Export::Var(ref mut location, ref mut dtors, ref mut semi) => {
-                *location = None;
-                dtors.untrack();
-                semi.untrack();
-            }
-            Export::Decl(ref mut decl) => {
-                decl.untrack();
-            }
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut)]
+#[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut, Untrack)]
 pub enum Decl {
     Fun(Fun)
 }
 
-impl Untrack for Decl {
-    fn untrack(&mut self) {
-        let Decl::Fun(ref mut fun) = *self;
-        fun.untrack();
-    }
-}
-
-#[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut)]
+#[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut, Untrack)]
 pub enum Dtor {
     Simple(Option<Span>, Id, Option<Expr>),
     Compound(Option<Span>, CompoundPatt<Id>, Expr)
-}
-
-impl Untrack for Dtor {
-    fn untrack(&mut self) {
-        match *self {
-            Dtor::Simple(ref mut location, ref mut id, ref mut init) => {
-                *location = None;
-                id.untrack();
-                init.untrack();
-            }
-            Dtor::Compound(ref mut location, ref mut patt, ref mut init) => {
-                *location = None;
-                patt.untrack();
-                init.untrack();
-            }
-        }
-    }
 }
 
 pub trait DtorExt {
