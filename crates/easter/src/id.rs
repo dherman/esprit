@@ -1,4 +1,3 @@
-use std::ops::{Deref, DerefMut};
 use joker::word::Name;
 use joker::track::{TrackingRef, TrackingMut, Untrack, Span};
 
@@ -10,20 +9,6 @@ use patt::Patt;
 pub struct Id {
     pub location: Option<Span>,
     pub name: Name
-}
-
-impl Deref for Id {
-    type Target = Option<Span>;
-
-    fn deref(&self) -> &Option<Span> {
-        &self.location
-    }
-}
-
-impl DerefMut for Id {
-    fn deref_mut(&mut self) -> &mut Option<Span> {
-        &mut self.location
-    }
 }
 
 impl Untrack for Id {
