@@ -30,19 +30,11 @@ pub enum Stmt {
     Debugger(Option<Span>, Semi)
 }
 
-#[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut)]
+#[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut, Untrack)]
 pub struct Body<Item> {
     pub location: Option<Span>,
     pub dirs: Vec<Dir>,
     pub items: Vec<Item>
-}
-
-impl<Item: Untrack> Untrack for Body<Item> {
-    fn untrack(&mut self) {
-        self.location = None;
-        self.dirs.untrack();
-        self.items.untrack();
-    }
 }
 
 pub type Script = Body<StmtListItem>;
