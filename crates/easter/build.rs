@@ -192,7 +192,18 @@ impl Context {
     }
 
     pub fn expand_untrack(&self, ast: &MacroInput) -> Tokens {
-        let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
+        let mut generics = ast.generics.clone();
+
+        let bound = TyParamBound::Trait(PolyTraitRef {
+            bound_lifetimes: vec![],
+            trait_ref: Path::from("Untrack")
+        }, TraitBoundModifier::None);
+
+        for ty in &mut generics.ty_params {
+            ty.bounds.push(bound.clone());
+        }
+
+        let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
         let name = &ast.ident;
 
