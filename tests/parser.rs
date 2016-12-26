@@ -24,7 +24,7 @@ use std::path::Path;
 use std::{thread, env};
 use test::{TestDesc, TestDescAndFn, TestName, TestFn, test_main};
 use test::ShouldPanic::No;
-use unjson::Unjson;
+use unjson::{ExtractField, Unjson};
 
 fn add_test<F: FnOnce() + Send + 'static>(tests: &mut Vec<TestDescAndFn>, name: String, ignore: bool, f: F) {
     tests.push(TestDescAndFn {
@@ -166,21 +166,31 @@ fn unit_tests(target: &mut Vec<TestDescAndFn>) {
     for (tree_path, source_path, ignore) in files {
         add_test(target, source_path.strip_prefix(&root).unwrap().to_str().unwrap().to_string(), ignore, move || {
             let v: Value = serde_json::de::from_reader(File::open(tree_path).unwrap()).unwrap();
-            let expected_ast = v.into_object().unwrap().into_script().map_err(|err| {
-                format!("failed to deserialize script: {}", err)
-            }).unwrap();
+            let mut obj = v.into_object().unwrap();
+            let expected = match obj.extract_array("errors") {
+                Ok(errors) => {
+                    Err(errors[0].as_object().unwrap()["message"].clone())
+                }
+                Err(unjson::error::Error::MissingField(_)) => {
+                    Ok(obj.into_script().map_err(|err| {
+                        format!("failed to deserialize script: {}", err)
+                    }).unwrap())
+                }
+                Err(err) => panic!(err)
+            };
             let mut source = String::new();
             File::open(source_path).unwrap().read_to_string(&mut source).unwrap();
-            match script(&source[..]) {
-                Ok(mut actual_ast) => {
+            match (script(&source[..]), expected) {
+                (Ok(mut actual_ast), expected) => {
                     actual_ast.untrack();
-                    assert!(actual_ast == expected_ast, "unit test got wrong result\n\
-                    expected AST: {:#?}\n\
-                    actual AST: {:#?}", expected_ast, actual_ast);
+                    assert!(Ok(&actual_ast) == expected.as_ref(), "unit test got wrong result\n\
+                    expected: {:#?}\n\
+                    actual AST: {:#?}", expected, actual_ast);
                 }
-                Err(actual_err) => {
+                (Err(actual_err), Ok(_)) => {
                     panic!("unit test failed to parse:\n{:#?}", actual_err);
                 }
+                (Err(_), Err(_)) => {}
             }
         });
     }
