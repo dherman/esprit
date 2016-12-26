@@ -1,6 +1,6 @@
 use std::fmt;
 use std::fmt::{Debug, Formatter};
-use track::{Span, Posn};
+use track::{Span, Posn, Untrack};
 use word::{Reserved, Name};
 
 #[derive(Debug, PartialEq, Clone)]
@@ -100,6 +100,10 @@ pub struct RegExpLiteral {
     pub flags: Vec<char>
 }
 
+impl Untrack for RegExpLiteral {
+    fn untrack(&mut self) {}
+}
+
 trait CharsEx {
     fn alphabetize(&self) -> Vec<char>;
 }
@@ -134,6 +138,10 @@ pub struct StringLiteral {
     pub value: String
 }
 
+impl Untrack for StringLiteral {
+    fn untrack(&mut self) {}
+}
+
 impl Debug for StringLiteral {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         fmt.debug_struct("StringLiteral")
@@ -152,6 +160,10 @@ impl PartialEq for StringLiteral {
 pub struct NumberLiteral {
     pub source: Option<NumberSource>,
     pub value: f64
+}
+
+impl Untrack for NumberLiteral {
+    fn untrack(&mut self) {}
 }
 
 impl Debug for NumberLiteral {
