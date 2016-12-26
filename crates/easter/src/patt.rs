@@ -4,43 +4,20 @@ use id::Id;
 use expr::Expr;
 use obj::{PropKey, DotKey};
 
-#[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut)]
+#[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut, Untrack)]
 pub enum CompoundPatt<T> {
     Arr(Option<Span>, Vec<Option<Patt<T>>>),
     Obj(Option<Span>, Vec<PropPatt<T>>)
 }
 
-impl<T: Untrack> Untrack for CompoundPatt<T> {
-    fn untrack(&mut self) {
-        match *self {
-            CompoundPatt::Arr(ref mut location, ref mut patts) => {
-                *location = None;
-                patts.untrack();
-            }
-            CompoundPatt::Obj(ref mut location, ref mut props) => {
-                *location = None;
-                props.untrack();
-            }
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut)]
+#[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut, Untrack)]
 pub struct PropPatt<T> {
     pub location: Option<Span>,
     pub key: PropKey,
     pub patt: Patt<T>
 }
 
-impl<T: Untrack> Untrack for PropPatt<T> {
-    fn untrack(&mut self) {
-        self.location = None;
-        self.key.untrack();
-        self.patt.untrack();
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Untrack)]
 pub enum Patt<T> {
     Simple(T),
     Compound(CompoundPatt<T>)
@@ -69,15 +46,6 @@ impl<T: TrackingMut> TrackingMut for Patt<T> {
         match *self {
             Patt::Simple(ref mut simple) => simple.tracking_mut(),
             Patt::Compound(ref mut patt) => patt.tracking_mut()
-        }
-    }
-}
-
-impl<T: Untrack> Untrack for Patt<T> {
-    fn untrack(&mut self) {
-        match *self {
-            Patt::Simple(ref mut simple) => { simple.untrack(); }
-            Patt::Compound(ref mut patt) => { patt.untrack(); }
         }
     }
 }
