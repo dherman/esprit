@@ -25,6 +25,12 @@ ES6/super-property/**
 ES6/generator/**
 ES6/yield/**
 
+# Let
+declaration/let/**
+ES6/lexical-declaration/for_let_in.*
+ES6/lexical-declaration/migrated_0000.*
+ES6/lexical-declaration/module_let.module.*
+
 # Const
 declaration/const/**
 ES6/for-of/for-of-with-const.*
