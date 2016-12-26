@@ -56,7 +56,8 @@ impl Context {
             ),
             VariantData::Tuple(ref fields) => (
                 Pat::TupleStruct(path, {
-                    let mut v = vec![location_pat];
+                    let mut v = Vec::with_capacity(fields.len());
+                    v.push(location_pat);
                     v.extend(std::iter::repeat(Pat::Wild).take(fields.len() - 1));
                     v
                 }, None),
@@ -88,11 +89,11 @@ impl Context {
         let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
         let (impl_name, method) = if mutability == Mutability::Immutable {
-            (Token::Ident(Ident::from("TrackingRef")), quote! {
+            (Ident::from("TrackingRef"), quote! {
                 tracking_ref(&self) -> &Option<Span>
             })
         } else {
-            (Token::Ident(Ident::from("TrackingMut")), quote! {
+            (Ident::from("TrackingMut"), quote! {
                 tracking_mut(&mut self) -> &mut Option<Span>
             })
         };
@@ -134,42 +135,39 @@ impl Context {
     fn expand_untrack_data(&self, path: Path, data: &VariantData) -> Arm {
         let (pat, idents) = match *data {
             VariantData::Struct(ref fields) => {
-                let field_pats: Vec<_> = fields.iter().map(|field| {
-                    let ident = field.ident.clone().unwrap();
+                let mut field_pats = Vec::with_capacity(fields.len());
+                let mut idents = Vec::with_capacity(fields.len());
 
-                    FieldPat {
+                for field in fields {
+                    let ident = field.ident.as_ref().unwrap();
+
+                    field_pats.push(FieldPat {
                         ident: ident.clone(),
-                        pat: Box::new(Pat::Ident(BindingMode::ByRef(Mutability::Mutable), ident, None)),
+                        pat: Box::new(Pat::Ident(BindingMode::ByRef(Mutability::Mutable), ident.clone(), None)),
                         is_shorthand: true
-                    }
-                }).collect();
+                    });
 
-                let idents: Vec<_> = fields.iter().map(|field| field.ident.clone().unwrap()).collect();
+                    idents.push(ident.clone());
+                }
 
-                (
-                    Pat::Struct(path, field_pats, false),
-                    idents
-                )
+                (Pat::Struct(path, field_pats, false), idents)
             },
             VariantData::Tuple(ref fields) => {
-                let pats: Vec<_> = fields.iter().enumerate().map(|(i, _)| {
-                    Pat::Ident(BindingMode::ByRef(Mutability::Mutable), Ident::from(format!("_f{}", i)), None)
-                }).collect();
+                let mut pats = Vec::with_capacity(fields.len());
+                let mut idents = Vec::with_capacity(fields.len());
 
-                let idents: Vec<_> = fields.iter().enumerate().map(|(i, _)| {
-                    Ident::from(format!("_f{}", i))
-                }).collect();
+                for i in 0..fields.len() {
+                    let ident = Ident::from(format!("_f{}", i));
 
-                (
-                    Pat::TupleStruct(path, pats, None),
-                    idents
-                )
+                    pats.push(Pat::Ident(BindingMode::ByRef(Mutability::Mutable), ident.clone(), None));
+
+                    idents.push(ident);
+                }
+
+                (Pat::TupleStruct(path, pats, None), idents)
             },
             VariantData::Unit => {
-                (
-                    Pat::Path(None, path),
-                    vec![]
-                )
+                (Pat::Path(None, path), vec![])
             }
         };
 
@@ -254,7 +252,7 @@ fn main() {
     let registry = {
         let mut registry = Registry::new();
 
-        registry.add_derive("TrackingRef", |input: MacroInput| {
+        registry.add_derive("TrackingRef", |input| {
             let tokens = context.expand_tracking_ref(&input, Mutability::Immutable);
             Ok(Expanded {
                 new_items: parse_items(&tokens.to_string())?,
@@ -262,7 +260,7 @@ fn main() {
             })
         });
 
-        registry.add_derive("TrackingMut", |input: MacroInput| {
+        registry.add_derive("TrackingMut", |input| {
             let tokens = context.expand_tracking_ref(&input, Mutability::Mutable);
             Ok(Expanded {
                 new_items: parse_items(&tokens.to_string())?,
@@ -270,7 +268,7 @@ fn main() {
             })
         });
 
-        registry.add_derive("Untrack", |input: MacroInput| {
+        registry.add_derive("Untrack", |input| {
             let tokens = context.expand_untrack(&input);
             Ok(Expanded {
                 new_items: parse_items(&tokens.to_string())?,
