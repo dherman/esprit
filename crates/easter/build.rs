@@ -45,14 +45,20 @@ impl Context {
     fn expand_tracking_ref_data(&self, path: Path, data: &VariantData, mutability: Mutability) -> Arm {
         let location_pat = Pat::Ident(BindingMode::ByRef(mutability), self.location_ident.clone(), None);
 
-        let (pat, field) = match *data {
+        let expr = self.location_expr.clone();
+
+        let (pat, expr) = match *data {
             VariantData::Struct(_) => (
                 Pat::Struct(path, vec![FieldPat {
                     ident: self.location_ident.clone(),
                     pat: Box::new(location_pat),
                     is_shorthand: true
                 }], true),
-                data.fields().iter().find(|field| field.ident.as_ref() == Some(&self.location_ident)).unwrap()
+                if data.fields().iter().any(|field| field.ident.as_ref() == Some(&self.location_ident) && field.ty == self.location_type) {
+                    expr
+                } else {
+                    panic!("Struct does not containt `location: Option<Span>`")
+                }
             ),
             VariantData::Tuple(ref fields) => (
                 Pat::TupleStruct(path, {
@@ -61,26 +67,24 @@ impl Context {
                     v.extend(std::iter::repeat(Pat::Wild).take(fields.len() - 1));
                     v
                 }, None),
-                &data.fields()[0]
+                if data.fields()[0].ty == self.location_type {
+                    expr
+                } else {
+                    Expr::from(ExprKind::MethodCall(
+                        Ident::from(if mutability == Mutability::Immutable { "tracking_ref" } else { "tracking_mut" }),
+                        vec![],
+                        vec![expr]
+                    ))
+                }
             ),
             VariantData::Unit => panic!("Empty unit is not trackable")
         };
-
-        let expr = self.location_expr.clone();
 
         Arm {
             attrs: vec![],
             pats: vec![pat],
             guard: None,
-            body: Box::new(if field.ty == self.location_type {
-                expr
-            } else {
-                Expr::from(ExprKind::MethodCall(
-                    Ident::from(if mutability == Mutability::Immutable { "tracking_ref" } else { "tracking_mut" }),
-                    vec![],
-                    vec![expr]
-                ))
-            })
+            body: Box::new(expr)
         }
     }
 
