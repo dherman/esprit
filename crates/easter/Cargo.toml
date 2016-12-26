@@ -14,5 +14,5 @@ joker = { version = "0.0.5", path = "../joker" }
 tristate = "0.1.1"
 
 [build-dependencies]
-syn = { version = "0.10.5", features = ["parsing", "printing", "expand", "pretty"] }
+syn = { version = "0.10.5", features = ["parsing", "printing", "expand"] }
 quote = "0.3.10"
