@@ -6,3 +6,8 @@ rust:
 matrix:
   allow_failures:
     - rust: nightly
+install:
+  - cargo benchcmp --version || cargo install cargo-benchcmp
+cache: cargo
+after_script:
+  - ./travis-after-script.sh
