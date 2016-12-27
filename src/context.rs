@@ -10,7 +10,7 @@ use result::Result;
 use parser::{Parser, Strict};
 
 pub trait WithContext {
-    fn with_labels<F>(&mut self, mut labels: Vec<Id>, label_type: LabelType, op: F) -> Result<Stmt>
+    fn with_labels<F>(&mut self, labels: Vec<Id>, label_type: LabelType, op: F) -> Result<Stmt>
       where F: FnOnce(&mut Self) -> Result<Stmt>;
     fn allow_in<F, T>(&mut self, allow_in: bool, parse: F) -> Result<T>
       where F: FnOnce(&mut Self) -> Result<T>;
