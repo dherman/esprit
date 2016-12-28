@@ -960,33 +960,16 @@ impl<I: Iterator<Item=char>> Parser<I> {
             this.reread(TokenData::Reserved(Reserved::Case));
             let test = this.allow_in(true, |this| this.expression())?;
             this.expect(TokenData::Colon)?;
-            let body = this.case_body()?;
+            let body = this.statement_list()?;
             Ok(Case { location: None, test: Some(test), body: body })
         })
-    }
-
-    fn case_body(&mut self) -> Result<Vec<StmtListItem>> {
-        let mut items = Vec::new();
-        loop {
-            match self.peek()?.value {
-                TokenData::Reserved(Reserved::Case)
-              | TokenData::Reserved(Reserved::Default)
-              | TokenData::RBrace => { break; }
-                _ => { }
-            }
-            match self.declaration_opt()? {
-                Some(decl) => { items.push(StmtListItem::Decl(decl)); }
-                None       => { items.push(StmtListItem::Stmt(self.statement()?)); }
-            }
-        }
-        Ok(items)
     }
 
     fn default(&mut self) -> Result<Case> {
         self.span(&mut |this| {
             this.reread(TokenData::Reserved(Reserved::Default));
             this.expect(TokenData::Colon)?;
-            let body = this.case_body()?;
+            let body = this.statement_list()?;
             Ok(Case { location: None, test: None, body: body })
         })
     }
