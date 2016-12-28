@@ -2,7 +2,7 @@ use std::char;
 
 use track::*;
 use token::{Token, TokenData, Exp, CharCase, Sign, NumberSource, Radix, StringLiteral, RegExpLiteral};
-use word::Map as WordMap;
+use word::{Map as WordMap, Word};
 
 use char::ESCharExt;
 use reader::Reader;
@@ -254,7 +254,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         let flags = self.read_word_parts()?;
         Ok(span.end(self, TokenData::RegExp(RegExpLiteral {
             pattern: s,
-            flags: flags.chars().collect()
+            flags: flags.text.chars().collect()
         })))
     }
 
@@ -535,12 +535,12 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         self.read_digit_into(s, 16, &|ch| ch.is_es_hex_digit(), Error::MissingHexDigits)
     }
 
-    fn read_word_parts(&mut self) -> Result<String> {
-        let mut s = String::new();
+    fn read_word_parts(&mut self) -> Result<Word> {
+        let mut s = Word::new();
         self.read_until_with(&|ch| ch != '\\' && !ch.is_es_identifier_continue(), &mut |this| {
             match this.read() {
                 '\\' => this.read_word_escape(&mut s),
-                ch => { s.push(ch); Ok(()) }
+                ch => { s.text.push(ch); Ok(()) }
             }
         })?;
         Ok(s)
@@ -550,19 +550,20 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         debug_assert!(self.peek().map_or(false, |ch| ch == '\\' || ch.is_es_identifier_start()));
         let span = self.start();
         let s = self.read_word_parts()?;
-        debug_assert!(s.len() > 0);
-        Ok(span.end(self, self.wordmap.tokenize(s)))
+        debug_assert!(s.text.len() > 0);
+        Ok(span.end(self, self.wordmap.tokenize(s)?))
     }
 
-    fn read_word_escape(&mut self, s: &mut String) -> Result<()> {
+    fn read_word_escape(&mut self, s: &mut Word) -> Result<()> {
+        s.set_had_escape();
         match self.peek() {
             Some('u') => { self.reread('u'); }
             cho => { return Err(Error::IncompleteWordEscape(cho)); }
         }
-        let mut dummy = String::new();
+        let mut dummy = String::with_capacity(4);
         let code_point = self.read_unicode_escape_seq(&mut dummy)?;
         match char::from_u32(code_point) {
-            Some(ch) => { s.push(ch); Ok(()) }
+            Some(ch) => { s.text.push(ch); Ok(()) }
             None => Err(Error::IllegalUnicode(code_point))
         }
     }

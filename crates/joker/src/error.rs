@@ -1,5 +1,6 @@
 use std::fmt;
 use std::fmt::{Display, Formatter};
+use word::Reserved;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Error {
@@ -15,7 +16,8 @@ pub enum Error {
     InvalidDigit(char),
     IllegalUnicode(u32),
     IdAfterNumber(char),
-    DigitAfterNumber(char)
+    DigitAfterNumber(char),
+    ReservedWordWithEscapes(Reserved)
 }
 
 impl Display for Error {
@@ -59,6 +61,9 @@ impl Display for Error {
             }
             &Error::DigitAfterNumber(_) => {
                 fmt.write_str("numeric literal starts immediately after previous numeric literal")
+            }
+            &Error::ReservedWordWithEscapes(ref word) => {
+                fmt.write_fmt(format_args!("reserved word with escapes: {:?}", word))
             }
         }
     }

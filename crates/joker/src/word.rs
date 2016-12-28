@@ -1,6 +1,31 @@
 use std::collections::HashMap;
 use std::convert::{AsRef, From};
 use token::TokenData;
+use result::Result;
+use error::Error;
+
+// Word with potential escape sequences
+pub struct Word {
+    had_escape: bool,
+    pub text: String,
+}
+
+impl Word {
+    pub fn new() -> Self {
+        Word {
+            had_escape: false,
+            text: String::new()
+        }
+    }
+
+    pub fn had_escape(&self) -> bool {
+        self.had_escape
+    }
+
+    pub fn set_had_escape(&mut self) {
+        self.had_escape = true;
+    }
+}
 
 // Unconditionally reserved words.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -268,13 +293,14 @@ impl Map {
         }
     }
 
-    pub fn tokenize(&self, s: String) -> TokenData {
-        match self.reserved.get(&s[..]) {
-            Some(&word) => TokenData::Reserved(word),
-            None => match self.contextual.get(&s[..]) {
-                Some(&atom) => TokenData::Identifier(Name::Atom(atom)),
-                None => TokenData::Identifier(Name::String(s))
+    pub fn tokenize(&self, s: Word) -> Result<TokenData> {
+        Ok(match self.reserved.get(&s.text[..]) {
+            Some(&word) if !s.had_escape() => TokenData::Reserved(word),
+            Some(&word) => return Err(Error::ReservedWordWithEscapes(word)),
+            None => match self.contextual.get(&s.text[..]) {
+                Some(&atom) if !s.had_escape() => TokenData::Identifier(Name::Atom(atom)),
+                _ => TokenData::Identifier(Name::String(s.text))
             }
-        }
+        })
     }
 }
