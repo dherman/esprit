@@ -1,7 +1,6 @@
 language: rust
 rust:
   - stable
-  - 1.8.0
   - beta
   - nightly
 matrix:
