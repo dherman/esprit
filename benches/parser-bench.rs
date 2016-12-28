@@ -18,7 +18,7 @@ use joker::track::Untrack;
 use serde_json::value::Value;
 use std::ffi::OsStr;
 use std::fs::{File, read_dir};
-use std::io::{Read, Write, stdout};
+use std::io::Read;
 use std::path::Path;
 use std::{thread, env};
 use test::{TestDesc, TestDescAndFn, TestName, TestFn, Bencher, TDynBenchFn, test_main};
@@ -65,43 +65,70 @@ fn integration_tests(target: &mut Vec<TestDescAndFn>, ignore: bool) {
         .map(|dir| dir.unwrap().path())
         .filter(|path| path.extension() == Some(OsStr::new("json")))
         .map(|tree_path| {
-            let mut source_path_buf = fixtures.join(tree_path.file_name().unwrap());
-            source_path_buf.set_extension("js");
-            (tree_path, source_path_buf)
+            let mut source_path = fixtures.join(tree_path.file_name().unwrap());
+            source_path.set_extension("js");
+            let name = source_path.strip_prefix(&root).unwrap().to_str().unwrap().to_string();
+
+            (tree_path, source_path, name)
         });
 
-    for (tree_path, source_path) in files {
-        let name = source_path.strip_prefix(&root).unwrap().to_str().unwrap().to_string();
-        if !ignore {
-            let mut source = String::new();
-            File::open(source_path.clone()).unwrap().read_to_string(&mut source).unwrap();
-            print!("Parsing JSON {}...", tree_path.strip_prefix(&root).unwrap().to_str().unwrap());
-            stdout().flush().unwrap();
-            let expected_ast = {
-                let v: Value = serde_json::de::from_reader(File::open(tree_path).unwrap()).unwrap();
-                v.into_object().unwrap().into_script().map_err(|err| {
-                    format!("failed to deserialize script: {}", err)
-                }).unwrap()
-            };
-            println!(" done");
-            add_bench(target, name, ignore, move |mut bench| {
-                let mut result = None;
-                bench.iter(|| {
-                    result = Some(script(&source[..]))
-                });
-                match result.unwrap() {
-                    Ok(mut actual_ast) => {
-                        actual_ast.untrack();
-                        assert!(actual_ast == expected_ast, "integration test got wrong result");
-                    }
-                    Err(actual_err) => {
-                        panic!("integration test failed to parse:\n{:#?}", actual_err);
-                    }
-                }
-            });
-        } else {
-            add_bench(target, name, ignore, |_| {});
+    if ignore {
+        // Fast path for ignored tests needs only their names
+        for (_, _, name) in files {
+            add_bench(target, name, true, |_| {});
         }
+        return;
+    }
+
+    let tests =
+        files
+        .map(|(tree_path, source_path, name)| {
+            let tree_name = tree_path.strip_prefix(&root).unwrap().to_str().unwrap().to_string();
+
+            // Read & parse each JSON in dedicated thread
+            let thread = thread::Builder::new().name(tree_name.clone()).spawn(move || {
+                let mut source = String::new();
+                File::open(source_path).unwrap().read_to_string(&mut source).unwrap();
+
+                println!("Parsing JSON {}...", tree_name);
+                let expected_ast = {
+                    let v: Value = serde_json::de::from_reader(File::open(&tree_path).unwrap()).unwrap();
+                    v.into_object().unwrap().into_script().map_err(|err| {
+                        format!("failed to deserialize script: {}", err)
+                    }).unwrap()
+                };
+                println!("Done parsing {}", tree_name);
+                (source, expected_ast)
+            }).unwrap();
+
+            (name, thread)
+        })
+        // First collect to evaluate iterator and spawn threads
+        .collect::<Vec<_>>()
+        .into_iter()
+        .map(|(name, thread)| {
+            let (source, expected_ast) = thread.join().unwrap();
+            (name, source, expected_ast)
+        })
+         // Then collect results from threads so that they don't affect benchmark numbers
+        .collect::<Vec<_>>();
+
+    for (name, source, expected_ast) in tests {
+        add_bench(target, name, false, move |mut bench| {
+            let mut result = None;
+            bench.iter(|| {
+                result = Some(script(&source[..]))
+            });
+            match result.unwrap() {
+                Ok(mut actual_ast) => {
+                    actual_ast.untrack();
+                    assert!(actual_ast == expected_ast, "integration test got wrong result");
+                }
+                Err(actual_err) => {
+                    panic!("integration test failed to parse:\n{:#?}", actual_err);
+                }
+            }
+        });
     }
 }
 
@@ -112,9 +139,9 @@ fn main() {
     if ignore_integration_tests {
         println!("note: Run with `ESTREE_INTEGRATION_TESTS=1` to run with integration tests (much slower).");
     }
-    thread::spawn(move || {
+    thread::Builder::new().name("bench".to_string()).spawn(move || {
         let mut tests = Vec::new();
         integration_tests(&mut tests, ignore_integration_tests);
         test_main(&args, tests);
-    }).join().unwrap();
+    }).unwrap().join().unwrap();
 }
