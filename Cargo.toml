@@ -26,3 +26,6 @@ glob = "0.2"
 [[test]]
 name = "parser"
 harness = false
+
+[workspace]
+# Implicitly crawled from dependencies.*.path
