@@ -27,6 +27,11 @@ glob = "0.2"
 name = "parser-test"
 harness = false
 
+[profile.bench]
+# It makes little sense to run cross-crate benchmarks w/o lto
+# (difference is significant)
+lto = true
+
 [[bench]]
 name = "parser-bench"
 harness = false
