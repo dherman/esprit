@@ -80,26 +80,42 @@ fn integration_tests(target: &mut Vec<TestDescAndFn>, ignore: bool) {
         return;
     }
 
+    let stack_size =
+        std::cmp::max(
+            // standard Rust env variable
+            env::var("RUST_MIN_STACK")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or_default(),
+            // ...but with custom minimal value
+            4 * 1024 * 1024
+        );
+
     let tests =
         files
         .map(|(tree_path, source_path, name)| {
             let tree_name = tree_path.strip_prefix(&root).unwrap().to_str().unwrap().to_string();
 
             // Read & parse each JSON in dedicated thread
-            let thread = thread::Builder::new().name(tree_name.clone()).spawn(move || {
-                let mut source = String::new();
-                File::open(source_path).unwrap().read_to_string(&mut source).unwrap();
+            let thread =
+                thread::Builder::new()
+                .name(tree_name.clone())
+                .stack_size(stack_size)
+                .spawn(move || {
+                    let mut source = String::new();
+                    File::open(source_path).unwrap().read_to_string(&mut source).unwrap();
 
-                println!("Parsing JSON {}...", tree_name);
-                let expected_ast = {
-                    let v: Value = serde_json::de::from_reader(File::open(&tree_path).unwrap()).unwrap();
-                    v.into_object().unwrap().into_script().map_err(|err| {
-                        format!("failed to deserialize script: {}", err)
-                    }).unwrap()
-                };
-                println!("Done parsing {}", tree_name);
-                (source, expected_ast)
-            }).unwrap();
+                    println!("Parsing JSON {}...", tree_name);
+                    let expected_ast = {
+                        let v: Value = serde_json::de::from_reader(File::open(&tree_path).unwrap()).unwrap();
+                        v.into_object().unwrap().into_script().map_err(|err| {
+                            format!("failed to deserialize script: {}", err)
+                        }).unwrap()
+                    };
+                    println!("Done parsing {}", tree_name);
+                    (source, expected_ast)
+                })
+                .unwrap();
 
             (name, thread)
         })
