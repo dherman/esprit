@@ -292,13 +292,9 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }
     }
 
-    fn read_decimal_digits_into(&mut self, s: &mut String) {
-        self.read_into_until(s, &|ch| !ch.is_digit(10));
-    }
-
     fn read_decimal_digits(&mut self) -> String {
         let mut s = String::new();
-        self.read_decimal_digits_into(&mut s);
+        self.read_into_until(&mut s, &|ch| !ch.is_digit(10));
         s
     }
 
@@ -314,14 +310,12 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             Some('-') => { self.skip(); Some(Sign::Minus) }
             _ => None
         };
-        let mut value = String::new();
         match self.peek() {
             Some(ch) if !ch.is_digit(10) => return Err(Error::MissingExponent(Some(ch))),
             None => { return Err(Error::MissingExponent(None)); }
             _ => ()
         }
-        self.read_decimal_digits_into(&mut value);
-        Ok(Some(Exp { e: e, sign: sign, value: value }))
+        Ok(Some(Exp { e: e, sign: sign, value: self.read_decimal_digits() }))
     }
 
     fn read_decimal_int(&mut self) -> String {
