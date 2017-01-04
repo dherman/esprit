@@ -1339,27 +1339,18 @@ impl<I: Iterator<Item=char>> Parser<I> {
 
     // "new"+n MemberBaseExpression . Deref* Arguments<n Suffix*
     fn more_new_expression(&mut self, news: Vec<Token>, mut base: Expr) -> Result<Expr> {
-        let mut derefs = Vec::new();
         while let Some(deref) = self.deref_opt()? {
-            derefs.push(deref);
-        }
-        let mut args_lists = Vec::new();
-        for _ in 0..news.len() {
-            if self.peek_op()?.value != TokenData::LParen {
-                break;
-            }
-            args_lists.push(self.arguments()?);
-        }
-        for deref in derefs {
             base = deref.append_to(base);
         }
-        let mut news = news.into_iter().rev();
-        for args in args_lists {
-            base = args.append_to_new(news.next().unwrap(), base);
-        }
-        for new in news {
-            let location = span(&Some(new.location), &base);
-            base = Expr::New(location, Box::new(base), None);
+        let mut has_args = true;
+        for new in news.into_iter().rev() {
+            has_args = has_args && self.peek_op()?.value == TokenData::LParen;
+            base = if has_args {
+                self.arguments()?.append_to_new(new, base)
+            } else {
+                let location = span(&Some(new.location), &base);
+                Expr::New(location, Box::new(base), None)
+            };
         }
         self.more_suffixes(base)
     }
