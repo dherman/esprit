@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then
+if [ "$TRAVIS_PULL_REQUEST" != "false" ] && [ "$TRAVIS_RUST_VERSION" == "nightly" ]; then
     # Bench variable
     echo "Benchmarking PR #$TRAVIS_PULL_REQUEST..." && \
     cargo bench > benches/PR_$TRAVIS_PULL_REQUEST && \
