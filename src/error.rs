@@ -4,6 +4,7 @@ use joker::track::*;
 use joker::word::Atom;
 use easter::id::Id;
 use easter::decl::{Import, Export};
+use easter::patt::CompoundPatt;
 use easter::cover;
 use result::Result;
 use context::Goal;
@@ -33,7 +34,8 @@ pub enum Error {
     ThrowArgument(Token),
     OrphanTry(Token),
     InvalidLHS(Option<Span>, cover::Error),
-    UnsupportedFeature(&'static str)
+    UnsupportedFeature(&'static str),
+    CompoundParamWithUseStrict(CompoundPatt<Id>)
 }
 
 #[derive(Debug, PartialEq, Clone)]

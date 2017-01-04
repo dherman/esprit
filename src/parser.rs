@@ -470,6 +470,13 @@ impl<I: Iterator<Item=char>> Parser<I> {
                 this.expect(TokenData::LBrace)?;
                 // ES6: if the body has "use strict" check for simple parameters
                 let body = this.script()?;
+                if body.dirs.iter().any(|dir| dir.pragma() == "use strict") {
+                    for param in &params.list {
+                        if let Patt::Compound(ref compound) = *param {
+                            return Err(Error::CompoundParamWithUseStrict(compound.clone()));
+                        }
+                    }
+                }
                 this.expect(TokenData::RBrace)?;
                 Ok(Fun { location: None, id: id, params: params, body: body })
             })
