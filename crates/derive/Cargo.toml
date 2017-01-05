@@ -1,0 +1,11 @@
+[package]
+name = "derive"
+version = "0.0.1"
+authors = ["Ingvar Stepanyan <me@rreverser.com>"]
+publish = false
+
+[lib]
+proc-macro = true
+
+[dependencies]
+derive-context = { version = "0.0.1", path = "../derive-context" }

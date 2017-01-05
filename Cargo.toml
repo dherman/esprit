@@ -9,6 +9,9 @@ homepage = "https://esprit.surge.sh"
 repository = "https://github.com/dherman/esprit"
 exclude = ["tests/esprima/**/*"]
 
+[features]
+nightly = ["easter/nightly"]
+
 [dependencies]
 serde = "0.8"
 serde_json = "0.8"
