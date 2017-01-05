@@ -9,7 +9,7 @@ use punc::{Unop, Binop, Assop, Logop};
 use id::Id;
 use patt::{Patt, AssignTarget};
 
-#[derive(Clone)]
+#[derive(Clone, TrackingRef, TrackingMut, Untrack)]
 pub enum Expr {
     This(Option<Span>),
     Id(Id),
@@ -38,74 +38,6 @@ pub enum Expr {
     Number(Option<Span>, NumberLiteral),
     RegExp(Option<Span>, RegExpLiteral),
     String(Option<Span>, StringLiteral)
-}
-
-impl TrackingRef for Expr {
-    fn tracking_ref(&self) -> &Option<Span> {
-        match *self {
-            Expr::This(ref location)
-          | Expr::Arr(ref location, _)
-          | Expr::Obj(ref location, _)
-          | Expr::Seq(ref location, _)
-          | Expr::Unop(ref location, _, _)
-          | Expr::Binop(ref location, _, _, _)
-          | Expr::Logop(ref location, _, _, _)
-          | Expr::PreInc(ref location, _)
-          | Expr::PostInc(ref location, _)
-          | Expr::PreDec(ref location, _)
-          | Expr::PostDec(ref location, _)
-          | Expr::Assign(ref location, _, _)
-          | Expr::BinAssign(ref location, _, _, _)
-          | Expr::Cond(ref location, _, _, _)
-          | Expr::Call(ref location, _, _)
-          | Expr::New(ref location, _, _)
-          | Expr::Dot(ref location, _, _)
-          | Expr::Brack(ref location, _, _)
-          | Expr::NewTarget(ref location)
-          | Expr::True(ref location)
-          | Expr::False(ref location)
-          | Expr::Null(ref location)
-          | Expr::Number(ref location, _)
-          | Expr::RegExp(ref location, _)
-          | Expr::String(ref location, _) => location,
-            Expr::Id(ref id) => id.tracking_ref(),
-            Expr::Fun(ref fun) => fun.tracking_ref()
-        }
-    }
-}
-
-impl TrackingMut for Expr {
-    fn tracking_mut(&mut self) -> &mut Option<Span> {
-        match *self {
-            Expr::This(ref mut location)
-          | Expr::Arr(ref mut location, _)
-          | Expr::Obj(ref mut location, _)
-          | Expr::Seq(ref mut location, _)
-          | Expr::Unop(ref mut location, _, _)
-          | Expr::Binop(ref mut location, _, _, _)
-          | Expr::Logop(ref mut location, _, _, _)
-          | Expr::PreInc(ref mut location, _)
-          | Expr::PostInc(ref mut location, _)
-          | Expr::PreDec(ref mut location, _)
-          | Expr::PostDec(ref mut location, _)
-          | Expr::Assign(ref mut location, _, _)
-          | Expr::BinAssign(ref mut location, _, _, _)
-          | Expr::Cond(ref mut location, _, _, _)
-          | Expr::Call(ref mut location, _, _)
-          | Expr::New(ref mut location, _, _)
-          | Expr::Dot(ref mut location, _, _)
-          | Expr::Brack(ref mut location, _, _)
-          | Expr::NewTarget(ref mut location)
-          | Expr::True(ref mut location)
-          | Expr::False(ref mut location)
-          | Expr::Null(ref mut location)
-          | Expr::Number(ref mut location, _)
-          | Expr::RegExp(ref mut location, _)
-          | Expr::String(ref mut location, _) => location,
-            Expr::Id(ref mut id) => id.tracking_mut(),
-            Expr::Fun(ref mut fun) => fun.tracking_mut()
-        }
-    }
 }
 
 impl PartialEq for Expr {
@@ -192,41 +124,6 @@ impl Debug for Expr {
             &Expr::Number(_, ref lit)                        => fmt.debug_tuple("Number").field(lit).finish(),
             &Expr::RegExp(_, ref lit)                        => fmt.debug_tuple("RegExp").field(lit).finish(),
             &Expr::String(_, ref lit)                        => fmt.debug_tuple("String").field(lit).finish()
-        }
-    }
-}
-
-impl Untrack for Expr {
-    fn untrack(&mut self) {
-        *self.tracking_mut() = None;
-        match *self {
-            Expr::This(_)                                              => { }
-            Expr::Id(ref mut id)                                       => { id.untrack(); }
-            Expr::Arr(_, ref mut exprs)                                => { exprs.untrack(); }
-            Expr::Obj(_, ref mut props)                                => { props.untrack(); }
-            Expr::Fun(ref mut fun)                                     => { fun.untrack(); }
-            Expr::Seq(_, ref mut exprs)                                => { exprs.untrack(); }
-            Expr::Unop(_, ref mut op, ref mut expr)                    => { op.untrack(); expr.untrack(); }
-            Expr::Binop(_, ref mut op, ref mut left, ref mut right)    => { op.untrack(); left.untrack(); right.untrack(); }
-            Expr::Logop(_, ref mut op, ref mut left, ref mut right)    => { op.untrack(); left.untrack(); right.untrack(); }
-            Expr::PreInc(_, ref mut expr)                              => { expr.untrack(); }
-            Expr::PostInc(_, ref mut expr)                             => { expr.untrack(); }
-            Expr::PreDec(_, ref mut expr)                              => { expr.untrack(); }
-            Expr::PostDec(_, ref mut expr)                             => { expr.untrack(); }
-            Expr::Assign(_, ref mut patt, ref mut expr)                => { patt.untrack(); expr.untrack(); }
-            Expr::BinAssign(_, ref mut op, ref mut patt, ref mut expr) => { op.untrack(); patt.untrack(); expr.untrack(); }
-            Expr::Cond(_, ref mut test, ref mut cons, ref mut alt)     => { test.untrack(); cons.untrack(); alt.untrack(); }
-            Expr::Call(_, ref mut callee, ref mut args)                => { callee.untrack(); args.untrack(); }
-            Expr::New(_, ref mut ctor, ref mut args)                   => { ctor.untrack(); args.untrack(); }
-            Expr::Dot(_, ref mut obj, ref mut key)                     => { obj.untrack(); key.untrack(); }
-            Expr::Brack(_, ref mut obj, ref mut prop)                  => { obj.untrack(); prop.untrack(); }
-            Expr::NewTarget(_)                                         => { }
-            Expr::True(_)                                              => { }
-            Expr::False(_)                                             => { }
-            Expr::Null(_)                                              => { }
-            Expr::Number(_, _)                                         => { }
-            Expr::RegExp(_, _)                                         => { }
-            Expr::String(_, _)                                         => { }
         }
     }
 }

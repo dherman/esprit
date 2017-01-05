@@ -78,6 +78,12 @@ impl<T> Untrack for Option<T>
     }
 }
 
+impl Untrack for Option<Span> {
+    fn untrack(&mut self) {
+        *self = None;
+    }
+}
+
 impl<T> Untrack for Vec<T>
   where T: Untrack
 {

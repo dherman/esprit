@@ -7,141 +7,28 @@ use patt::{Patt, CompoundPatt};
 use expr::Expr;
 use punc::Semi;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut, Untrack)]
 pub enum Import {
     // ES6: more import forms
     ForEffect(Option<Span>, StringLiteral)
 }
 
-impl TrackingRef for Import {
-    fn tracking_ref(&self) -> &Option<Span> {
-        match *self {
-            Import::ForEffect(ref location, _) => location
-        }
-    }
-}
-
-impl TrackingMut for Import {
-    fn tracking_mut(&mut self) -> &mut Option<Span> {
-        match *self {
-            Import::ForEffect(ref mut location, _) => location
-        }
-    }
-}
-
-impl Untrack for Import {
-    fn untrack(&mut self) {
-        match *self {
-            Import::ForEffect(ref mut location, _) => { *location = None; }
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut, Untrack)]
 pub enum Export {
     // ES6: more export forms
     Var(Option<Span>, Vec<Dtor>, Semi),
     Decl(Decl)
 }
 
-impl TrackingRef for Export {
-    fn tracking_ref(&self) -> &Option<Span> {
-        match *self {
-            Export::Var(ref location, _, _) => location,
-            Export::Decl(ref decl) => decl.tracking_ref()
-        }
-    }
-}
-
-impl TrackingMut for Export {
-    fn tracking_mut(&mut self) -> &mut Option<Span> {
-        match *self {
-            Export::Var(ref mut location, _, _) => location,
-            Export::Decl(ref mut decl) => decl.tracking_mut()
-        }
-    }
-}
-
-impl Untrack for Export {
-    fn untrack(&mut self) {
-        match *self {
-            Export::Var(ref mut location, ref mut dtors, ref mut semi) => {
-                *location = None;
-                dtors.untrack();
-                semi.untrack();
-            }
-            Export::Decl(ref mut decl) => {
-                decl.untrack();
-            }
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut, Untrack)]
 pub enum Decl {
     Fun(Fun)
 }
 
-impl TrackingRef for Decl {
-    fn tracking_ref(&self) -> &Option<Span> {
-        let Decl::Fun(ref fun) = *self;
-        fun.tracking_ref()
-    }
-}
-
-impl TrackingMut for Decl {
-    fn tracking_mut(&mut self) -> &mut Option<Span> {
-        let Decl::Fun(ref mut fun) = *self;
-        fun.tracking_mut()
-    }
-}
-
-impl Untrack for Decl {
-    fn untrack(&mut self) {
-        let Decl::Fun(ref mut fun) = *self;
-        fun.untrack();
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut, Untrack)]
 pub enum Dtor {
     Simple(Option<Span>, Id, Option<Expr>),
     Compound(Option<Span>, CompoundPatt<Id>, Expr)
-}
-
-impl TrackingRef for Dtor {
-    fn tracking_ref(&self) -> &Option<Span> {
-        match *self {
-            Dtor::Simple(ref location, _, _)
-          | Dtor::Compound(ref location, _, _) => location
-        }
-    }
-}
-
-impl TrackingMut for Dtor {
-    fn tracking_mut(&mut self) -> &mut Option<Span> {
-        match *self {
-            Dtor::Simple(ref mut location, _, _)
-          | Dtor::Compound(ref mut location, _, _) => location
-        }
-    }
-}
-
-impl Untrack for Dtor {
-    fn untrack(&mut self) {
-        match *self {
-            Dtor::Simple(ref mut location, ref mut id, ref mut init) => {
-                *location = None;
-                id.untrack();
-                init.untrack();
-            }
-            Dtor::Compound(ref mut location, ref mut patt, ref mut init) => {
-                *location = None;
-                patt.untrack();
-                init.untrack();
-            }
-        }
-    }
 }
 
 pub trait DtorExt {
