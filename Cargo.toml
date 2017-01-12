@@ -1,5 +1,4 @@
 [package]
-
 name = "esprit"
 version = "0.0.5"
 authors = ["Dave Herman <dherman@mozilla.com>"]
@@ -8,7 +7,7 @@ description = "An ECMAScript parser library."
 documentation = "https://esprit.surge.sh"
 homepage = "https://esprit.surge.sh"
 repository = "https://github.com/dherman/esprit"
-exclude = ["tests/build/**/*"]
+exclude = ["tests/esprima/**/*"]
 
 [dependencies]
 serde = "0.8"
