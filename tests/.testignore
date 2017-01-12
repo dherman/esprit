@@ -1,3 +1,7 @@
+# Legacy extensions (Annex B)
+statement/if/migrated_0003.*
+statement/labelled/function-declaration.*
+
 # Extended identifier chars
 ES6/identifier/**
 
