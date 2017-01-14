@@ -6,7 +6,6 @@ pub mod token;
 pub mod lexer;
 mod char;
 mod reader;
-mod lookahead;
 mod test;
 pub mod track;
 pub mod error;
