@@ -132,8 +132,7 @@ impl Dir {
 pub enum ModItem {
     Import(Import),
     Export(Export),
-    Decl(Decl),
-    Stmt(Stmt)
+    StmtListItem(StmtListItem)
 }
 
 #[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut, Untrack)]
@@ -165,9 +164,6 @@ impl StmtListItem {
     }
 
     pub fn into_mod_item(self) -> ModItem {
-        match self {
-            StmtListItem::Stmt(stmt) => ModItem::Stmt(stmt),
-            StmtListItem::Decl(decl) => ModItem::Decl(decl)
-        }
+        ModItem::StmtListItem(self)
     }
 }
