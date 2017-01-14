@@ -442,24 +442,24 @@ impl<I: Iterator<Item=char>> Parser<I> {
             TokenData::Reserved(Reserved::For)      => self.for_statement(),
             TokenData::Reserved(Reserved::Debugger) => self.debugger_statement(),
             TokenData::Identifier(_)                => {
-                let id = self.id().unwrap();
-                self.id_statement(id)
+                let token = self.lexer.reread_token();
+                self.id_statement(token)
             }
             _                                       => self.expression_statement()
         }
     }
 
-    fn id_statement(&mut self, id: Id) -> Result<Stmt> {
+    fn id_statement(&mut self, token: Token) -> Result<Stmt> {
         match self.peek_op()?.value {
-            TokenData::Colon => self.labelled_statement(id),
-            TokenData::Identifier(_) | TokenData::LBrace | TokenData::LBrack
-            if id.name == Name::Atom(Atom::Let) => {
-                self.let_statement(id.tracking_ref().unwrap().start)
+            TokenData::Colon => {
+                self.labelled_statement(Id::from_token(token))
+            },
+            TokenData::Identifier(_) | TokenData::LBrace | TokenData::LBrack if token.value == TokenData::Identifier(Name::Atom(Atom::Let)) => {
+                self.let_statement(token.location.start)
             },
             _ => {
-                let span = self.start();
-                let expr = self.id_expression(id)?;
-                Ok(span.end_with_auto_semi(self, Newline::Required, |semi| Stmt::Expr(None, expr, semi))?)
+                self.lexer.unread_token(token);
+                self.expression_statement()
             }
         }
     }
@@ -468,26 +468,18 @@ impl<I: Iterator<Item=char>> Parser<I> {
         self.reread(TokenData::Colon);
 
         let mut labels = vec![id]; // vector of consecutive labels
-        let mut expr_id = None;    // id that starts the statement following the labels, if any
 
         while let TokenData::Identifier(_) = self.peek()?.value {
-            let id = self.id().unwrap();
+            let token = self.lexer.reread_token();
             if !self.matches_op(TokenData::Colon)? {
-                expr_id = Some(id);
+                self.lexer.unread_token(token);
                 break;
             }
-            labels.push(id);
+            labels.push(Id::from_token(token));
         }
 
-        match expr_id {
-            Some(id) => {
-                self.with_labels(labels, LabelType::Statement, |this| this.id_statement(id))
-            }
-            None     => {
-                let label_type = self.peek()?.label_type();
-                self.with_labels(labels, label_type, |this| this.statement())
-            }
-        }
+        let label_type = self.peek()?.label_type();
+        self.with_labels(labels, label_type, |this| this.statement())
     }
 
     fn expression_statement(&mut self) -> Result<Stmt> {
@@ -1428,29 +1420,6 @@ impl<I: Iterator<Item=char>> Parser<I> {
         }
     }
 
-    // IDUnaryExpression ::=
-    //   IdentifierReference Suffix* PostfixOperator?
-    fn id_unary_expression(&mut self, id: Id) -> Result<Expr> {
-        self.unary_suffixes(Expr::Id(id))
-    }
-
-    fn unary_suffixes(&mut self, mut result: Expr) -> Result<Expr> {
-        result = self.more_suffixes(result)?;
-        if let Some(postfix) = self.match_postfix_operator_opt()? {
-            let result_location = *result.tracking_ref();
-            result = match result.into_assign_target().map(Box::new) {
-                Ok(target) => {
-                    match postfix {
-                        Postfix::Inc(location) => Expr::PostInc(Some(location), target),
-                        Postfix::Dec(location) => Expr::PostDec(Some(location), target)
-                    }
-                }
-                Err(cover_err) => { return Err(Error::InvalidLHS(result_location, cover_err)); }
-            };
-        }
-        Ok(result)
-    }
-
     // UnaryExpression ::=
     //   Prefix* LHSExpression PostfixOperator?
     fn unary_expression(&mut self) -> Result<Expr> {
@@ -1558,14 +1527,6 @@ impl<I: Iterator<Item=char>> Parser<I> {
         self.more_conditional(test)
     }
 
-    // IDConditionalExpression ::=
-    //   IDUnaryExpression (Infix UnaryExpression)* ("?" AssignmentExpression ":" AssignmentExpression)?
-    fn id_conditional_expression(&mut self, id: Id) -> Result<Expr> {
-        let left = self.id_unary_expression(id)?;
-        let test = self.more_infix_expressions(left)?;
-        self.more_conditional(test)
-    }
-
     fn more_conditional(&mut self, left: Expr) -> Result<Expr> {
         if self.matches_op(TokenData::Question)? {
             let cons = self.allow_in(true, |this| this.assignment_expression())?;
@@ -1582,13 +1543,6 @@ impl<I: Iterator<Item=char>> Parser<I> {
     //   YieldPrefix* ConditionalExpression (("=" | AssignmentOperator) AssignmentExpression)?
     fn assignment_expression(&mut self) -> Result<Expr> {
         let left = self.conditional_expression()?;
-        self.more_assignment(left)
-    }
-
-    // IDAssignmentExpression ::=
-    //   IDConditionalExpression (("=" | AssignmentOperator) AssignmentExpression)?
-    fn id_assignment_expression(&mut self, id: Id) -> Result<Expr> {
-        let left = self.id_conditional_expression(id)?;
         self.more_assignment(left)
     }
 
@@ -1642,13 +1596,6 @@ impl<I: Iterator<Item=char>> Parser<I> {
     //   AssignmentExpression ("," AssignmentExpression)*
     fn expression(&mut self) -> Result<Expr> {
         let first = self.assignment_expression()?;
-        self.more_expressions(first)
-    }
-
-    // IDExpression ::=
-    //   IDAssignmentExpression ("," AssignmentExpression)*
-    fn id_expression(&mut self, id: Id) -> Result<Expr> {
-        let first = self.id_assignment_expression(id)?;
         self.more_expressions(first)
     }
 

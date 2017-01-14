@@ -1,5 +1,6 @@
 use joker::word::Name;
 use joker::track::{TrackingRef, TrackingMut, Untrack, Span};
+use joker::token::{Token, TokenData};
 
 use expr::Expr;
 use decl::Dtor;
@@ -17,6 +18,7 @@ impl Untrack for Id {
 
 pub trait IdExt {
     fn new(Name, Option<Span>) -> Id;
+    fn from_token(Token) -> Id;
     fn into_patt(self) -> Patt<Id>;
     fn into_expr(self) -> Expr;
     fn into_dtor(self) -> Dtor;
@@ -27,6 +29,16 @@ impl IdExt for Id {
         Id {
             location: location,
             name: name
+        }
+    }
+
+    fn from_token(token: Token) -> Id {
+        Id {
+            location: Some(token.location),
+            name: match token.value {
+                TokenData::Identifier(name) => name,
+                _ => unreachable!()
+            }
         }
     }
 
