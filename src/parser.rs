@@ -158,6 +158,10 @@ impl<I: Iterator<Item=char>> Parser<I> {
         replace(&mut self.deferred, Vec::new())
     }
 
+    fn unexpected<T>(&mut self) -> Result<T> {
+        Err(Error::UnexpectedToken(self.lexer.reread_token()))
+    }
+
     fn match_directive_opt(&mut self) -> Result<Option<Dir>> {
         let span = self.start();
         let token1 = self.read()?;
@@ -322,15 +326,6 @@ impl<I: Iterator<Item=char>> Parser<I> {
         Ok(items)
     }
 
-/*
-    pub fn declaration(&mut self) -> Result<Decl> {
-        match self.declaration_opt()? {
-            Some(decl) => Ok(decl),
-            None       => Err(Error::UnexpectedToken(self.read()?))
-        }
-    }
-*/
-
     fn declaration_opt(&mut self) -> Result<Option<Decl>> {
         match self.peek()?.value {
             TokenData::Reserved(Reserved::Function) => Ok(Some(self.function_declaration()?)),
@@ -380,7 +375,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
 
     fn binding_pattern(&mut self) -> Result<CompoundPatt<Id>> {
         if !self.peek()?.first_binding() {
-            return Err(Error::UnexpectedToken(self.read()?));
+            return self.unexpected();
         }
         Err(Error::UnsupportedFeature("destructuring"))
     }
@@ -686,7 +681,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                                 let head = Box::new(ForInHead::VarInit(span(&var_location, &rhs), id, rhs));
                                 self.more_for_in(head)
                             }
-                            _ => Err(Error::UnexpectedToken(self.read()?))
+                            _ => self.unexpected()
                         }
                     }
                     // 'for' '(' 'var' patt '=' . ==> C-style
@@ -705,7 +700,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                 // 'for' '(' 'var' patt ';' . ==> syntax error
                 let dtor = match Dtor::from_init_opt(lhs, None) {
                     Ok(dtor) => dtor,
-                    Err(_) => { return Err(Error::UnexpectedToken(self.read()?)); }
+                    Err(_) => { return self.unexpected(); }
                 };
                 let head = Some(self.more_for_head(&var_location, dtor, ForHead::Var)?);
                 self.more_for(head)
@@ -724,7 +719,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                 let head = Box::new(ForOfHead::Var(span(&var_location, &lhs), lhs));
                 self.more_for_of(head)
             }
-            _ => Err(Error::UnexpectedToken(self.read()?))
+            _ => self.unexpected()
         }
     }
 
@@ -755,7 +750,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                 // 'for' '(' 'let' patt ';' . ==> error
                 let dtor = match Dtor::from_init_opt(lhs, None) {
                     Ok(dtor) => dtor,
-                    Err(_) => { return Err(Error::UnexpectedToken(self.read()?)); }
+                    Err(_) => { return self.unexpected(); }
                 };
                 let head = Some(self.more_for_head(&let_location, dtor, ForHead::Let)?);
                 self.more_for(head)
@@ -774,7 +769,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                 let head = Box::new(ForOfHead::Let(span(&let_location, &lhs), lhs));
                 self.more_for_of(head)
             }
-            _ => Err(Error::UnexpectedToken(self.read()?))
+            _ => self.unexpected()
         }
     }
 
@@ -806,7 +801,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                 let head = Box::new(ForOfHead::Patt(lhs));
                 self.more_for_of(head)
             }
-            _ => Err(Error::UnexpectedToken(self.read()?))
+            _ => self.unexpected()
         }
     }
 
@@ -1186,7 +1181,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
     fn property_key(&mut self) -> Result<PropKey> {
         match self.property_key_opt()? {
             Some(key) => Ok(key),
-            None => Err(Error::UnexpectedToken(self.read()?))
+            None => self.unexpected()
         }
     }
 
@@ -1215,7 +1210,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                         self.more_prop_init(PropKey::Id(key_location, "get".to_string()))
                     }
                     // ES6: treat as elided optional initializer
-                    _ => { return Err(Error::UnexpectedToken(self.read()?)); }
+                    _ => { return self.unexpected(); }
                 }
             }
             TokenData::Identifier(Name::Atom(Atom::Set)) => {
@@ -1242,7 +1237,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                         self.more_prop_init(PropKey::Id(key_location, "set".to_string()))
                     }
                     // ES6: treat as elided optional initializer
-                    _ => { return Err(Error::UnexpectedToken(self.read()?)); }
+                    _ => { return self.unexpected(); }
                 }
             }
             // ES6: TokenData::Star
@@ -1253,7 +1248,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                     TokenData::Colon => self.more_prop_init(key),
                     // ES6: TokenData::LParen =>
                     // ES6: treat as elided optional initializer
-                    _ => { return Err(Error::UnexpectedToken(self.read()?)); }
+                    _ => { return self.unexpected(); }
                 }
             }
         }
@@ -1339,16 +1334,6 @@ impl<I: Iterator<Item=char>> Parser<I> {
         let end = self.expect(TokenData::RParen)?;
         Ok(Arguments { args: args, end: end })
     }
-
-/*
-    fn deref(&mut self) -> Result<Deref> {
-        match self.peek_op()?.value {
-            TokenData::LBrack => self.deref_brack(),
-            TokenData::Dot    => self.deref_dot(),
-            _ => Err(Error::UnexpectedToken(self.read_op()?))
-        }
-    }
-*/
 
     // Deref ::=
     //   "[" Expression "]"
