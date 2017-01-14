@@ -124,120 +124,134 @@ pub trait IntoStmt {
     fn into_catch(self) -> Result<Catch>;
 }
 
+fn into_stmt_list_item(mut this: Object, allow_decl: bool) -> Result<StmtListItem> {
+    let tag = this.tag()?;
+    Ok(StmtListItem::Stmt(match tag {
+        Tag::FunctionDeclaration => {
+            if !allow_decl {
+                return node_type_error("statement", tag);
+            }
+            return Ok(StmtListItem::Decl(Decl::Fun(this.into_fun()?)));
+        }
+        Tag::VariableDeclaration => {
+            let dtors = this.extract_dtor_list("declarations")?;
+            let kind = this.extract_string("kind").map_err(Error::Json)?;
+            match &kind[..] {
+                "var" => Stmt::Var(None, dtors, Semi::Explicit(None)),
+                "let" => {
+                    if !allow_decl {
+                        return string_error("var", kind);
+                    }
+                    Stmt::Let(None, dtors, Semi::Explicit(None))
+                },
+                _ => { return string_error("var or let", kind); }
+            }
+        }
+        Tag::EmptyStatement => Stmt::Empty(None),
+        Tag::ExpressionStatement => {
+            let expr = this.extract_expr("expression")?;
+            Stmt::Expr(None, expr, Semi::Explicit(None))
+        }
+        Tag::IfStatement => {
+            let test = this.extract_expr("test")?;
+            let cons = Box::new(this.extract_stmt("consequent")?);
+            let alt = this.extract_stmt_opt("alternate")?.map(Box::new);
+            Stmt::If(None, test, cons, alt)
+        }
+        Tag::DoWhileStatement => {
+            let body = Box::new(this.extract_stmt("body")?);
+            let test = this.extract_expr("test")?;
+            Stmt::DoWhile(None, body, test, Semi::Explicit(None))
+        }
+        Tag::WhileStatement => {
+            let test = this.extract_expr("test")?;
+            let body = Box::new(this.extract_stmt("body")?);
+            Stmt::While(None, test, body)
+        }
+        Tag::ForStatement => {
+            let init = match this.extract_object_opt("init").map_err(Error::Json)? {
+                None      => None,
+                Some(obj) => Some(Box::new(obj.into_for_head()?))
+            };
+            let test = this.extract_expr_opt("test")?;
+            let update = this.extract_expr_opt("update")?;
+            let body = Box::new(this.extract_stmt("body")?);
+            Stmt::For(None, init, test, update, body)
+        }
+        Tag::ForInStatement => {
+            let left = this.extract_object("left").map_err(Error::Json)?.into_for_in_head()?;
+            let right = this.extract_expr("right")?;
+            let body = this.extract_stmt("body")?;
+            Stmt::ForIn(None, Box::new(left), right, Box::new(body))
+        }
+        Tag::ForOfStatement => {
+            let left = this.extract_object("left").map_err(Error::Json)?.into_for_of_head()?;
+            let right = this.extract_expr("right")?;
+            let body = this.extract_stmt("body")?;
+            Stmt::ForOf(None, Box::new(left), right, Box::new(body))
+        }
+        Tag::BlockStatement => {
+            let body = this.extract_stmt_list("body")?;
+            Stmt::Block(None, body)
+        }
+        Tag::ReturnStatement => {
+            let arg = this.extract_expr_opt("argument")?;
+            Stmt::Return(None, arg, Semi::Explicit(None))
+        }
+        Tag::LabeledStatement => {
+            let label = this.extract_id("label")?;
+            let body = Box::new(this.extract_stmt("body")?);
+            Stmt::Label(None, label, body)
+        }
+        Tag::BreakStatement => {
+            let label = this.extract_id_opt("label")?;
+            Stmt::Break(None, label, Semi::Explicit(None))
+        }
+        Tag::ContinueStatement => {
+            let label = this.extract_id_opt("label")?;
+            Stmt::Cont(None, label, Semi::Explicit(None))
+        }
+        Tag::SwitchStatement => {
+            let disc = this.extract_expr("discriminant")?;
+            let cases = this.extract_case_list("cases")?;
+            Stmt::Switch(None, disc, cases)
+        }
+        Tag::WithStatement => {
+            let obj = this.extract_expr("object")?;
+            let body = Box::new(this.extract_stmt("body")?);
+            Stmt::With(None, obj, body)
+        }
+        Tag::ThrowStatement => {
+            let arg = this.extract_expr("argument")?;
+            Stmt::Throw(None, arg, Semi::Explicit(None))
+        }
+        Tag::DebuggerStatement => {
+            Stmt::Debugger(None, Semi::Explicit(None))
+        }
+        Tag::TryStatement => {
+            let mut block = this.extract_object("block").map_err(Error::Json)?;
+            let body = block.extract_stmt_list("body")?;
+            let catch = this.extract_catch_opt("handler")?.map(Box::new);
+            let finally = match this.extract_object_opt("finalizer").map_err(Error::Json)? {
+                Some(mut finalizer) => Some(finalizer.extract_stmt_list("body")?),
+                None                => None
+            };
+            Stmt::Try(None, body, catch, finally)
+        }
+        _ => { return node_type_error(if allow_decl { "statement or declaration" } else { "statement" }, tag); }
+    }))
+}
+
 impl IntoStmt for Object {
-    fn into_stmt(mut self) -> Result<Stmt> {
-        let tag = self.tag()?;
-        Ok(match tag {
-            Tag::VariableDeclaration => {
-                let dtors = self.extract_dtor_list("declarations")?;
-                let kind = self.extract_string("kind").map_err(Error::Json)?;
-                match &kind[..] {
-                    "var" => Stmt::Var(None, dtors, Semi::Explicit(None)),
-                    "let" => Stmt::Let(None, dtors, Semi::Explicit(None)),
-                    _ => { return string_error("var or let", kind); }
-                }
-            }
-            Tag::EmptyStatement => Stmt::Empty(None),
-            Tag::ExpressionStatement => {
-                let expr = self.extract_expr("expression")?;
-                Stmt::Expr(None, expr, Semi::Explicit(None))
-            }
-            Tag::IfStatement => {
-                let test = self.extract_expr("test")?;
-                let cons = Box::new(self.extract_stmt("consequent")?);
-                let alt = self.extract_stmt_opt("alternate")?.map(Box::new);
-                Stmt::If(None, test, cons, alt)
-            }
-            Tag::DoWhileStatement => {
-                let body = Box::new(self.extract_stmt("body")?);
-                let test = self.extract_expr("test")?;
-                Stmt::DoWhile(None, body, test, Semi::Explicit(None))
-            }
-            Tag::WhileStatement => {
-                let test = self.extract_expr("test")?;
-                let body = Box::new(self.extract_stmt("body")?);
-                Stmt::While(None, test, body)
-            }
-            Tag::ForStatement => {
-                let init = match self.extract_object_opt("init").map_err(Error::Json)? {
-                    None      => None,
-                    Some(obj) => Some(Box::new(obj.into_for_head()?))
-                };
-                let test = self.extract_expr_opt("test")?;
-                let update = self.extract_expr_opt("update")?;
-                let body = Box::new(self.extract_stmt("body")?);
-                Stmt::For(None, init, test, update, body)
-            }
-            Tag::ForInStatement => {
-                let left = self.extract_object("left").map_err(Error::Json)?.into_for_in_head()?;
-                let right = self.extract_expr("right")?;
-                let body = self.extract_stmt("body")?;
-                Stmt::ForIn(None, Box::new(left), right, Box::new(body))
-            }
-            Tag::ForOfStatement => {
-                let left = self.extract_object("left").map_err(Error::Json)?.into_for_of_head()?;
-                let right = self.extract_expr("right")?;
-                let body = self.extract_stmt("body")?;
-                Stmt::ForOf(None, Box::new(left), right, Box::new(body))
-            }
-            Tag::BlockStatement => {
-                let body = self.extract_stmt_list("body")?;
-                Stmt::Block(None, body)
-            }
-            Tag::ReturnStatement => {
-                let arg = self.extract_expr_opt("argument")?;
-                Stmt::Return(None, arg, Semi::Explicit(None))
-            }
-            Tag::LabeledStatement => {
-                let label = self.extract_id("label")?;
-                let body = Box::new(self.extract_stmt("body")?);
-                Stmt::Label(None, label, body)
-            }
-            Tag::BreakStatement => {
-                let label = self.extract_id_opt("label")?;
-                Stmt::Break(None, label, Semi::Explicit(None))
-            }
-            Tag::ContinueStatement => {
-                let label = self.extract_id_opt("label")?;
-                Stmt::Cont(None, label, Semi::Explicit(None))
-            }
-            Tag::SwitchStatement => {
-                let disc = self.extract_expr("discriminant")?;
-                let cases = self.extract_case_list("cases")?;
-                Stmt::Switch(None, disc, cases)
-            }
-            Tag::WithStatement => {
-                let obj = self.extract_expr("object")?;
-                let body = Box::new(self.extract_stmt("body")?);
-                Stmt::With(None, obj, body)
-            }
-            Tag::ThrowStatement => {
-                let arg = self.extract_expr("argument")?;
-                Stmt::Throw(None, arg, Semi::Explicit(None))
-            }
-            Tag::DebuggerStatement => {
-                Stmt::Debugger(None, Semi::Explicit(None))
-            }
-            Tag::TryStatement => {
-                let mut block = self.extract_object("block").map_err(Error::Json)?;
-                let body = block.extract_stmt_list("body")?;
-                let catch = self.extract_catch_opt("handler")?.map(Box::new);
-                let finally = match self.extract_object_opt("finalizer").map_err(Error::Json)? {
-                    Some(mut finalizer) => Some(finalizer.extract_stmt_list("body")?),
-                    None                => None
-                };
-                Stmt::Try(None, body, catch, finally)
-            }
-            _ => { return node_type_error("statement", tag); }
+    fn into_stmt(self) -> Result<Stmt> {
+        into_stmt_list_item(self, false).map(|item| match item {
+            StmtListItem::Stmt(stmt) => stmt,
+            _ => unreachable!()
         })
     }
 
     fn into_stmt_list_item(self) -> Result<StmtListItem> {
-        Ok(if self.tag()? == Tag::FunctionDeclaration {
-            StmtListItem::Decl(Decl::Fun(self.into_fun()?))
-        } else {
-            StmtListItem::Stmt(self.into_stmt()?)
-        })
+        into_stmt_list_item(self, true)
     }
 
     fn into_case(mut self) -> Result<Case> {

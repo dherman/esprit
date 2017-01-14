@@ -271,8 +271,9 @@ impl<I: Iterator<Item=char>> Parser<I> {
     fn program_items(&mut self) -> Result<ProgramItems> {
         let mut stmts: Vec<StmtListItem> = Vec::new();
 
-        while !self.peek()?.follow_statement_list() {
+        loop {
             match self.peek()?.value {
+                TokenData::EOF => break,
                 TokenData::Reserved(Reserved::Import)
               | TokenData::Reserved(Reserved::Export) => {
                     self.force_deferred_module_validation()?;
@@ -282,10 +283,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                 _ => { }
             }
 
-            match self.declaration_opt()? {
-                Some(decl) => { stmts.push(StmtListItem::Decl(decl)); }
-                None       => { stmts.push(StmtListItem::Stmt(self.statement()?)); }
-            }
+            stmts.push(self.stmt_list_item(true)?);
         }
 
         Ok(ProgramItems::Script(stmts))
@@ -296,8 +294,9 @@ impl<I: Iterator<Item=char>> Parser<I> {
     }
 
     fn more_module_items(&mut self, mut items: Vec<ModItem>) -> Result<Vec<ModItem>> {
-        while !self.peek()?.follow_statement_list() {
+        loop {
             match self.peek()?.value {
+                TokenData::EOF => break,
                 // ES6: import declaration
                 TokenData::Reserved(Reserved::Import) => unimplemented!(),
                 // ES6: export declaration
@@ -305,10 +304,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                 _ => { }
             }
 
-            match self.declaration_opt()? {
-                Some(decl) => { items.push(ModItem::Decl(decl)); }
-                None       => { items.push(ModItem::Stmt(self.statement()?)); }
-            }
+            items.push(ModItem::StmtListItem(self.stmt_list_item(true)?));
         }
 
         Ok(items)
@@ -318,19 +314,9 @@ impl<I: Iterator<Item=char>> Parser<I> {
         let mut items = Vec::new();
         while !self.peek()?.follow_statement_list() {
             //println!("statement at: {:?}", self.peek()?.location().unwrap().start);
-            match self.declaration_opt()? {
-                Some(decl) => { items.push(StmtListItem::Decl(decl)); }
-                None       => { items.push(StmtListItem::Stmt(self.statement()?)); }
-            }
+            items.push(self.stmt_list_item(true)?);
         }
         Ok(items)
-    }
-
-    fn declaration_opt(&mut self) -> Result<Option<Decl>> {
-        match self.peek()?.value {
-            TokenData::Reserved(Reserved::Function) => Ok(Some(self.function_declaration()?)),
-            _                                       => Ok(None)
-        }
     }
 
     fn function_declaration(&mut self) -> Result<Decl> {
@@ -419,8 +405,14 @@ impl<I: Iterator<Item=char>> Parser<I> {
         })
     }
 
-    fn statement(&mut self) -> Result<Stmt> {
-        match self.peek()?.value {
+    fn stmt_list_item(&mut self, allow_decl: bool) -> Result<StmtListItem> {
+        (match self.peek()?.value {
+            TokenData::Reserved(Reserved::Function) => {
+                if !allow_decl {
+                    return self.unexpected();
+                }
+                return self.function_declaration().map(StmtListItem::Decl);
+            }
             TokenData::LBrace                       => self.block_statement(),
             TokenData::Reserved(Reserved::Var)      => self.var_statement(),
             TokenData::Semi                         => self.empty_statement(),
@@ -438,25 +430,31 @@ impl<I: Iterator<Item=char>> Parser<I> {
             TokenData::Reserved(Reserved::Debugger) => self.debugger_statement(),
             TokenData::Identifier(_)                => {
                 let token = self.lexer.reread_token();
-                self.id_statement(token)
+                match self.peek_op()?.value {
+                    TokenData::Colon => {
+                        self.labelled_statement(Id::from_token(token))
+                    },
+                    TokenData::Identifier(_) | TokenData::LBrace | TokenData::LBrack if token.value == TokenData::Identifier(Name::Atom(Atom::Let)) => {
+                        if !allow_decl {
+                            return self.unexpected();
+                        }
+                        self.let_statement(token.location.start)
+                    },
+                    _ => {
+                        self.lexer.unread_token(token);
+                        self.expression_statement()
+                    }
+                }
             }
-            _                                       => self.expression_statement()
-        }
+            _  => self.expression_statement()
+        }).map(StmtListItem::Stmt)
     }
 
-    fn id_statement(&mut self, token: Token) -> Result<Stmt> {
-        match self.peek_op()?.value {
-            TokenData::Colon => {
-                self.labelled_statement(Id::from_token(token))
-            },
-            TokenData::Identifier(_) | TokenData::LBrace | TokenData::LBrack if token.value == TokenData::Identifier(Name::Atom(Atom::Let)) => {
-                self.let_statement(token.location.start)
-            },
-            _ => {
-                self.lexer.unread_token(token);
-                self.expression_statement()
-            }
-        }
+    fn statement(&mut self) -> Result<Stmt> {
+        self.stmt_list_item(false).map(|item| match item {
+            StmtListItem::Stmt(stmt) => stmt,
+            _ => unreachable!()
+        })
     }
 
     fn labelled_statement(&mut self, id: Id) -> Result<Stmt> {
