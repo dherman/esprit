@@ -438,7 +438,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                         if !allow_decl {
                             return self.unexpected();
                         }
-                        self.let_statement(token.location.start)
+                        return self.let_declaration(token.location.start).map(StmtListItem::Decl);
                     },
                     _ => {
                         self.lexer.unread_token(token);
@@ -497,10 +497,10 @@ impl<I: Iterator<Item=char>> Parser<I> {
         span.end_with_auto_semi(self, Newline::Required, |semi| Stmt::Var(None, dtors, semi))
     }
 
-    fn let_statement(&mut self, start: Posn) -> Result<Stmt> {
+    fn let_declaration(&mut self, start: Posn) -> Result<Decl> {
         let span = SpanTracker::new(start);
         let dtors = self.declarator_list()?;
-        span.end_with_auto_semi(self, Newline::Required, |semi| Stmt::Let(None, dtors, semi))
+        span.end_with_auto_semi(self, Newline::Required, |semi| Decl::Let(None, dtors, semi))
     }
 
     fn declarator_list(&mut self) -> Result<Vec<Dtor>> {

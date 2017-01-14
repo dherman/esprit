@@ -12,7 +12,6 @@ pub enum Stmt {
     Empty(Option<Span>),
     Block(Option<Span>, Vec<StmtListItem>),
     Var(Option<Span>, Vec<Dtor>, Semi),
-    Let(Option<Span>, Vec<Dtor>, Semi),
     Expr(Option<Span>, Expr, Semi),
     If(Option<Span>, Expr, Box<Stmt>, Option<Box<Stmt>>),
     Label(Option<Span>, Id, Box<Stmt>),
