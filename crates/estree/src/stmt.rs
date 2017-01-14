@@ -142,7 +142,7 @@ fn into_stmt_list_item(mut this: Object, allow_decl: bool) -> Result<StmtListIte
                     if !allow_decl {
                         return string_error("var", kind);
                     }
-                    Stmt::Let(None, dtors, Semi::Explicit(None))
+                    return Ok(StmtListItem::Decl(Decl::Let(None, dtors, Semi::Explicit(None))));
                 },
                 _ => { return string_error("var or let", kind); }
             }
