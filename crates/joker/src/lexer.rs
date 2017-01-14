@@ -6,9 +6,9 @@ use word::{Map as WordMap, Word};
 
 use char::ESCharExt;
 use reader::Reader;
-use lookahead::Buffer;
 use error::Error;
 use result::Result;
+use std::collections::VecDeque;
 
 fn add_digits(digits: Vec<u32>, radix: u32) -> u32 {
     let mut place = 1;
@@ -35,7 +35,7 @@ impl SpanTracker {
 
 pub struct Lexer<I> {
     reader: Reader<I>,
-    lookahead: Buffer,
+    lookahead: VecDeque<Token>,
     wordmap: WordMap,
     empty_line: bool
 }
@@ -46,7 +46,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     pub fn new(chars: I) -> Lexer<I> {
         Lexer {
             reader: Reader::new(chars),
-            lookahead: Buffer::new(),
+            lookahead: VecDeque::with_capacity(2),
             wordmap: WordMap::new(),
             empty_line: true
         }
@@ -57,14 +57,13 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     pub fn peek_token(&mut self, operator: bool) -> Result<&Token> {
         if self.lookahead.is_empty() {
             let token = self.read_next_token(operator)?;
-            self.lookahead.unread_token(token);
+            self.lookahead.push_front(token);
         }
-        Ok(self.lookahead.peek_token())
+        Ok(self.lookahead.front().unwrap())
     }
 
     pub fn repeek_token(&mut self) -> &Token {
-        debug_assert!(!self.lookahead.is_empty());
-        self.lookahead.peek_token()
+        self.lookahead.front().unwrap()
     }
 
     pub fn skip_token(&mut self, operator: bool) -> Result<()> {
@@ -73,20 +72,19 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     pub fn reread_token(&mut self) -> Token {
-        debug_assert!(!self.lookahead.is_empty());
-        self.lookahead.read_token()
+        self.lookahead.pop_front().unwrap()
     }
 
     pub fn read_token(&mut self, operator: bool) -> Result<Token> {
-        if self.lookahead.is_empty() {
-            self.read_next_token(operator)
-        } else {
-            Ok(self.lookahead.read_token())
+        match self.lookahead.pop_front() {
+            Some(token) => Ok(token),
+            None => self.read_next_token(operator)
         }
     }
 
     pub fn unread_token(&mut self, token: Token) {
-        self.lookahead.unread_token(token);
+        debug_assert!(self.lookahead.len() < self.lookahead.capacity(), "Lookahead buffer is full");
+        self.lookahead.push_front(token)
     }
 
     // source location
