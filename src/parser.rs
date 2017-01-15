@@ -439,7 +439,8 @@ impl<I: Iterator<Item=char>> Parser<I> {
                 let token = self.lexer.reread_token();
                 match self.peek_op()?.value {
                     TokenData::Colon => {
-                        self.labelled_statement(Id::from_token(token))
+                        let id = self.new_id_from_token(token)?;
+                        self.labelled_statement(id)
                     },
                     TokenData::Identifier(_) | TokenData::LBrace | TokenData::LBrack if token.value == TokenData::Identifier(Name::Atom(Atom::Let)) => {
                         if !allow_decl {
@@ -475,7 +476,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                 self.lexer.unread_token(token);
                 break;
             }
-            labels.push(Id::from_token(token));
+            labels.push(self.new_id_from_token(token)?);
         }
 
         let label_type = self.peek()?.label_type();
@@ -536,23 +537,32 @@ impl<I: Iterator<Item=char>> Parser<I> {
         Ok(id)
     }
 
+    fn new_id_from_token(&mut self, token: Token) -> Result<Id> {
+        match token.value {
+            TokenData::Identifier(name) => self.new_id(name, token.location),
+            _ => unreachable!()
+        }
+    }
+
+    fn new_id(&mut self, name: Name, location: Span) -> Result<Id> {
+        let reserved = name.is_reserved(self.goal);
+        if reserved.unknown() {
+            self.deferred.push(Check::Reserved(location, name.atom().unwrap()));
+        } else if reserved.yes() {
+            let error = Error::ContextualKeyword(location, name.atom().unwrap());
+            if !self.validate {
+                self.deferred.push(Check::Failed(error));
+            } else {
+                return Err(error);
+            }
+        }
+        Ok(Id::new(name, Some(location)))
+    }
+
     fn id(&mut self) -> Result<Id> {
         let Token { location, newline, value: data } = self.read()?;
         match data {
-            TokenData::Identifier(name) => {
-                let reserved = name.is_reserved(self.goal);
-                if reserved.unknown() {
-                    self.deferred.push(Check::Reserved(location, name.atom().unwrap()));
-                } else if reserved.yes() {
-                    let error = Error::ContextualKeyword(location, name.atom().unwrap());
-                    if !self.validate {
-                        self.deferred.push(Check::Failed(error));
-                    } else {
-                        return Err(error);
-                    }
-                }
-                Ok(Id { location: Some(location), name: name })
-            }
+            TokenData::Identifier(name) => self.new_id(name, location),
             _ => Err(Error::UnexpectedToken(Token {
                 location: location,
                 newline: newline,
@@ -564,10 +574,11 @@ impl<I: Iterator<Item=char>> Parser<I> {
     fn id_opt(&mut self) -> Result<Option<Id>> {
         let next = self.read()?;
         match next.value {
-            TokenData::Identifier(name) => {
-                Ok(Some(Id { location: Some(next.location), name: name }))
+            TokenData::Identifier(name) => self.new_id(name, next.location).map(Some),
+            _ => {
+                self.lexer.unread_token(next);
+                Ok(None)
             }
-            _                           => { self.lexer.unread_token(next); Ok(None) }
         }
     }
 
@@ -1090,16 +1101,16 @@ impl<I: Iterator<Item=char>> Parser<I> {
     //   "(" Expression ")"
     fn primary_expression(&mut self) -> Result<Expr> {
         let token = self.read()?;
-        let location = Some(token.location);
+        let location = token.location;
         Ok(match token.value {
-            TokenData::Identifier(name)          => Expr::Id(Id::new(name, location)),
-            TokenData::Reserved(Reserved::Null)  => Expr::Null(location),
-            TokenData::Reserved(Reserved::This)  => Expr::This(location),
-            TokenData::Reserved(Reserved::True)  => Expr::True(location),
-            TokenData::Reserved(Reserved::False) => Expr::False(location),
-            TokenData::Number(literal)           => Expr::Number(location, literal),
-            TokenData::String(literal)           => Expr::String(location, literal),
-            TokenData::RegExp(literal)           => Expr::RegExp(location, literal),
+            TokenData::Identifier(name)          => Expr::Id(self.new_id(name, location)?),
+            TokenData::Reserved(Reserved::Null)  => Expr::Null(Some(location)),
+            TokenData::Reserved(Reserved::This)  => Expr::This(Some(location)),
+            TokenData::Reserved(Reserved::True)  => Expr::True(Some(location)),
+            TokenData::Reserved(Reserved::False) => Expr::False(Some(location)),
+            TokenData::Number(literal)           => Expr::Number(Some(location), literal),
+            TokenData::String(literal)           => Expr::String(Some(location), literal),
+            TokenData::RegExp(literal)           => Expr::RegExp(Some(location), literal),
             TokenData::LBrack                    => { return self.array_literal(token); }
             TokenData::LBrace                    => { return self.object_literal(token); }
             TokenData::Reserved(Reserved::Function) => {
@@ -1175,7 +1186,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             }
             TokenData::Comma | TokenData::RBrace => {
                 if let PropKey::Id(location, name) = key {
-                    Prop::Shorthand(Id::new(Name::String(name), location))
+                    Prop::Shorthand(self.new_id(Name::from(name), location.unwrap())?)
                 } else {
                     return self.unexpected();
                 }
@@ -1238,6 +1249,18 @@ impl<I: Iterator<Item=char>> Parser<I> {
                 }
                 let key_location = Some(first.location);
                 self.more_prop_init(PropKey::Id(key_location, "set".to_string()))
+            }
+            TokenData::Reserved(_) => {
+                match self.peek()?.value {
+                    TokenData::Comma | TokenData::RBrace => {
+                        return Err(Error::UnexpectedToken(first));
+                    }
+                    _ => {
+                        self.lexer.unread_token(first);
+                        let key = self.property_key()?;
+                        self.more_prop_init(key)
+                    }
+                }
             }
             // ES6: TokenData::Star
             _ => {
