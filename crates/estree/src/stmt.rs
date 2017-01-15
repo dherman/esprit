@@ -131,7 +131,8 @@ fn into_stmt_list_item(mut this: Object, allow_decl: bool) -> Result<StmtListIte
             if !allow_decl {
                 return node_type_error("statement", tag);
             }
-            return Ok(StmtListItem::Decl(Decl::Fun(this.into_fun()?)));
+            let id = this.extract_id("id")?;
+            return Ok(StmtListItem::Decl(Decl::Fun(this.into_fun(id)?)));
         }
         Tag::VariableDeclaration => {
             let dtors = this.extract_dtor_list("declarations")?;

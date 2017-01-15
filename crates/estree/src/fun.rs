@@ -6,13 +6,12 @@ use result::Result;
 use error::Error;
 use node::ExtractNode;
 
-pub trait IntoFun {
-    fn into_fun(self) -> Result<Fun>;
+pub trait IntoFun<Id> {
+    fn into_fun(self, Id) -> Result<Fun<Id>>;
 }
 
-impl IntoFun for Object {
-    fn into_fun(mut self) -> Result<Fun> {
-        let id = self.extract_id_opt("id")?;
+impl<Id> IntoFun<Id> for Object {
+    fn into_fun(mut self, id: Id) -> Result<Fun<Id>> {
         let params = Params {
             location: None,
             list: self.extract_patt_list("params")?

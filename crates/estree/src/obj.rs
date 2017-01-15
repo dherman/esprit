@@ -18,22 +18,23 @@ pub trait IntoObj {
 
 impl IntoObj for Object {
     fn into_prop(mut self) -> Result<Prop> {
-        let key = self.extract_object("key").map_err(Error::Json)?.into_prop_key()?;
+        let key = self.extract_object("key").map_err(Error::Json)?;
         let mut val = self.extract_object("value").map_err(Error::Json)?;
         let kind = self.extract_string("kind").map_err(Error::Json)?;
         let val = match &kind[..] {
             "init" => {
-                let method = self.extract_bool("method").map_err(Error::Json)?;
-                if method {
-                    let fun = val.into_fun()?;
-                    PropVal::Method(fun.params, fun.body)
+                if self.extract_bool("method").map_err(Error::Json)? {
+                    let fun = val.into_fun(key.into_prop_key()?)?;
+                    return Ok(Prop::Method(fun))
+                } else if self.extract_bool("shorthand").map_err(Error::Json)? {
+                    return Ok(Prop::Shorthand(key.into_id()?));
                 } else {
                     PropVal::Init(val.into_expr()?)
                 }
             },
             "get" => PropVal::Get(None, val.extract_object("body").map_err(Error::Json)?.extract_script("body")?),
             "set" => {
-                let fun = val.into_fun()?;
+                let fun = val.into_fun(())?;
                 let params = fun.params.list;
                 if params.len() != 1 {
                     return array_error(1, params.len());
@@ -43,7 +44,7 @@ impl IntoObj for Object {
             }
             _ => { return type_error("'init', 'get', or 'set'", Ty::String); }
         };
-        Ok(Prop { location: None, key: key, val: val })
+        Ok(Prop::Regular(None, key.into_prop_key()?, val))
     }
 
     fn into_prop_key(self) -> Result<PropKey> {

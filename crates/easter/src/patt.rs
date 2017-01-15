@@ -11,10 +11,9 @@ pub enum CompoundPatt<T> {
 }
 
 #[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut, Untrack)]
-pub struct PropPatt<T> {
-    pub location: Option<Span>,
-    pub key: PropKey,
-    pub patt: Patt<T>
+pub enum PropPatt<T> {
+    Regular(Option<Span>, PropKey, Patt<T>),
+    Shorthand(Id)
 }
 
 #[derive(Debug, PartialEq, Clone, Untrack)]

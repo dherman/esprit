@@ -11,9 +11,9 @@ pub struct Params {
 }
 
 #[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut, Untrack)]
-pub struct Fun {
+pub struct Fun<Id> {
     pub location: Option<Span>,
-    pub id: Option<Id>,
+    pub id: Id,
     pub params: Params,
     pub body: Script
 }

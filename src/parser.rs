@@ -321,7 +321,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
 
     fn function_declaration(&mut self) -> Result<Decl> {
         self.span(&mut |this| {
-            Ok(Decl::Fun(this.function()?))
+            Ok(Decl::Fun(this.function(Self::id)?))
         })
     }
 
@@ -383,11 +383,13 @@ impl<I: Iterator<Item=char>> Parser<I> {
         result
     }
 
-    fn function(&mut self) -> Result<Fun> {
+    fn function<Id, F>(&mut self, get_id: F) -> Result<Fun<Id>>
+        where F: Fn(&mut Self) -> Result<Id>
+    {
         self.in_function(&mut |this| {
             this.span(&mut |this| {
                 this.reread(TokenData::Reserved(Reserved::Function));
-                let id = this.id_opt()?;
+                let id = get_id(this)?;
                 let params = this.formal_parameters()?;
                 let body = this.function_body(&params)?;
                 Ok(Fun { location: None, id: id, params: params, body: body })
@@ -1102,7 +1104,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             TokenData::LBrace                    => { return self.object_literal(token); }
             TokenData::Reserved(Reserved::Function) => {
                 self.lexer.unread_token(token);
-                return Ok(Expr::Fun(self.function()?));
+                return Ok(Expr::Fun(self.function(Self::id_opt)?));
             }
             TokenData::LParen => {
                 self.lexer.unread_token(token);
@@ -1159,23 +1161,23 @@ impl<I: Iterator<Item=char>> Parser<I> {
             TokenData::Colon => {
                 self.skip()?;
                 let val = self.allow_in(true, |this| this.assignment_expression())?;
-                let key_location = *key.tracking_ref();
-                let val_location = *val.tracking_ref();
-                Prop {
-                    location: span(&key_location, &val_location),
-                    key: key,
-                    val: PropVal::Init(val)
-                }
+                Prop::Regular(span(key.tracking_ref(), val.tracking_ref()), key, PropVal::Init(val))
             }
             TokenData::LParen => {
                 let params = self.formal_parameters()?;
                 let body = self.function_body(&params)?;
-                let key_location = *key.tracking_ref();
-                let body_location = *body.tracking_ref();
-                Prop {
-                    location: span(&key_location, &body_location),
-                    key: key,
-                    val: PropVal::Method(params, body)
+                Prop::Method(Fun {
+                    location: span(key.tracking_ref(), body.tracking_ref()),
+                    id: key,
+                    params: params,
+                    body: body
+                })
+            }
+            TokenData::Comma | TokenData::RBrace => {
+                if let PropKey::Id(location, name) = key {
+                    Prop::Shorthand(Id::new(Name::String(name), location))
+                } else {
+                    return self.unexpected();
                 }
             }
             _ => { return self.unexpected(); }
@@ -1216,11 +1218,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                     let end_location = Some(self.expect(TokenData::RBrace)?.location);
                     let val_location = span(&paren_location, &end_location);
                     let prop_location = span(&key, &end_location);
-                    return Ok(Prop {
-                        location: prop_location,
-                        key: key,
-                        val: PropVal::Get(val_location, body)
-                    });
+                    return Ok(Prop::Regular(prop_location, key, PropVal::Get(val_location, body)));
                 }
                 let key_location = Some(first.location);
                 self.more_prop_init(PropKey::Id(key_location, "get".to_string()))
@@ -1236,11 +1234,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                     let end_location = Some(self.expect(TokenData::RBrace)?.location);
                     let val_location = span(&paren_location, &end_location);
                     let prop_location = span(&key, &end_location);
-                    return Ok(Prop {
-                        location: prop_location,
-                        key: key,
-                        val: PropVal::Set(val_location, param, body)
-                    });
+                    return Ok(Prop::Regular(prop_location, key, PropVal::Set(val_location, param, body)));
                 }
                 let key_location = Some(first.location);
                 self.more_prop_init(PropKey::Id(key_location, "set".to_string()))

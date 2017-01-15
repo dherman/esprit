@@ -75,11 +75,14 @@ pub trait IntoAssignProp {
 impl IntoAssignProp for Prop {
     fn into_assign_prop(self) -> Result<PropPatt<AssignTarget>, Error> {
         let location = *self.tracking_ref();
-        let key = self.key;
-        let patt = match self.val {
-            PropVal::Init(expr) => expr.into_assign_patt()?,
-            _ => { return Err(Error::InvalidPropPatt(*self.val.tracking_ref())); }
-        };
-        Ok(PropPatt { location: location, key: key, patt: patt })
+        Ok(match self {
+            Prop::Regular(location, key, PropVal::Init(expr)) => {
+                PropPatt::Regular(location, key, expr.into_assign_patt()?)
+            }
+            Prop::Shorthand(id) => {
+                PropPatt::Shorthand(id)
+            }
+            _ => { return Err(Error::InvalidPropPatt(location)); }
+        })
     }
 }

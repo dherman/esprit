@@ -107,7 +107,8 @@ impl IntoExpr for Object {
                 Expr::Arr(None, elts)
             }
             Tag::FunctionExpression => {
-                let fun = self.into_fun()?;
+                let id = self.extract_id_opt("id")?;
+                let fun = self.into_fun(id)?;
                 Expr::Fun(fun)
             }
             Tag::SequenceExpression => {
