@@ -373,42 +373,33 @@ impl<I: Iterator<Item=char>> Parser<I> {
         }
     }
 
-    fn in_function<T, F>(&mut self, f: &mut F) -> T
-        where F: FnMut(&mut Self) -> T
-    {
-        let strict = self.strict();
-        let outer = replace(&mut self.context, Context::new_function(strict));
-        let result = f(self);
-        replace(&mut self.context, outer);
-        result
-    }
-
     fn function<Id, F>(&mut self, get_id: F) -> Result<Fun<Id>>
         where F: Fn(&mut Self) -> Result<Id>
     {
-        self.in_function(&mut |this| {
-            this.span(&mut |this| {
-                this.reread(TokenData::Reserved(Reserved::Function));
-                let id = get_id(this)?;
-                let params = this.formal_parameters()?;
-                let body = this.function_body(&params)?;
-                Ok(Fun { location: None, id: id, params: params, body: body })
-            })
+        self.span(&mut |this| {
+            this.reread(TokenData::Reserved(Reserved::Function));
+            let id = get_id(this)?;
+            let params = this.formal_parameters()?;
+            let body = this.function_body(&params.list)?;
+            Ok(Fun { location: None, id: id, params: params, body: body })
         })
     }
 
-    fn function_body(&mut self, params: &Params) -> Result<Script> {
+    fn function_body(&mut self, params: &[Patt<Id>]) -> Result<Script> {
+        let strict = self.strict();
+        let outer = replace(&mut self.context, Context::new_function(strict));
         self.expect(TokenData::LBrace)?;
         // ES6: if the body has "use strict" check for simple parameters
         let body = self.script()?;
         if body.dirs.iter().any(|dir| dir.pragma() == "use strict") {
-            for param in &params.list {
+            for param in params {
                 if let Patt::Compound(ref compound) = *param {
                     return Err(Error::CompoundParamWithUseStrict(compound.clone()));
                 }
             }
         }
         self.expect(TokenData::RBrace)?;
+        replace(&mut self.context, outer);
         Ok(body)
     }
 
@@ -1176,7 +1167,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             }
             TokenData::LParen => {
                 let params = self.formal_parameters()?;
-                let body = self.function_body(&params)?;
+                let body = self.function_body(&params.list)?;
                 Prop::Method(Fun {
                     location: span(key.tracking_ref(), body.tracking_ref()),
                     id: key,
@@ -1224,11 +1215,9 @@ impl<I: Iterator<Item=char>> Parser<I> {
                 if let Some(key) = self.property_key_opt()? {
                     let paren_location = Some(self.expect(TokenData::LParen)?.location);
                     self.expect(TokenData::RParen)?;
-                    self.expect(TokenData::LBrace)?;
-                    let body = self.in_function(&mut |this| this.script())?;
-                    let end_location = Some(self.expect(TokenData::RBrace)?.location);
-                    let val_location = span(&paren_location, &end_location);
-                    let prop_location = span(&key, &end_location);
+                    let body = self.function_body(&vec![])?;
+                    let val_location = span(&paren_location, &body);
+                    let prop_location = span(&key, &body);
                     return Ok(Prop::Regular(prop_location, key, PropVal::Get(val_location, body)));
                 }
                 let key_location = Some(first.location);
@@ -1239,12 +1228,9 @@ impl<I: Iterator<Item=char>> Parser<I> {
                     let paren_location = Some(self.expect(TokenData::LParen)?.location);
                     let param = self.pattern()?;
                     self.expect(TokenData::RParen)?;
-                    self.expect(TokenData::LBrace)?;
-                    // ES6: if the body has "use strict" check for simple parameters
-                    let body = self.in_function(&mut |this| this.script())?;
-                    let end_location = Some(self.expect(TokenData::RBrace)?.location);
-                    let val_location = span(&paren_location, &end_location);
-                    let prop_location = span(&key, &end_location);
+                    let body = self.function_body(&[param.clone()])?;
+                    let val_location = span(&paren_location, &body);
+                    let prop_location = span(&key, &body);
                     return Ok(Prop::Regular(prop_location, key, PropVal::Set(val_location, param, body)));
                 }
                 let key_location = Some(first.location);
