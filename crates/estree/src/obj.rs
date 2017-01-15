@@ -22,7 +22,15 @@ impl IntoObj for Object {
         let mut val = self.extract_object("value").map_err(Error::Json)?;
         let kind = self.extract_string("kind").map_err(Error::Json)?;
         let val = match &kind[..] {
-            "init" => PropVal::Init(val.into_expr()?),
+            "init" => {
+                let method = self.extract_bool("method").map_err(Error::Json)?;
+                if method {
+                    let fun = val.into_fun()?;
+                    PropVal::Method(fun.params, fun.body)
+                } else {
+                    PropVal::Init(val.into_expr()?)
+                }
+            },
             "get" => PropVal::Get(None, val.extract_object("body").map_err(Error::Json)?.extract_script("body")?),
             "set" => {
                 let fun = val.into_fun()?;

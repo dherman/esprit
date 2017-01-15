@@ -5,6 +5,7 @@ use id::Id;
 use expr::Expr;
 use stmt::Script;
 use patt::Patt;
+use fun::Params;
 
 #[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut)]
 pub struct DotKey {
@@ -40,5 +41,6 @@ impl Untrack for PropKey {
 pub enum PropVal {
     Init(Expr),
     Get(Option<Span>, Script),
-    Set(Option<Span>, Patt<Id>, Script)
+    Set(Option<Span>, Patt<Id>, Script),
+    Method(Params, Script)
 }

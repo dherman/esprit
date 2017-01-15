@@ -389,20 +389,25 @@ impl<I: Iterator<Item=char>> Parser<I> {
                 this.reread(TokenData::Reserved(Reserved::Function));
                 let id = this.id_opt()?;
                 let params = this.formal_parameters()?;
-                this.expect(TokenData::LBrace)?;
-                // ES6: if the body has "use strict" check for simple parameters
-                let body = this.script()?;
-                if body.dirs.iter().any(|dir| dir.pragma() == "use strict") {
-                    for param in &params.list {
-                        if let Patt::Compound(ref compound) = *param {
-                            return Err(Error::CompoundParamWithUseStrict(compound.clone()));
-                        }
-                    }
-                }
-                this.expect(TokenData::RBrace)?;
+                let body = this.function_body(&params)?;
                 Ok(Fun { location: None, id: id, params: params, body: body })
             })
         })
+    }
+
+    fn function_body(&mut self, params: &Params) -> Result<Script> {
+        self.expect(TokenData::LBrace)?;
+        // ES6: if the body has "use strict" check for simple parameters
+        let body = self.script()?;
+        if body.dirs.iter().any(|dir| dir.pragma() == "use strict") {
+            for param in &params.list {
+                if let Patt::Compound(ref compound) = *param {
+                    return Err(Error::CompoundParamWithUseStrict(compound.clone()));
+                }
+            }
+        }
+        self.expect(TokenData::RBrace)?;
+        Ok(body)
     }
 
     fn stmt_list_item(&mut self, allow_decl: bool) -> Result<StmtListItem> {
@@ -1150,14 +1155,30 @@ impl<I: Iterator<Item=char>> Parser<I> {
     }
 
     fn more_prop_init(&mut self, key: PropKey) -> Result<Prop> {
-        self.reread(TokenData::Colon);
-        let val = self.allow_in(true, |this| this.assignment_expression())?;
-        let key_location = *key.tracking_ref();
-        let val_location = *val.tracking_ref();
-        Ok(Prop {
-            location: span(&key_location, &val_location),
-            key: key,
-            val: PropVal::Init(val)
+        Ok(match self.peek()?.value {
+            TokenData::Colon => {
+                self.skip()?;
+                let val = self.allow_in(true, |this| this.assignment_expression())?;
+                let key_location = *key.tracking_ref();
+                let val_location = *val.tracking_ref();
+                Prop {
+                    location: span(&key_location, &val_location),
+                    key: key,
+                    val: PropVal::Init(val)
+                }
+            }
+            TokenData::LParen => {
+                let params = self.formal_parameters()?;
+                let body = self.function_body(&params)?;
+                let key_location = *key.tracking_ref();
+                let body_location = *body.tracking_ref();
+                Prop {
+                    location: span(&key_location, &body_location),
+                    key: key,
+                    val: PropVal::Method(params, body)
+                }
+            }
+            _ => { return self.unexpected(); }
         })
     }
 
@@ -1201,15 +1222,8 @@ impl<I: Iterator<Item=char>> Parser<I> {
                         val: PropVal::Get(val_location, body)
                     });
                 }
-                match self.peek()?.value {
-                    // ES6: TokenData::LParen => unimplemented!(),
-                    TokenData::Colon => {
-                        let key_location = Some(first.location);
-                        self.more_prop_init(PropKey::Id(key_location, "get".to_string()))
-                    }
-                    // ES6: treat as elided optional initializer
-                    _ => { return self.unexpected(); }
-                }
+                let key_location = Some(first.location);
+                self.more_prop_init(PropKey::Id(key_location, "get".to_string()))
             }
             TokenData::Identifier(Name::Atom(Atom::Set)) => {
                 if let Some(key) = self.property_key_opt()? {
@@ -1228,26 +1242,14 @@ impl<I: Iterator<Item=char>> Parser<I> {
                         val: PropVal::Set(val_location, param, body)
                     });
                 }
-                match self.peek()?.value {
-                    // ES6: TokenData::LParen => unimplemented!(),
-                    TokenData::Colon => {
-                        let key_location = Some(first.location);
-                        self.more_prop_init(PropKey::Id(key_location, "set".to_string()))
-                    }
-                    // ES6: treat as elided optional initializer
-                    _ => { return self.unexpected(); }
-                }
+                let key_location = Some(first.location);
+                self.more_prop_init(PropKey::Id(key_location, "set".to_string()))
             }
             // ES6: TokenData::Star
             _ => {
                 self.lexer.unread_token(first);
                 let key = self.property_key()?;
-                match self.peek()?.value {
-                    TokenData::Colon => self.more_prop_init(key),
-                    // ES6: TokenData::LParen =>
-                    // ES6: treat as elided optional initializer
-                    _ => { return self.unexpected(); }
-                }
+                self.more_prop_init(key)
             }
         }
     }

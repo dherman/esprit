@@ -37,7 +37,6 @@ statement/iteration/const_forin.*
 # Some other ES6 features
 ES6/arrow-function/**
 ES6/class/**
-ES6/method-definition/**
 ES6/object-initialiser/proto-*
 ES6/object-literal-property-value-shorthand/**
 ES6/template-literals/**
