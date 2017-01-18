@@ -1,6 +1,5 @@
 use joker::word::Name;
 use joker::track::{TrackingRef, TrackingMut, Untrack, Span};
-use joker::token::{Token, TokenData};
 
 use expr::Expr;
 use decl::Dtor;
