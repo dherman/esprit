@@ -28,25 +28,24 @@ mod stack;
 
 // type Parser<I: Iterator<Item=char>> = parser::Parser<I>;
 
-use context::Goal;
 use easter::stmt::{Script, Module};
-use parser::{Parser, Strict};
+use parser::Parser;
 use result::Result;
 
 pub use parser::Program;
 
 pub fn script(s: &str) -> Result<Script> {
-    Parser::from_chars(Goal::Script(Strict::Unknown), s.chars()).script()
+    Parser::from_chars(s.chars()).script(false)
 }
 
 pub fn strict(s: &str) -> Result<Script> {
-    Parser::from_chars(Goal::Script(Strict::Yes), s.chars()).script()
+    Parser::from_chars(s.chars()).script(true)
 }
 
 pub fn module(s: &str) -> Result<Module> {
-    Parser::from_chars(Goal::Module, s.chars()).module()
+    Parser::from_chars(s.chars()).module()
 }
 
 pub fn program(s: &str) -> Result<Program> {
-    Parser::from_chars(Goal::Unknown, s.chars()).program()
+    Parser::from_chars(s.chars()).program()
 }

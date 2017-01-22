@@ -14,7 +14,7 @@ use easter::cover::{IntoAssignTarget, IntoAssignPatt};
 
 use std::rc::Rc;
 use std::mem::replace;
-use context::{Context, LabelType, WithContext, Goal, Mode};
+use context::{Context, LabelType, WithContext, Goal};
 use tokens::{First, Follows, HasLabelType};
 use atom::AtomExt;
 use track::Newline;
@@ -25,6 +25,7 @@ use state::State;
 use expr::{Deref, Suffix, Arguments, Prefix, Postfix};
 use stack::{Stack, Infix};
 
+use tristate::TriState;
 pub use tristate::TriState as Strict;
 
 pub struct Parser<I> {
@@ -139,14 +140,14 @@ impl Program {
 }
 
 impl<I: Iterator<Item=char>> Parser<I> {
-    pub fn from_chars(goal: Goal, i: I) -> Parser<I> {
+    pub fn from_chars(i: I) -> Parser<I> {
         let lexer = Lexer::new(i);
-        Parser::new(goal, true, lexer)
+        Parser::new(true, lexer)
     }
 
-    pub fn new(goal: Goal, validate: bool, lexer: Lexer<I>) -> Parser<I> {
+    pub fn new(validate: bool, lexer: Lexer<I>) -> Parser<I> {
         Parser {
-            goal: goal,
+            goal: Goal::Unknown,
             validate: validate,
             deferred: Vec::new(),
             lexer: lexer,
@@ -180,8 +181,14 @@ impl<I: Iterator<Item=char>> Parser<I> {
         Ok(None)
     }
 
+    fn set_module(&mut self) {
+        self.goal = Goal::Module;
+        self.context.strict = Strict::Yes;
+    }
+
     pub fn module(&mut self) -> Result<Module> {
-        debug_assert!(self.goal.definitely_module());
+        debug_assert_eq!(self.goal, Goal::Unknown);
+        self.set_module();
         self.span(&mut |this| {
             Ok(Module {
                 location: None,
@@ -192,8 +199,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
     }
 
     pub fn program(&mut self) -> Result<Program> {
-        debug_assert!(!self.goal.definitely_script());
-        debug_assert!(!self.goal.definitely_module());
+        debug_assert_eq!(self.goal, Goal::Unknown);
         self.span(&mut |this| {
             let dirs = this.body_directives()?;
 
@@ -215,7 +221,14 @@ impl<I: Iterator<Item=char>> Parser<I> {
         })
     }
 
-    pub fn script(&mut self) -> Result<Script> {
+    pub fn script(&mut self, strict: bool) -> Result<Script> {
+        debug_assert_eq!(self.goal, Goal::Unknown);
+        self.goal = Goal::Script;
+        self.context.strict = TriState::from(strict);
+        self.script_body()
+    }
+
+    fn script_body(&mut self) -> Result<Script> {
         self.span(&mut |this| {
             Ok(Script {
                 location: None,
@@ -227,28 +240,18 @@ impl<I: Iterator<Item=char>> Parser<I> {
 
     fn body_directives(&mut self) -> Result<Vec<Dir>> {
         let mut dirs = Vec::new();
-        let mut use_strict = false;
-        let mut use_module = false;
 
         while let Some(dir) = self.match_directive_opt()? {
             match dir.pragma() {
-                "use strict" => { use_strict = true; }
-                "use module" => { use_module = true; }
+                "use strict" => {
+                    self.context.strict = Strict::Yes;
+                }
+                "use module" if !self.context.function => {
+                    self.set_module();
+                }
                 _ => {}
             }
             dirs.push(dir);
-        }
-
-        if self.context.function.is_some() {
-            if use_strict {
-                self.context.function = Some(Strict::Yes);
-            }
-        } else {
-            if use_module {
-                self.goal = Goal::Module;
-            } else if use_strict {
-                self.goal = Goal::Script(Strict::Yes);
-            }
         }
 
         Ok(dirs)
@@ -366,11 +369,31 @@ impl<I: Iterator<Item=char>> Parser<I> {
         Err(Error::UnsupportedFeature("destructuring"))
     }
 
-    fn strict(&self) -> Strict {
-        match self.context.function {
-            Some(strict) => strict,
-            None => self.goal.strict()
+    fn strict_check<F>(&mut self, f: F) -> Result<()>
+        where F: FnOnce(&mut Self) -> Option<Check>
+    {
+        let strict = self.context.strict;
+        if strict != Strict::No {
+            if let Some(check) = f(self) {
+                match check {
+                    Check::Strict(error) => {
+                        if strict == Strict::Yes && self.validate {
+                            return Err(error);
+                        } else {
+                            self.deferred.push(Check::Strict(error));
+                        }
+                    }
+                    Check::Module(error) => {
+                        if self.goal == Goal::Module && self.validate {
+                            return Err(error);
+                        } else if self.goal != Goal::Script {
+                            self.deferred.push(Check::Module(error));
+                        }
+                    }
+                }
+            }
         }
+        Ok(())
     }
 
     fn function<Id, F>(&mut self, get_id: F) -> Result<Fun<Id>>
@@ -386,20 +409,23 @@ impl<I: Iterator<Item=char>> Parser<I> {
     }
 
     fn function_body(&mut self, params: &[Patt<Id>]) -> Result<Script> {
-        let strict = self.strict();
-        let outer = replace(&mut self.context, Context::new_function(strict));
+        let inner = self.context.new_function();
+        let outer = replace(&mut self.context, inner);
         self.expect(TokenData::LBrace)?;
         // ES6: if the body has "use strict" check for simple parameters
-        let body = self.script()?;
-        if body.dirs.iter().any(|dir| dir.pragma() == "use strict") {
-            for param in params {
-                if let Patt::Compound(ref compound) = *param {
-                    return Err(Error::CompoundParamWithUseStrict(compound.clone()));
+        let body = self.script_body()?;
+        self.strict_check(|_| {
+            if body.dirs.iter().any(|dir| dir.pragma() == "use strict") {
+                for param in params {
+                    if let Patt::Compound(ref compound) = *param {
+                        return Some(Check::Strict(Error::CompoundParamWithUseStrict(compound.clone())));
+                    }
                 }
             }
-        }
+            None
+        })?;
         self.expect(TokenData::RBrace)?;
-        replace(&mut self.context, outer);
+        self.context = outer;
         Ok(body)
     }
 
@@ -513,18 +539,13 @@ impl<I: Iterator<Item=char>> Parser<I> {
 
     fn binding_id(&mut self) -> Result<Id> {
         let id = self.id()?;
-        if id.name.is_illegal_strict_binding() {
-            let error = Error::IllegalStrictBinding(id.tracking_ref().unwrap(), id.name.atom().unwrap());
-            if self.goal.definitely_strict() {
-                if !self.validate {
-                    self.deferred.push(Check::Failed(error));
-                } else {
-                    return Err(error);
-                }
-            } else if !self.goal.definitely_sloppy() {
-                self.deferred.push(Check::Strict(error));
+        self.strict_check(|_| {
+            if id.name.is_illegal_strict_binding() {
+                Some(Check::Strict(Error::IllegalStrictBinding(id.tracking_ref().unwrap(), id.name.atom().unwrap())))
+            } else {
+                None
             }
-        }
+        })?;
         Ok(id)
     }
 
@@ -536,17 +557,21 @@ impl<I: Iterator<Item=char>> Parser<I> {
     }
 
     fn new_id(&mut self, name: Name, location: Span) -> Result<Id> {
-        let reserved = name.is_reserved(self.goal);
-        if reserved.unknown() {
-            self.deferred.push(Check::Reserved(location, name.atom().unwrap()));
-        } else if reserved.yes() {
-            let error = Error::ContextualKeyword(location, name.atom().unwrap());
-            if !self.validate {
-                self.deferred.push(Check::Failed(error));
+        self.strict_check(|_| {
+            let is_reserved = name.is_strict_reserved();
+            if is_reserved != TriState::No {
+                let error = Error::ContextualKeyword(location, name.atom().unwrap());
+                Some(if is_reserved == TriState::Yes {
+                    Check::Strict(error)
+                } else {
+                    // TriState::Unknown means word is reserved only
+                    // for module goal
+                    Check::Module(error)
+                })
             } else {
-                return Err(error);
+                None
             }
-        }
+        })?;
         Ok(Id::new(name, Some(location)))
     }
 
@@ -977,7 +1002,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
         let result = span.end_with_auto_semi(self, Newline::Required, |semi| {
             Stmt::Return(None, arg, semi)
         })?;
-        if self.context.function.is_none() {
+        if !self.context.function {
             Err(Error::TopLevelReturn(result.tracking_ref().unwrap()))
         } else {
             Ok(result)
@@ -987,16 +1012,9 @@ impl<I: Iterator<Item=char>> Parser<I> {
     fn with_statement(&mut self) -> Result<Stmt> {
         self.span(&mut |this| {
             let token = this.reread(TokenData::Reserved(Reserved::With));
-            if this.goal.definitely_strict() {
-                let error = Error::StrictWith(token);
-                if !this.validate {
-                    this.deferred.push(Check::Failed(error));
-                } else {
-                    return Err(error);
-                }
-            } else if !this.goal.definitely_sloppy() {
-                this.deferred.push(Check::Strict(Error::StrictWith(token)));
-            }
+            this.strict_check(|_| {
+                Some(Check::Strict(Error::StrictWith(token)))
+            })?;
             let obj = this.paren_expression()?;
             let body = Box::new(this.statement()?);
             Ok(Stmt::With(None, obj, body))

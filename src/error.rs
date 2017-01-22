@@ -7,9 +7,6 @@ use easter::decl::{Import, Export};
 use easter::patt::CompoundPatt;
 use easter::cover;
 use result::Result;
-use context::Goal;
-use parser::Strict;
-use atom::AtomExt;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Error {
@@ -23,7 +20,6 @@ pub enum Error {
     InvalidLabelType(Id),
     ContextualKeyword(Span, Atom),
     IllegalStrictBinding(Span, Atom),
-    IllegalModuleBinding(Span, Atom),
     UnexpectedDirective(Option<Span>, StringLiteral),
     UnexpectedModule(Option<Span>),
     ImportInScript(Import),
@@ -40,25 +36,21 @@ pub enum Error {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Check {
-    Failed(Error),
     Strict(Error),
-    Reserved(Span, Atom)
+    Module(Error)
 }
 
 impl Check {
     pub fn perform(self, module: bool) -> Result<()> {
         match self {
-            Check::Failed(error) => { return Err(error); }
-            Check::Strict(error) => { return Err(error); }
-            Check::Reserved(span, atom) => {
-                if atom.is_reserved(Goal::Script(Strict::Yes)).definitely() {
-                    return Err(Error::IllegalStrictBinding(span, atom));
-                }
-                if module && atom.is_reserved(Goal::Module).definitely() {
-                    return Err(Error::IllegalModuleBinding(span, atom));
+            Check::Strict(error) => Err(error),
+            Check::Module(error) => {
+                if module {
+                    Err(error)
+                } else {
+                    Ok(())
                 }
             }
         }
-        Ok(())
     }
 }

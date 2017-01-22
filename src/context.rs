@@ -57,7 +57,7 @@ pub enum LabelType {
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Goal {
-    Script(Strict),
+    Script,
     Module,
     Unknown
 }
@@ -66,44 +66,10 @@ impl Default for Goal {
     fn default() -> Goal { Goal::Unknown }
 }
 
-pub trait Mode {
-    fn strict(&self) -> Strict;
-    fn definitely_script(&self) -> bool;
-    fn definitely_strict(&self) -> bool;
-    fn definitely_sloppy(&self) -> bool;
-    fn definitely_module(&self) -> bool;
-}
-
-impl Mode for Goal {
-    fn strict(&self) -> Strict {
-        match *self {
-            Goal::Script(strict) => strict,
-            Goal::Module         => Strict::Yes,
-            Goal::Unknown        => Strict::Unknown
-        }
-    }
-
-    fn definitely_script(&self) -> bool {
-        match *self {
-            Goal::Script(_) => true,
-            _ => false
-        }
-    }
-
-    fn definitely_strict(&self) -> bool {
-        self.strict().definitely()
-    }
-
-    fn definitely_sloppy(&self) -> bool {
-        self.strict().definitely_not()
-    }
-
-    fn definitely_module(&self) -> bool { *self == Goal::Module }
-}
-
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Context {
-    pub function: Option<Strict>,
+    pub strict: Strict,
+    pub function: bool,
     pub iteration: bool,
     pub switch: bool,
     pub allow_in: bool,
@@ -113,7 +79,8 @@ pub struct Context {
 impl Context {
     pub fn new() -> Context {
         Context {
-            function: None,
+            strict: Strict::Unknown,
+            function: false,
             iteration: false,
             switch: false,
             allow_in: true,
@@ -121,9 +88,10 @@ impl Context {
         }
     }
 
-    pub fn new_function(inherited: Strict) -> Context {
+    pub fn new_function(&self) -> Context {
         Context {
-            function: Some(inherited),
+            strict: self.strict,
+            function: true,
             iteration: false,
             switch: false,
             allow_in: true,
