@@ -9,11 +9,17 @@ use punc::{Unop, Binop, Assop, Logop};
 use id::Id;
 use patt::{Patt, AssignTarget};
 
+#[derive(PartialEq, Debug, Clone, TrackingRef, TrackingMut, Untrack)]
+pub enum ExprListItem {
+    Expr(Expr),
+    Spread(Option<Span>, Expr)
+}
+
 #[derive(Clone, TrackingRef, TrackingMut, Untrack)]
 pub enum Expr {
     This(Option<Span>),
     Id(Id),
-    Arr(Option<Span>, Vec<Option<Expr>>),
+    Arr(Option<Span>, Vec<Option<ExprListItem>>),
     Obj(Option<Span>, Vec<Prop>),
     Fun(Fun<Option<Id>>),
     Seq(Option<Span>, Vec<Expr>),
@@ -27,8 +33,8 @@ pub enum Expr {
     Assign(Option<Span>, Patt<AssignTarget>, Box<Expr>),
     BinAssign(Option<Span>, Assop, AssignTarget, Box<Expr>),
     Cond(Option<Span>, Box<Expr>, Box<Expr>, Box<Expr>),
-    Call(Option<Span>, Box<Expr>, Vec<Expr>),
-    New(Option<Span>, Box<Expr>, Option<Vec<Expr>>),
+    Call(Option<Span>, Box<Expr>, Vec<ExprListItem>),
+    New(Option<Span>, Box<Expr>, Option<Vec<ExprListItem>>),
     Dot(Option<Span>, Box<Expr>, DotKey),
     Brack(Option<Span>, Box<Expr>, Box<Expr>),
     NewTarget(Option<Span>),

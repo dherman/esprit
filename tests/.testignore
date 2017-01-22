@@ -20,10 +20,7 @@ declaration/function/empty-param.*
 ES6/default-parameter-value/**
 expression/primary/object/migrated_003[4568].*
 statement/iteration/pattern-in-for-in.*
-
-# Spread / rest
-ES6/rest-parameter/**
-ES6/spread-element/**
+ES6/rest-parameter/rest-parameter-*
 
 # Meta properties
 ES6/meta-property/**
@@ -40,6 +37,7 @@ statement/iteration/const_forin.*
 
 # Some other ES6 features
 ES6/arrow-function/**
+ES6/rest-parameter/arrow-rest-parameter-*
 ES6/class/**
 ES6/object-initialiser/proto-shorthand-assignments.*
 ES6/template-literals/**

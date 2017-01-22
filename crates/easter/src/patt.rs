@@ -5,8 +5,14 @@ use expr::Expr;
 use obj::{PropKey, DotKey};
 
 #[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut, Untrack)]
+pub struct RestPatt<T> {
+    pub location: Option<Span>,
+    pub patt: Patt<T>
+}
+
+#[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut, Untrack)]
 pub enum CompoundPatt<T> {
-    Arr(Option<Span>, Vec<Option<Patt<T>>>),
+    Arr(Option<Span>, Vec<Option<Patt<T>>>, Option<Box<RestPatt<T>>>),
     Obj(Option<Span>, Vec<PropPatt<T>>)
 }
 

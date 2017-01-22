@@ -1,7 +1,7 @@
 use joker::track::{Span, span};
 use joker::token::Token;
 use easter::punc::Unop;
-use easter::expr::Expr;
+use easter::expr::{Expr, ExprListItem};
 use easter::obj::DotKey;
 
 pub enum Prefix {
@@ -39,7 +39,7 @@ pub enum Suffix {
 }
 
 pub struct Arguments {
-    pub args: Vec<Expr>,
+    pub args: Vec<ExprListItem>,
     pub end: Token
 }
 

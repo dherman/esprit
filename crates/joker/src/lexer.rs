@@ -572,6 +572,13 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         span.end(self, value)
     }
 
+    fn read_punc3(&mut self, value: TokenData) -> Token {
+        let span = self.start();
+        self.skip2();
+        self.skip();
+        span.end(self, value)
+    }
+
     fn read_punc2_3(&mut self, ch: char, value2: TokenData, value3: TokenData) -> Token {
         let span = self.start();
         self.skip2();
@@ -624,6 +631,13 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             }
             (Some('/'), _)                               => Ok(self.read_punc(TokenData::Slash)),
             (Some('.'), Some(ch)) if ch.is_digit(10)     => self.read_number(),
+            (Some('.'), Some('.'))                       => {
+                Ok(if self.reader.peek(2) == Some('.') {
+                    self.read_punc3(TokenData::Ellipsis)
+                } else {
+                    self.read_punc(TokenData::Dot)
+                })
+            }
             (Some('.'), _)                               => Ok(self.read_punc(TokenData::Dot)),
             (Some('{'), _)                               => Ok(self.read_punc(TokenData::LBrace)),
             (Some('}'), _)                               => Ok(self.read_punc(TokenData::RBrace)),

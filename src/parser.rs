@@ -3,9 +3,9 @@ use joker::token::{Token, TokenData};
 use joker::word::{Atom, Name, Reserved};
 use joker::lexer::Lexer;
 use easter::stmt::{Stmt, StmtListItem, ForHead, ForInHead, ForOfHead, Case, Catch, Script, Dir, ModItem, Module};
-use easter::expr::Expr;
+use easter::expr::{Expr, ExprListItem};
 use easter::decl::{Decl, Dtor, DtorExt};
-use easter::patt::{Patt, CompoundPatt};
+use easter::patt::{Patt, RestPatt, CompoundPatt};
 use easter::fun::{Fun, Params};
 use easter::obj::{PropKey, PropVal, Prop, DotKey};
 use easter::id::{Id, IdExt};
@@ -331,22 +331,38 @@ impl<I: Iterator<Item=char>> Parser<I> {
     fn formal_parameters(&mut self) -> Result<Params> {
         self.span(&mut |this| {
             this.expect(TokenData::LParen)?;
-            let list = this.pattern_list()?;
+            let mut list = Vec::new();
+            let mut rest = None;
+            loop {
+                match this.peek()?.value {
+                    TokenData::RParen => {
+                        break;
+                    }
+                    TokenData::Ellipsis => {
+                        rest = Some(this.span(&mut |this| {
+                            this.reread(TokenData::Ellipsis);
+                            Ok(RestPatt {
+                                location: None,
+                                patt: this.pattern()?
+                            })
+                        })?);
+                        break;
+                    }
+                    _ => {
+                        list.push(this.pattern()?);
+                        if !this.matches(TokenData::Comma)? {
+                            break;
+                        }
+                    }
+                }
+            }
             this.expect(TokenData::RParen)?;
-            Ok(Params { location: None, list: list })
+            Ok(Params {
+                location: None,
+                list: list,
+                rest: rest
+            })
         })
-    }
-
-    fn pattern_list(&mut self) -> Result<Vec<Patt<Id>>> {
-        let mut patts = Vec::new();
-        if self.peek()?.value == TokenData::RParen {
-            return Ok(patts);
-        }
-        patts.push(self.pattern()?);
-        while self.matches(TokenData::Comma)? {
-            patts.push(self.pattern()?);
-        }
-        Ok(patts)
     }
 
     fn pattern(&mut self) -> Result<Patt<Id>> {
@@ -1136,28 +1152,44 @@ impl<I: Iterator<Item=char>> Parser<I> {
     }
 
     fn array_literal(&mut self, start: Token) -> Result<Expr> {
-        let start_location = Some(start.location);
-        let mut elts = Vec::new();
-        loop {
-            // Optional final comma does not count as an element.
-            if self.peek()?.value == TokenData::RBrack {
-                break;
+        self.allow_in(true, |this| {
+            let start_location = Some(start.location);
+            let mut elts = Vec::new();
+            loop {
+                // Optional final comma does not count as an element.
+                if this.peek()?.value == TokenData::RBrack {
+                    break;
+                }
+                elts.push(this.array_element()?);
+                if !this.matches(TokenData::Comma)? {
+                    break;
+                }
             }
-            elts.push(self.array_element()?);
-            if !self.matches(TokenData::Comma)? {
-                break;
-            }
-        }
-        let end_location = Some(self.expect(TokenData::RBrack)?.location);
-        Ok(Expr::Arr(span(&start_location, &end_location), elts))
+            let end_location = Some(this.expect(TokenData::RBrack)?.location);
+            Ok(Expr::Arr(span(&start_location, &end_location), elts))
+        })
     }
 
-    fn array_element(&mut self) -> Result<Option<Expr>> {
-        if { let t = self.peek()?; t.value == TokenData::Comma || t.value == TokenData::RBrack } {
+    fn expr_list_item(&mut self) -> Result<ExprListItem> {
+        match self.peek()?.value {
+            TokenData::Ellipsis => {
+                self.span(&mut |this| {
+                    this.reread(TokenData::Ellipsis);
+                    let expr = this.assignment_expression()?;
+                    Ok(ExprListItem::Spread(None, expr))
+                })
+            }
+            _ => {
+                Ok(ExprListItem::Expr(self.assignment_expression()?))
+            }
+        }
+    }
+
+    fn array_element(&mut self) -> Result<Option<ExprListItem>> {
+        if self.peek()?.value == TokenData::Comma {
             return Ok(None);
         }
-        // ES6: ellipsis
-        self.allow_in(true, |this| this.assignment_expression().map(Some))
+        self.expr_list_item().map(Some)
     }
 
     fn object_literal(&mut self, start: Token) -> Result<Expr> {
@@ -1332,28 +1364,22 @@ impl<I: Iterator<Item=char>> Parser<I> {
         }
     }
 
-
-    // Argument ::= "..."? AssignmentExpression
-    fn argument(&mut self) -> Result<Expr> {
-        // ES6: if let ellipsis = self.matches(TokenData::Ellipsis)? { ... }
-        self.allow_in(true, |this| this.assignment_expression())
-    }
-
     // Arguments ::= "(" Argument*[","] ")"
     fn arguments(&mut self) -> Result<Arguments> {
-        self.expect(TokenData::LParen)?;
-        if let Some(end) = self.matches_token(TokenData::RParen)? {
-            return Ok(Arguments { args: Vec::new(), end: end });
-        }
-        let mut args = Vec::new();
-        loop {
-            args.push(self.argument()?);
-            if !self.matches(TokenData::Comma)? {
-                break;
+        self.allow_in(true, |this| {
+            this.expect(TokenData::LParen)?;
+            let mut args = Vec::new();
+            if this.peek()?.value != TokenData::RParen {
+                loop {
+                    args.push(this.expr_list_item()?);
+                    if !this.matches(TokenData::Comma)? {
+                        break;
+                    }
+                }
             }
-        }
-        let end = self.expect(TokenData::RParen)?;
-        Ok(Arguments { args: args, end: end })
+            let end = this.expect(TokenData::RParen)?;
+            Ok(Arguments { args: args, end: end })
+        })
     }
 
     // Deref ::=

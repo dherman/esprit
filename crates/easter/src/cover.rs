@@ -1,8 +1,8 @@
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use joker::track::{Span, TrackingRef};
-use expr::Expr;
-use patt::{Patt, AssignTarget, CompoundPatt, PropPatt};
+use expr::{Expr, ExprListItem};
+use patt::{Patt, RestPatt, AssignTarget, CompoundPatt, PropPatt};
 use obj::{Prop, PropVal};
 
 #[derive(Debug, PartialEq, Clone)]
@@ -53,15 +53,27 @@ impl IntoAssignPatt for Expr {
                 }
                 Patt::Compound(CompoundPatt::Obj(location, prop_patts))
             }
-            Expr::Arr(location, exprs) => {
+            Expr::Arr(location, mut exprs) => {
                 let mut patts = Vec::with_capacity(exprs.len());
+                let mut rest = None;
+                if let Some(last) = exprs.pop() {
+                    if let Some(ExprListItem::Spread(None, expr)) = last {
+                        rest = Some(Box::new(RestPatt {
+                            location: None,
+                            patt: expr.into_assign_patt()?
+                        }));
+                    } else {
+                        exprs.push(last);
+                    }
+                }
                 for expr in exprs {
                     patts.push(match expr {
-                        Some(expr) => Some(expr.into_assign_patt()?),
+                        Some(ExprListItem::Expr(expr)) => Some(expr.into_assign_patt()?),
+                        Some(ExprListItem::Spread(loc, _)) => { return Err(Error::InvalidAssignTarget(loc)); }
                         None => None
                     });
                 }
-                Patt::Compound(CompoundPatt::Arr(location, patts))
+                Patt::Compound(CompoundPatt::Arr(location, patts, rest))
             }
             _ => { return self.into_assign_target().map(Patt::Simple); }
         })

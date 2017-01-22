@@ -1,13 +1,14 @@
 use joker::track::*;
 
 use id::Id;
-use patt::Patt;
+use patt::{Patt, RestPatt};
 use stmt::Script;
 
 #[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut, Untrack)]
 pub struct Params {
     pub location: Option<Span>,
-    pub list: Vec<Patt<Id>>
+    pub list: Vec<Patt<Id>>,
+    pub rest: Option<RestPatt<Id>>
 }
 
 #[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut, Untrack)]

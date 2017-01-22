@@ -32,7 +32,7 @@ pub enum TokenData {
     LBrack,
     RBrack,
     Dot,
-    //Ellipsis,
+    Ellipsis,
     Semi,
     Comma,
     LAngle,

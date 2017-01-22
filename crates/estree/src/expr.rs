@@ -1,5 +1,5 @@
 use serde_json::value::Value;
-use easter::expr::Expr;
+use easter::expr::{Expr, ExprListItem};
 use easter::obj::DotKey;
 use easter::id::IdExt;
 use easter::punc::{Unop, Binop, Assop, Logop};
@@ -17,6 +17,7 @@ use lit::{IntoStringLiteral, IntoNumberLiteral};
 
 pub trait IntoExpr {
     fn into_expr(self) -> Result<Expr>;
+    fn into_expr_list_item(self) -> Result<ExprListItem>;
     fn into_lit(self) -> Result<Expr>;
 }
 
@@ -112,7 +113,7 @@ impl IntoExpr for Object {
                 Expr::Fun(fun)
             }
             Tag::SequenceExpression => {
-                let exprs = self.extract_expr_list("expressions")?;
+                let exprs = self.extract_exprs("expressions")?;
                 Expr::Seq(None, exprs)
             }
             Tag::ObjectExpression => {
@@ -128,6 +129,15 @@ impl IntoExpr for Object {
             Tag::ThisExpression => Expr::This(None),
             _ => { return node_type_error("expression", tag); }
         })
+    }
+
+    fn into_expr_list_item(mut self) -> Result<ExprListItem> {
+        match self.tag()? {
+            Tag::SpreadElement => {
+                Ok(ExprListItem::Spread(None, self.extract_expr("argument")?))
+            }
+            _ => self.into_expr().map(ExprListItem::Expr)
+        }
     }
 
     fn into_lit(mut self) -> Result<Expr> {

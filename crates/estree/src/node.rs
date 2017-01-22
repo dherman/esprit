@@ -1,13 +1,15 @@
 use unjson::ty::Object;
 use unjson::{ExtractField, Unjson};
 use easter::id::Id;
-use easter::expr::Expr;
+use easter::expr::{Expr, ExprListItem};
 use easter::stmt::{Stmt, StmtListItem, Case, Catch, Script};
-use easter::patt::{Patt, AssignTarget};
+use easter::patt::{Patt, RestPatt, AssignTarget};
 use easter::obj::Prop;
 use easter::decl::Dtor;
 use easter::cover::{IntoAssignTarget, IntoAssignPatt};
+use easter::fun::Params;
 
+use tag::{Tag, TagOf};
 use error::Error;
 use result::{Result, Map};
 use id::IntoId;
@@ -25,12 +27,13 @@ pub trait ExtractNode {
     fn extract_stmt(&mut self, &'static str) -> Result<Stmt>;
     fn extract_expr(&mut self, &'static str) -> Result<Expr>;
     fn extract_expr_opt(&mut self, &'static str) -> Result<Option<Expr>>;
-    fn extract_expr_list(&mut self, &'static str) -> Result<Vec<Expr>>;
-    fn extract_expr_opt_list(&mut self, &'static str) -> Result<Vec<Option<Expr>>>;
+    fn extract_expr_list(&mut self, &'static str) -> Result<Vec<ExprListItem>>;
+    fn extract_exprs(&mut self, name: &'static str) -> Result<Vec<Expr>>;
+    fn extract_expr_opt_list(&mut self, &'static str) -> Result<Vec<Option<ExprListItem>>>;
     fn extract_stmt_opt(&mut self, &'static str) -> Result<Option<Stmt>>;
     fn extract_stmt_list(&mut self, &'static str) -> Result<Vec<StmtListItem>>;
     fn extract_patt(&mut self, &'static str) -> Result<Patt<Id>>;
-    fn extract_patt_list(&mut self, &'static str) -> Result<Vec<Patt<Id>>>;
+    fn extract_params(&mut self, &'static str) -> Result<Params>;
     fn extract_prop_list(&mut self, &'static str) -> Result<Vec<Prop>>;
     fn extract_dtor_list(&mut self, &'static str) -> Result<Vec<Dtor>>;
     fn extract_case_list(&mut self, &'static str) -> Result<Vec<Case>>;
@@ -90,18 +93,25 @@ impl ExtractNode for Object {
         })
     }
 
-    fn extract_expr_list(&mut self, name: &'static str) -> Result<Vec<Expr>> {
+    fn extract_expr_list(&mut self, name: &'static str) -> Result<Vec<ExprListItem>> {
+        let list = self.extract_array(name).map_err(Error::Json)?;
+        let objs = list.map(|v| v.into_object().map_err(Error::Json))?;
+        objs.map(|o| o.into_expr_list_item())
+    }
+
+
+    fn extract_exprs(&mut self, name: &'static str) -> Result<Vec<Expr>> {
         let list = self.extract_array(name).map_err(Error::Json)?;
         let objs = list.map(|v| v.into_object().map_err(Error::Json))?;
         objs.map(|o| o.into_expr())
     }
 
-    fn extract_expr_opt_list(&mut self, name: &'static str) -> Result<Vec<Option<Expr>>> {
+    fn extract_expr_opt_list(&mut self, name: &'static str) -> Result<Vec<Option<ExprListItem>>> {
         let list = self.extract_array(name).map_err(Error::Json)?;
         list.map(|v| {
             match v.into_object_opt().map_err(Error::Json)? {
                 None => Ok(None),
-                Some(o) => o.into_expr().map(Some)
+                Some(o) => o.into_expr_list_item().map(Some)
             }
         })
     }
@@ -123,10 +133,25 @@ impl ExtractNode for Object {
         self.extract_object(name).map_err(Error::Json).and_then(|o| o.into_patt())
     }
 
-    fn extract_patt_list(&mut self, name: &'static str) -> Result<Vec<Patt<Id>>> {
+    fn extract_params(&mut self, name: &'static str) -> Result<Params> {
         let list = self.extract_array(name).map_err(Error::Json)?;
-        let objs = list.map(|v| v.into_object().map_err(Error::Json))?;
-        objs.map(|o| o.into_patt())
+        let mut objs = list.map(|v| v.into_object().map_err(Error::Json))?;
+        let mut rest = None;
+        if let Some(mut last) = objs.pop() {
+            if last.tag()? == Tag::RestElement {
+                rest = Some(RestPatt {
+                    location: None,
+                    patt: last.extract_patt("argument")?
+                });
+            } else {
+                objs.push(last);
+            }
+        }
+        Ok(Params {
+            location: None,
+            list: objs.map(|o| o.into_patt())?,
+            rest: rest
+        })
     }
 
     fn extract_prop_list(&mut self, name: &'static str) -> Result<Vec<Prop>> {
