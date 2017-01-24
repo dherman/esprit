@@ -1,5 +1,3 @@
-#![cfg_attr(feature = "nightly", feature(proc_macro))]
-
 extern crate joker;
 extern crate tristate;
 
