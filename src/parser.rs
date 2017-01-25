@@ -324,7 +324,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
 
     fn function_declaration(&mut self) -> Result<Decl> {
         self.span(&mut |this| {
-            Ok(Decl::Fun(this.function(Self::id)?))
+            Ok(Decl::Fun(this.function(|this| this.id(true))?))
         })
     }
 
@@ -368,7 +368,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
     fn pattern(&mut self) -> Result<Patt<Id>> {
         match self.peek()?.value {
             TokenData::Identifier(_) => {
-                let id = self.binding_id()?;
+                let id = self.id(true)?;
                 Ok(Patt::Simple(id))
             }
             _ => {
@@ -472,7 +472,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                 let token = self.lexer.reread_token();
                 match self.peek_op()?.value {
                     TokenData::Colon => {
-                        let id = self.new_id_from_token(token)?;
+                        let id = self.new_id_from_token(false, token)?;
                         self.labelled_statement(id)
                     },
                     TokenData::Identifier(_) | TokenData::LBrace | TokenData::LBrack if token.value == TokenData::Identifier(Name::Atom(Atom::Let)) => {
@@ -509,7 +509,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                 self.lexer.unread_token(token);
                 break;
             }
-            labels.push(self.new_id_from_token(token)?);
+            labels.push(self.new_id_from_token(false, token)?);
         }
 
         let label_type = self.peek()?.label_type();
@@ -553,48 +553,38 @@ impl<I: Iterator<Item=char>> Parser<I> {
         Ok(items)
     }
 
-    fn binding_id(&mut self) -> Result<Id> {
-        let id = self.id()?;
-        self.strict_check(|_| {
-            if id.name.is_illegal_strict_binding() {
-                Some(Check::Strict(Error::IllegalStrictBinding(id.tracking_ref().unwrap(), id.name.atom().unwrap())))
-            } else {
-                None
-            }
-        })?;
-        Ok(id)
-    }
-
-    fn new_id_from_token(&mut self, token: Token) -> Result<Id> {
+    fn new_id_from_token(&mut self, binding: bool, token: Token) -> Result<Id> {
         match token.value {
-            TokenData::Identifier(name) => self.new_id(name, token.location),
+            TokenData::Identifier(name) => self.new_id(binding, name, token.location),
             _ => unreachable!()
         }
     }
 
-    fn new_id(&mut self, name: Name, location: Span) -> Result<Id> {
+    fn new_id(&mut self, binding: bool, name: Name, location: Span) -> Result<Id> {
         self.strict_check(|_| {
+            if binding && name.is_illegal_strict_binding() {
+                return Some(Check::Strict(Error::IllegalStrictBinding(location, name.atom().unwrap())));
+            }
             let is_reserved = name.is_strict_reserved();
             if is_reserved != TriState::No {
                 let error = Error::ContextualKeyword(location, name.atom().unwrap());
-                Some(if is_reserved == TriState::Yes {
+                return Some(if is_reserved == TriState::Yes {
                     Check::Strict(error)
                 } else {
                     // TriState::Unknown means word is reserved only
                     // for module goal
                     Check::Module(error)
-                })
-            } else {
-                None
+                });
             }
+            None
         })?;
         Ok(Id::new(name, Some(location)))
     }
 
-    fn id(&mut self) -> Result<Id> {
+    fn id(&mut self, binding: bool) -> Result<Id> {
         let Token { location, newline, value: data } = self.read()?;
         match data {
-            TokenData::Identifier(name) => self.new_id(name, location),
+            TokenData::Identifier(name) => self.new_id(binding, name, location),
             _ => Err(Error::UnexpectedToken(Token {
                 location: location,
                 newline: newline,
@@ -603,10 +593,10 @@ impl<I: Iterator<Item=char>> Parser<I> {
         }
     }
 
-    fn id_opt(&mut self) -> Result<Option<Id>> {
+    fn id_opt(&mut self, binding: bool) -> Result<Option<Id>> {
         let next = self.read()?;
         match next.value {
-            TokenData::Identifier(name) => self.new_id(name, next.location).map(Some),
+            TokenData::Identifier(name) => self.new_id(binding, name, next.location).map(Some),
             _ => {
                 self.lexer.unread_token(next);
                 Ok(None)
@@ -618,7 +608,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
         self.span(&mut |this| {
             match this.peek()?.value {
                 TokenData::Identifier(_) => {
-                    let id = this.binding_id()?;
+                    let id = this.id(true)?;
                     let init = if this.matches(TokenData::Assign)? {
                         Some(this.assignment_expression()?)
                     } else {
@@ -969,7 +959,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
         let span = self.start();
         let break_token = self.reread(TokenData::Reserved(Reserved::Break));
         let arg = if self.has_arg_same_line()? {
-            let id = self.id()?;
+            let id = self.id(false)?;
             if !self.context.labels.contains_key(&Rc::new(id.name.clone())) {
                 return Err(Error::InvalidLabel(id));
             }
@@ -989,7 +979,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
         let span = self.start();
         let continue_token = self.reread(TokenData::Reserved(Reserved::Continue));
         let arg = if self.has_arg_same_line()? {
-            let id = self.id()?;
+            let id = self.id(false)?;
             match self.context.labels.get(&Rc::new(id.name.clone())) {
                 None                        => { return Err(Error::InvalidLabel(id)); }
                 Some(&LabelType::Statement) => { return Err(Error::InvalidLabelType(id)); }
@@ -1128,7 +1118,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
         let token = self.read()?;
         let location = token.location;
         Ok(match token.value {
-            TokenData::Identifier(name)          => Expr::Id(self.new_id(name, location)?),
+            TokenData::Identifier(name)          => Expr::Id(self.new_id(false, name, location)?),
             TokenData::Reserved(Reserved::Null)  => Expr::Null(Some(location)),
             TokenData::Reserved(Reserved::This)  => Expr::This(Some(location)),
             TokenData::Reserved(Reserved::True)  => Expr::True(Some(location)),
@@ -1140,7 +1130,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             TokenData::LBrace                    => { return self.object_literal(token); }
             TokenData::Reserved(Reserved::Function) => {
                 self.lexer.unread_token(token);
-                return Ok(Expr::Fun(self.function(Self::id_opt)?));
+                return Ok(Expr::Fun(self.function(|this| this.id_opt(true))?));
             }
             TokenData::LParen => {
                 self.lexer.unread_token(token);
@@ -1227,7 +1217,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             }
             TokenData::Comma | TokenData::RBrace => {
                 if let PropKey::Id(location, name) = key {
-                    Prop::Shorthand(self.new_id(Name::from(name), location.unwrap())?)
+                    Prop::Shorthand(self.new_id(false, Name::from(name), location.unwrap())?)
                 } else {
                     return self.unexpected();
                 }
