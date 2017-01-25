@@ -29,11 +29,6 @@ ES6/super-property/**
 ES6/generator/**
 ES6/yield/**
 
-# Const
-declaration/const/**
-ES6/for-of/for-of-with-const.*
-statement/iteration/const_forin.*
-
 # Some other ES6 features
 ES6/arrow-function/**
 ES6/rest-parameter/arrow-rest-parameter-*

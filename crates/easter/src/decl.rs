@@ -23,7 +23,8 @@ pub enum Export {
 #[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut, Untrack)]
 pub enum Decl {
     Fun(Fun<Id>),
-    Let(Option<Span>, Vec<Dtor>, Semi)
+    Let(Option<Span>, Vec<Dtor>, Semi),
+    Const(Option<Span>, Vec<ConstDtor>, Semi)
 }
 
 #[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut, Untrack)]
@@ -32,11 +33,18 @@ pub enum Dtor {
     Compound(Option<Span>, CompoundPatt<Id>, Expr)
 }
 
-pub trait DtorExt {
-    fn from_simple_init(Id, Expr) -> Dtor;
-    fn from_compound_init(CompoundPatt<Id>, Expr) -> Dtor;
-    fn from_init(Patt<Id>, Expr) -> Dtor;
-    fn from_init_opt(Patt<Id>, Option<Expr>) -> Result<Dtor, CompoundPatt<Id>>;
+#[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut, Untrack)]
+pub struct ConstDtor {
+    pub location: Option<Span>,
+    pub patt: Patt<Id>,
+    pub value: Expr
+}
+
+pub trait DtorExt: Sized {
+    fn from_simple_init(Id, Expr) -> Self;
+    fn from_compound_init(CompoundPatt<Id>, Expr) -> Self;
+    fn from_init(Patt<Id>, Expr) -> Self;
+    fn from_init_opt(Patt<Id>, Option<Expr>) -> Result<Self, Patt<Id>>;
 }
 
 impl DtorExt for Dtor {
@@ -49,22 +57,46 @@ impl DtorExt for Dtor {
     }
 
     fn from_init(lhs: Patt<Id>, rhs: Expr) -> Dtor {
-        let loc = span(&lhs, &rhs);
         match lhs {
-            Patt::Simple(id) => Dtor::Simple(loc, id, Some(rhs)),
-            Patt::Compound(patt) => Dtor::Compound(loc, patt, rhs)
+            Patt::Simple(id) => Dtor::from_simple_init(id, rhs),
+            Patt::Compound(patt) => Dtor::from_compound_init(patt, rhs)
         }
     }
 
-    fn from_init_opt(lhs: Patt<Id>, rhs: Option<Expr>) -> Result<Dtor, CompoundPatt<Id>> {
+    fn from_init_opt(lhs: Patt<Id>, rhs: Option<Expr>) -> Result<Dtor, Patt<Id>> {
         match (lhs, rhs) {
             (Patt::Simple(id), rhs) => {
                 Ok(Dtor::Simple(*id.tracking_ref(), id, rhs))
             }
-            (Patt::Compound(patt), None) => Err(patt),
+            (lhs @ Patt::Compound(_), None) => Err(lhs),
             (Patt::Compound(patt), Some(rhs)) => {
-                Ok(Dtor::Compound(span(&patt, &rhs), patt, rhs))
+                Ok(Dtor::from_compound_init(patt, rhs))
             }
+        }
+    }
+}
+
+impl DtorExt for ConstDtor {
+    fn from_compound_init(lhs: CompoundPatt<Id>, rhs: Expr) -> ConstDtor {
+        ConstDtor::from_init(Patt::Compound(lhs), rhs)
+    }
+
+    fn from_simple_init(lhs: Id, rhs: Expr) -> ConstDtor {
+        ConstDtor::from_init(Patt::Simple(lhs), rhs)
+    }
+
+    fn from_init(lhs: Patt<Id>, rhs: Expr) -> ConstDtor {
+        ConstDtor {
+            location: span(&lhs, &rhs),
+            patt: lhs,
+            value: rhs
+        }
+    }
+
+    fn from_init_opt(lhs: Patt<Id>, rhs: Option<Expr>) -> Result<ConstDtor, Patt<Id>> {
+        match rhs {
+            Some(rhs) => Ok(ConstDtor::from_init(lhs, rhs)),
+            None => Err(lhs)
         }
     }
 }

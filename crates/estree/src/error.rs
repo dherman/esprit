@@ -3,7 +3,7 @@ use std::fmt::{Display, Formatter};
 
 use easter::id::Id;
 use easter::expr::Expr;
-use easter::patt::CompoundPatt;
+use easter::patt::{Patt, CompoundPatt};
 use unjson;
 use unjson::ty::Ty;
 use result::Result;
@@ -15,7 +15,7 @@ pub enum Error {
     NodeTypeMismatch(&'static str, Tag),
     UnexpectedInitializer(Expr),
     InvalidLHS(&'static str),
-    UninitializedPattern(CompoundPatt<Id>)
+    UninitializedPattern(Patt<Id>)
 }
 
 impl Display for Error {
@@ -38,8 +38,9 @@ impl Display for Error {
             }
             &Error::UninitializedPattern(ref patt) => {
                 let ty = match *patt {
-                    CompoundPatt::Arr(_, _, _) => "array",
-                    CompoundPatt::Obj(_, _) => "object"
+                    Patt::Compound(CompoundPatt::Arr(_, _, _)) => "array",
+                    Patt::Compound(CompoundPatt::Obj(_, _)) => "object",
+                    Patt::Simple(_) => "constant"
                 };
                 fmt.write_fmt(format_args!("uninitialized {} pattern in declarator", ty))
             }

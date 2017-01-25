@@ -3,7 +3,7 @@ use joker::token::StringLiteral;
 
 use id::Id;
 use expr::Expr;
-use decl::{Decl, Dtor, Import, Export};
+use decl::{Decl, Dtor, ConstDtor, Import, Export};
 use patt::{Patt, AssignTarget};
 use punc::Semi;
 
@@ -78,6 +78,7 @@ impl Stmt {
 pub enum ForHead {
     Var(Option<Span>, Vec<Dtor>),
     Let(Option<Span>, Vec<Dtor>),
+    Const(Option<Span>, Vec<ConstDtor>),
     Expr(Option<Span>, Expr)
 }
 
@@ -86,6 +87,7 @@ pub enum ForInHead {
     VarInit(Option<Span>, Id, Expr),
     Var(Option<Span>, Patt<Id>),
     Let(Option<Span>, Patt<Id>),
+    Const(Option<Span>, Patt<Id>),
     Patt(Patt<AssignTarget>)
 }
 
@@ -93,6 +95,7 @@ pub enum ForInHead {
 pub enum ForOfHead {
     Var(Option<Span>, Patt<Id>),
     Let(Option<Span>, Patt<Id>),
+    Const(Option<Span>, Patt<Id>),
     Patt(Patt<AssignTarget>)
 }
 

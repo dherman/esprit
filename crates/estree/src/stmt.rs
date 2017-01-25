@@ -7,6 +7,7 @@ use unjson::ty::Object;
 use unjson::{Unjson, ExtractField};
 
 use tag::{Tag, TagOf};
+use decl::IntoConst;
 use expr::IntoExpr;
 use fun::IntoFun;
 use error::{Error, string_error, array_error, node_type_error};
@@ -26,6 +27,7 @@ impl IntoForHead for Object {
                 match &kind[..] {
                     "var" => ForHead::Var(None, dtors),
                     "let" => ForHead::Let(None, dtors),
+                    "const" => ForHead::Const(None, dtors.into_const()?),
                     _ => { return string_error("var or let", kind); }
                 }
             }
@@ -50,28 +52,17 @@ impl IntoForInHead for Object {
                 let mut obj = dtors.remove(0).into_object().map_err(Error::Json)?;
                 let lhs = obj.extract_patt("id")?;
                 let init = obj.extract_expr_opt("init")?;
-                match &kind[..] {
-                    "var" => match lhs {
-                        Patt::Simple(id) => {
-                            match init {
-                                None       => ForInHead::Var(None, Patt::Simple(id)),
-                                Some(expr) => ForInHead::VarInit(None, id, expr)
-                            }
-                        }
-                        Patt::Compound(patt) => {
-                            match init {
-                                None       => ForInHead::Var(None, Patt::Compound(patt)),
-                                Some(expr) => { return Err(Error::UnexpectedInitializer(expr)); }
-                            }
-                        }
-                    },
-                    "let" => {
-                        match init {
-                            None       => ForInHead::Let(None, lhs),
-                            Some(expr) => { return Err(Error::UnexpectedInitializer(expr)); }
-                        }
+                match (&kind[..], lhs, init) {
+                    ("var", Patt::Simple(id), Some(init)) => {
+                        ForInHead::VarInit(None, id, init)
                     }
-                    _ => { return string_error("var or let", kind); }
+                    (_, _, Some(init)) => {
+                        return Err(Error::UnexpectedInitializer(init));
+                    }
+                    ("var", lhs, _) => ForInHead::Var(None, lhs),
+                    ("let", lhs, _) => ForInHead::Let(None, lhs),
+                    ("const", lhs, _) => ForInHead::Const(None, lhs),
+                    (_, _, _) => { return string_error("var or let", kind); }
                 }
             }
             _ => {
@@ -103,6 +94,7 @@ impl IntoForOfHead for Object {
                 match &kind[..] {
                     "var" => ForOfHead::Var(None, lhs),
                     "let" => ForOfHead::Let(None, lhs),
+                    "const" => ForOfHead::Const(None, lhs),
                     _ => { return string_error("var or let", kind); }
                 }
             },
@@ -145,6 +137,12 @@ fn into_stmt_list_item(mut this: Object, allow_decl: bool) -> Result<StmtListIte
                     }
                     return Ok(StmtListItem::Decl(Decl::Let(None, dtors, Semi::Explicit(None))));
                 },
+                "const" => {
+                    if !allow_decl {
+                        return string_error("var", kind);
+                    }
+                    return Ok(StmtListItem::Decl(Decl::Const(None, dtors.into_const()?, Semi::Explicit(None))));
+                }
                 _ => { return string_error("var or let", kind); }
             }
         }

@@ -4,7 +4,7 @@ use joker::word::{Atom, Name, Reserved};
 use joker::lexer::Lexer;
 use easter::stmt::{Stmt, StmtListItem, ForHead, ForInHead, ForOfHead, Case, Catch, Script, Dir, ModItem, Module};
 use easter::expr::{Expr, ExprListItem};
-use easter::decl::{Decl, Dtor, DtorExt};
+use easter::decl::{Decl, Dtor, ConstDtor, DtorExt};
 use easter::patt::{Patt, RestPatt, CompoundPatt};
 use easter::fun::{Fun, Params};
 use easter::obj::{PropKey, PropVal, Prop, DotKey};
@@ -455,6 +455,12 @@ impl<I: Iterator<Item=char>> Parser<I> {
             }
             TokenData::LBrace                       => self.block_statement(),
             TokenData::Reserved(Reserved::Var)      => self.var_statement(),
+            TokenData::Reserved(Reserved::Const)    => {
+                if !allow_decl {
+                    return self.unexpected();
+                }
+                return self.const_declaration().map(StmtListItem::Decl);
+            }
             TokenData::Semi                         => self.empty_statement(),
             TokenData::Reserved(Reserved::If)       => self.if_statement(),
             TokenData::Reserved(Reserved::Continue) => self.continue_statement(),
@@ -534,23 +540,21 @@ impl<I: Iterator<Item=char>> Parser<I> {
     fn var_statement(&mut self) -> Result<Stmt> {
         let span = self.start();
         self.reread(TokenData::Reserved(Reserved::Var));
-        let dtors = self.declarator_list()?;
+        let dtors = self.comma_separated(Self::declarator)?;
         span.end_with_auto_semi(self, Newline::Required, |semi| Stmt::Var(None, dtors, semi))
     }
 
     fn let_declaration(&mut self, start: Posn) -> Result<Decl> {
         let span = SpanTracker::new(start);
-        let dtors = self.declarator_list()?;
+        let dtors = self.comma_separated(Self::declarator)?;
         span.end_with_auto_semi(self, Newline::Required, |semi| Decl::Let(None, dtors, semi))
     }
 
-    fn declarator_list(&mut self) -> Result<Vec<Dtor>> {
-        let mut items = Vec::new();
-        items.push(self.declarator()?);
-        while self.matches(TokenData::Comma)? {
-            items.push(self.declarator()?);
-        }
-        Ok(items)
+    fn const_declaration(&mut self) -> Result<Decl> {
+        let span = self.start();
+        self.reread(TokenData::Reserved(Reserved::Const));
+        let dtors = self.comma_separated(Self::const_declarator)?;
+        span.end_with_auto_semi(self, Newline::Required, |semi| Decl::Const(None, dtors, semi))
     }
 
     fn new_id_from_token(&mut self, binding: bool, token: Token) -> Result<Id> {
@@ -626,6 +630,13 @@ impl<I: Iterator<Item=char>> Parser<I> {
         })
     }
 
+    fn const_declarator(&mut self) -> Result<ConstDtor> {
+        let lhs = self.pattern()?;
+        self.expect(TokenData::Assign)?;
+        let rhs = self.assignment_expression()?;
+        Ok(ConstDtor::from_init(lhs, rhs))
+    }
+
     fn empty_statement(&mut self) -> Result<Stmt> {
         self.span(&mut |this| {
             this.expect(TokenData::Semi)?;
@@ -682,7 +693,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             match this.peek()?.value {
                 TokenData::Reserved(Reserved::Var)           => this.for_var(),
                 TokenData::Identifier(Name::Atom(Atom::Let)) => this.for_let(),
-                TokenData::Reserved(Reserved::Const)         => { return Err(Error::UnsupportedFeature("const")); }
+                TokenData::Reserved(Reserved::Const)         => this.for_const(),
                 TokenData::Semi                              => {
                     this.reread(TokenData::Semi);
                     this.more_for(None)
@@ -710,8 +721,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                             // 'for' '(' 'var' id '=' expr ';'  . ==> C-style
                             TokenData::Comma
                           | TokenData::Semi => {
-                                let head = Some(self.more_for_head(&var_location, Dtor::from_simple_init(id, rhs), ForHead::Var)?);
-                                self.more_for(head)
+                                self.more_for_head(&var_location, Dtor::from_simple_init(id, rhs), ForHead::Var)
                             }
                             // 'for' '(' 'var' id '=' expr 'in' . ==> legacy enumeration
                             TokenData::Reserved(Reserved::In) => {
@@ -725,8 +735,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                     // 'for' '(' 'var' patt '=' . ==> C-style
                     Patt::Compound(patt) => {
                         let rhs = self.allow_in(false, |this| this.assignment_expression())?;
-                        let head = Some(self.more_for_head(&var_location, Dtor::from_compound_init(patt, rhs), ForHead::Var)?);
-                        self.more_for(head)
+                        self.more_for_head(&var_location, Dtor::from_compound_init(patt, rhs), ForHead::Var)
                     }
                 }
             }
@@ -740,8 +749,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                     Ok(dtor) => dtor,
                     Err(_) => { return self.unexpected(); }
                 };
-                let head = Some(self.more_for_head(&var_location, dtor, ForHead::Var)?);
-                self.more_for(head)
+                self.more_for_head(&var_location, dtor, ForHead::Var)
             }
             // 'for' '(' 'var' id   'in' . ==> enumeration
             // 'for' '(' 'var' patt 'in' . ==> enumeration
@@ -777,8 +785,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
             TokenData::Assign => {
                 self.reread(TokenData::Assign);
                 let rhs = self.allow_in(false, |this| this.assignment_expression())?;
-                let head = Some(self.more_for_head(&let_location, Dtor::from_init(lhs, rhs), ForHead::Let)?);
-                self.more_for(head)
+                self.more_for_head(&let_location, Dtor::from_init(lhs, rhs), ForHead::Let)
             }
             TokenData::Comma
           | TokenData::Semi => {
@@ -790,8 +797,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                     Ok(dtor) => dtor,
                     Err(_) => { return self.unexpected(); }
                 };
-                let head = Some(self.more_for_head(&let_location, dtor, ForHead::Let)?);
-                self.more_for(head)
+                self.more_for_head(&let_location, dtor, ForHead::Let)
             }
             // 'for' '(' 'let' id   'in' . ==> enumeration
             // 'for' '(' 'let' patt 'in' . ==> enumeration
@@ -805,6 +811,45 @@ impl<I: Iterator<Item=char>> Parser<I> {
             TokenData::Identifier(Name::Atom(Atom::Of)) => {
                 self.reread(TokenData::Identifier(Name::Atom(Atom::Of)));
                 let head = Box::new(ForOfHead::Let(span(&let_location, &lhs), lhs));
+                self.more_for_of(head)
+            }
+            _ => self.unexpected()
+        }
+    }
+
+    // 'for' '(' 'const' .
+    fn for_const(&mut self) -> Result<Stmt> {
+        let const_token = self.reread(TokenData::Reserved(Reserved::Const));
+        if !self.peek()?.first_binding() {
+            self.lexer.unread_token(const_token);
+            return self.for_expr();
+        }
+        let const_location = Some(const_token.location);
+        // 'for' '(' 'const' . !{id, patt} ==> error
+        let lhs = self.pattern()?;
+        match self.peek()?.value {
+            // 'for' '(' 'const' {id, patt}   '=' . ==> C-style
+            TokenData::Assign => {
+                self.reread(TokenData::Assign);
+                let dtors = self.allow_in(false, |this| {
+                    let rhs = this.assignment_expression()?;
+                    let dtor = ConstDtor::from_init(lhs, rhs);
+                    this.more_comma(dtor, Self::const_declarator)
+                })?;
+                let semi_location = Some(self.expect(TokenData::Semi)?.location);
+                let head = Box::new(ForHead::Const(span(&const_location, &semi_location), dtors));
+                self.more_for(Some(head))
+            }
+            // 'for' '(' 'const' {id, patt}   'in' . ==> enumeration
+            TokenData::Reserved(Reserved::In) => {
+                self.reread(TokenData::Reserved(Reserved::In));
+                let head = Box::new(ForInHead::Const(span(&const_location, &lhs), lhs));
+                self.more_for_in(head)
+            }
+            // 'for' '(' 'const' {id, patt}   'of' . ==> enumeration
+            TokenData::Identifier(Name::Atom(Atom::Of)) => {
+                self.reread(TokenData::Identifier(Name::Atom(Atom::Of)));
+                let head = Box::new(ForOfHead::Const(span(&const_location, &lhs), lhs));
                 self.more_for_of(head)
             }
             _ => self.unexpected()
@@ -844,16 +889,15 @@ impl<I: Iterator<Item=char>> Parser<I> {
     }
 
     // 'for' '(' dtor .
-    fn more_for_head<F>(&mut self, start: &Option<Span>, dtor: Dtor, op: F) -> Result<Box<ForHead>>
+    fn more_for_head<F>(&mut self, start: &Option<Span>, dtor: Dtor, op: F) -> Result<Stmt>
       where F: FnOnce(Option<Span>, Vec<Dtor>) -> ForHead
     {
         let dtors = self.allow_in(false, |this| {
-            let mut dtors = vec![dtor];
-            this.more_dtors(&mut dtors)?;
-            Ok(dtors)
+            this.more_comma(dtor, Self::declarator)
         })?;
         let semi_location = Some(self.expect(TokenData::Semi)?.location);
-        Ok(Box::new(op(span(start, &semi_location), dtors)))
+        let head = Box::new(op(span(start, &semi_location), dtors));
+        self.more_for(Some(head))
     }
 
     // 'for' '(' head ';' .
@@ -896,11 +940,21 @@ impl<I: Iterator<Item=char>> Parser<I> {
         })
     }
 
-    fn more_dtors(&mut self, dtors: &mut Vec<Dtor>) -> Result<()> {
+    fn comma_separated<T, F>(&mut self, f: F) -> Result<Vec<T>>
+        where F: Fn(&mut Self) -> Result<T>
+    {
+        let first = f(self)?;
+        self.more_comma(first, f)
+    }
+
+    fn more_comma<T, F>(&mut self, first: T, f: F) -> Result<Vec<T>>
+        where F: Fn(&mut Self) -> Result<T>
+    {
+        let mut items = vec![first];
         while self.matches(TokenData::Comma)? {
-            dtors.push(self.declarator()?);
+            items.push(f(self)?);
         }
-        Ok(())
+        Ok(items)
     }
 
     fn switch_statement(&mut self) -> Result<Stmt> {
@@ -1625,10 +1679,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
         if self.peek()?.value != TokenData::Comma {
             return Ok(first);
         }
-        let mut elts = vec![first];
-        while self.matches(TokenData::Comma)? {
-            elts.push(self.assignment_expression()?);
-        }
+        let elts = self.more_comma(first, Self::assignment_expression)?;
         let location = self.vec_span(&elts);
         Ok(Expr::Seq(location, elts))
     }
