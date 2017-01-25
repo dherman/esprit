@@ -1,10 +1,10 @@
 # Legacy extensions (Annex B)
-statement/if/migrated_0003.*
-statement/labelled/function-declaration.*
+statement/if/migrated_0003
+statement/labelled/function-declaration
 
 # Duplicate names
 # (for now, we don't track scopes)
-declaration/function/dupe-param.*
+declaration/function/dupe-param
 
 # Extended identifier chars
 ES6/identifier/**
@@ -16,11 +16,13 @@ ES6/export-declaration/**
 # Array / object / default patterns
 **/*array-pattern*
 **/*object-pattern*
-declaration/function/empty-param.*
+declaration/function/empty-param
 ES6/default-parameter-value/**
-expression/primary/object/migrated_003[4568].*
-statement/iteration/pattern-in-for-in.*
-ES6/rest-parameter/rest-parameter-*
+expression/primary/object/migrated_003[4568]
+statement/iteration/pattern-in-for-in
+ES6/rest-parameter/rest-parameter-array
+ES6/rest-parameter/rest-parameter-object
+ES6/object-initialiser/proto-shorthand-assignments
 
 # Meta properties
 ES6/super-property/**
@@ -33,7 +35,6 @@ ES6/yield/**
 ES6/arrow-function/**
 ES6/rest-parameter/arrow-rest-parameter-*
 ES6/class/**
-ES6/object-initialiser/proto-shorthand-assignments.*
 ES6/template-literals/**
 
 # Unsupported syntax extensions

@@ -85,8 +85,8 @@ fn unit_tests(target: &mut Vec<TestDescAndFn>) {
             };
             if source_path.exists() {
                 let ignore = {
-                    let local_tree_path = tree_path.strip_prefix(&fixtures).unwrap();
-                    testignore.iter().any(|ignore| ignore.matches_path(&local_tree_path))
+                    let local_test_path = source_path.strip_prefix(&fixtures).unwrap().with_extension("");
+                    testignore.iter().any(|ignore| ignore.matches_path(&local_test_path))
                 };
                 Some((tree_path, source_path, ignore))
             } else {
