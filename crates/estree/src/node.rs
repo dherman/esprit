@@ -2,7 +2,7 @@ use unjson::ty::Object;
 use unjson::{ExtractField, Unjson};
 use easter::id::Id;
 use easter::expr::{Expr, ExprListItem};
-use easter::stmt::{Stmt, StmtListItem, Case, Catch, Script};
+use easter::stmt::{Stmt, Block, StmtListItem, Case, Catch, Script};
 use easter::patt::{Patt, RestPatt, AssignTarget};
 use easter::obj::Prop;
 use easter::decl::Dtor;
@@ -32,6 +32,7 @@ pub trait ExtractNode {
     fn extract_expr_opt_list(&mut self, &'static str) -> Result<Vec<Option<ExprListItem>>>;
     fn extract_stmt_opt(&mut self, &'static str) -> Result<Option<Stmt>>;
     fn extract_stmt_list(&mut self, &'static str) -> Result<Vec<StmtListItem>>;
+    fn extract_block(&mut self, &'static str) -> Result<Block>;
     fn extract_patt(&mut self, &'static str) -> Result<Patt<Id>>;
     fn extract_params(&mut self, &'static str) -> Result<Params>;
     fn extract_prop_list(&mut self, &'static str) -> Result<Vec<Prop>>;
@@ -127,6 +128,10 @@ impl ExtractNode for Object {
         let list = self.extract_array(name).map_err(Error::Json)?;
         let objs = list.map(|v| v.into_object().map_err(Error::Json))?;
         objs.map(|o| o.into_stmt_list_item())
+    }
+
+    fn extract_block(&mut self, name: &'static str) -> Result<Block> {
+        self.extract_object(name).map_err(Error::Json).and_then(|o| o.into_block())
     }
 
     fn extract_patt(&mut self, name: &'static str) -> Result<Patt<Id>> {

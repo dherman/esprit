@@ -10,7 +10,7 @@ use punc::Semi;
 #[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut, Untrack)]
 pub enum Stmt {
     Empty(Option<Span>),
-    Block(Option<Span>, Vec<StmtListItem>),
+    Block(Block),
     Var(Option<Span>, Vec<Dtor>, Semi),
     Expr(Option<Span>, Expr, Semi),
     If(Option<Span>, Expr, Box<Stmt>, Option<Box<Stmt>>),
@@ -21,7 +21,7 @@ pub enum Stmt {
     Switch(Option<Span>, Expr, Vec<Case>),
     Return(Option<Span>, Option<Expr>, Semi),
     Throw(Option<Span>, Expr, Semi),
-    Try(Option<Span>, Vec<StmtListItem>, Option<Box<Catch>>, Option<Vec<StmtListItem>>),
+    Try(Option<Span>, Block, Option<Box<Catch>>, Option<Block>),
     While(Option<Span>, Expr, Box<Stmt>),
     DoWhile(Option<Span>, Box<Stmt>, Expr, Semi),
     For(Option<Span>, Option<Box<ForHead>>, Option<Expr>, Option<Expr>, Box<Stmt>),
@@ -35,6 +35,12 @@ pub struct Body<Item> {
     pub location: Option<Span>,
     pub dirs: Vec<Dir>,
     pub items: Vec<Item>
+}
+
+#[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut, Untrack)]
+pub struct Block {
+    pub location: Option<Span>,
+    pub items: Vec<StmtListItem>
 }
 
 pub type Script = Body<StmtListItem>;
@@ -103,7 +109,7 @@ pub enum ForOfHead {
 pub struct Catch {
     pub location: Option<Span>,
     pub param: Patt<Id>,
-    pub body: Vec<StmtListItem>
+    pub body: Block
 }
 
 #[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut, Untrack)]

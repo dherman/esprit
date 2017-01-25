@@ -1,4 +1,4 @@
-use easter::stmt::{Stmt, ForHead, ForInHead, ForOfHead, StmtListItem, Case, Catch};
+use easter::stmt::{Stmt, Block, ForHead, ForInHead, ForOfHead, StmtListItem, Case, Catch};
 use easter::decl::Decl;
 use easter::punc::Semi;
 use easter::patt::Patt;
@@ -114,6 +114,7 @@ pub trait IntoStmt {
     fn into_stmt_list_item(self) -> Result<StmtListItem>;
     fn into_case(self) -> Result<Case>;
     fn into_catch(self) -> Result<Catch>;
+    fn into_block(self) -> Result<Block>;
 }
 
 fn into_stmt_list_item(mut this: Object, allow_decl: bool) -> Result<StmtListItem> {
@@ -190,8 +191,7 @@ fn into_stmt_list_item(mut this: Object, allow_decl: bool) -> Result<StmtListIte
             Stmt::ForOf(None, Box::new(left), right, Box::new(body))
         }
         Tag::BlockStatement => {
-            let body = this.extract_stmt_list("body")?;
-            Stmt::Block(None, body)
+            Stmt::Block(this.into_block()?)
         }
         Tag::ReturnStatement => {
             let arg = this.extract_expr_opt("argument")?;
@@ -228,11 +228,10 @@ fn into_stmt_list_item(mut this: Object, allow_decl: bool) -> Result<StmtListIte
             Stmt::Debugger(None, Semi::Explicit(None))
         }
         Tag::TryStatement => {
-            let mut block = this.extract_object("block").map_err(Error::Json)?;
-            let body = block.extract_stmt_list("body")?;
+            let body = this.extract_block("block")?;
             let catch = this.extract_catch_opt("handler")?.map(Box::new);
             let finally = match this.extract_object_opt("finalizer").map_err(Error::Json)? {
-                Some(mut finalizer) => Some(finalizer.extract_stmt_list("body")?),
+                Some(finalizer)     => Some(finalizer.into_block()?),
                 None                => None
             };
             Stmt::Try(None, body, catch, finally)
@@ -261,8 +260,17 @@ impl IntoStmt for Object {
 
     fn into_catch(mut self) -> Result<Catch> {
         let param = self.extract_patt("param")?;
-        let mut body = self.extract_object("body").map_err(Error::Json)?;
-        let body = body.extract_stmt_list("body")?;
+        let body = self.extract_block("body")?;
         Ok(Catch { location: None, param: param, body: body })
+    }
+
+    fn into_block(mut self) -> Result<Block> {
+        match self.tag()? {
+            Tag::BlockStatement => Ok(Block {
+                location: None,
+                items: self.extract_stmt_list("body")?
+            }),
+            tag => node_type_error("block statement", tag)
+        }
     }
 }

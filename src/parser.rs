@@ -2,7 +2,7 @@ use joker::track::*;
 use joker::token::{Token, TokenData};
 use joker::word::{Atom, Name, Reserved};
 use joker::lexer::Lexer;
-use easter::stmt::{Stmt, StmtListItem, ForHead, ForInHead, ForOfHead, Case, Catch, Script, Dir, ModItem, Module};
+use easter::stmt::{Stmt, Block, StmtListItem, ForHead, ForInHead, ForOfHead, Case, Catch, Script, Dir, ModItem, Module};
 use easter::expr::{Expr, ExprListItem};
 use easter::decl::{Decl, Dtor, ConstDtor, DtorExt};
 use easter::patt::{Patt, RestPatt, CompoundPatt};
@@ -453,7 +453,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                 }
                 return self.function_declaration().map(StmtListItem::Decl);
             }
-            TokenData::LBrace                       => self.block_statement(),
+            TokenData::LBrace                       => self.block().map(Stmt::Block),
             TokenData::Reserved(Reserved::Var)      => self.var_statement(),
             TokenData::Reserved(Reserved::Const)    => {
                 if !allow_decl {
@@ -528,12 +528,15 @@ impl<I: Iterator<Item=char>> Parser<I> {
         Ok(span.end_with_auto_semi(self, Newline::Required, |semi| Stmt::Expr(None, expr, semi))?)
     }
 
-    fn block_statement(&mut self) -> Result<Stmt> {
+    fn block(&mut self) -> Result<Block> {
         self.span(&mut |this| {
-            this.reread(TokenData::LBrace);
+            this.expect(TokenData::LBrace)?;
             let items = this.statement_list()?;
             this.expect(TokenData::RBrace)?;
-            Ok(Stmt::Block(None, items))
+            Ok(Block {
+                location: None,
+                items: items
+            })
         })
     }
 
@@ -1093,13 +1096,6 @@ impl<I: Iterator<Item=char>> Parser<I> {
         })
     }
 
-    fn block(&mut self) -> Result<Vec<StmtListItem>> {
-        self.expect(TokenData::LBrace)?;
-        let result = self.statement_list()?;
-        self.expect(TokenData::RBrace)?;
-        Ok(result)
-    }
-
     fn try_statement(&mut self) -> Result<Stmt> {
         self.span(&mut |this| {
             this.reread(TokenData::Reserved(Reserved::Try));
@@ -1134,7 +1130,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
         }
     }
 
-    fn finally_opt(&mut self) -> Result<Option<Vec<StmtListItem>>> {
+    fn finally_opt(&mut self) -> Result<Option<Block>> {
         Ok(match self.peek()?.value {
             TokenData::Reserved(Reserved::Finally) => {
                 self.reread(TokenData::Reserved(Reserved::Finally));
