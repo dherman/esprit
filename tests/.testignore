@@ -23,7 +23,6 @@ statement/iteration/pattern-in-for-in.*
 ES6/rest-parameter/rest-parameter-*
 
 # Meta properties
-ES6/meta-property/**
 ES6/super-property/**
 
 # Generators

@@ -26,6 +26,7 @@ pub enum Tag {
     ObjectExpression,
     ConditionalExpression,
     ThisExpression,
+    MetaProperty,
 
     SpreadElement,
     RestElement,
@@ -80,6 +81,7 @@ impl FromStr for Tag {
             "ObjectExpression"      => Tag::ObjectExpression,
             "ConditionalExpression" => Tag::ConditionalExpression,
             "ThisExpression"        => Tag::ThisExpression,
+            "MetaProperty"          => Tag::MetaProperty,
             "FunctionDeclaration"   => Tag::FunctionDeclaration,
             "VariableDeclaration"   => Tag::VariableDeclaration,
             "SpreadElement"         => Tag::SpreadElement,

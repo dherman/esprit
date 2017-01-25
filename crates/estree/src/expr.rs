@@ -127,6 +127,14 @@ impl IntoExpr for Object {
                 Expr::Cond(None, test, cons, alt)
             }
             Tag::ThisExpression => Expr::This(None),
+            Tag::MetaProperty => {
+                let meta = self.extract_id("meta")?.name;
+                let prop = self.extract_id("property")?.name;
+                match (meta.as_ref(), prop.as_ref()) {
+                    ("new", "target") => Expr::NewTarget(None),
+                    (meta, prop) => { return string_error("new.target", format!("{}.{}", meta, prop)); }
+                }
+            }
             _ => { return node_type_error("expression", tag); }
         })
     }
