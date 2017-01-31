@@ -1,9 +1,0 @@
-[package]
-name = "derive-context"
-version = "0.0.1"
-authors = ["Ingvar Stepanyan <me@rreverser.com>"]
-publish = false
-
-[dependencies]
-syn = { version = "0.10.5", features = ["expand"] }
-quote = "0.3.10"
