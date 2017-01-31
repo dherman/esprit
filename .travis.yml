@@ -10,7 +10,5 @@ matrix:
 install:
   - cargo benchcmp --version || cargo install cargo-benchcmp
 cache: cargo
-script:
-  - if [ "$TRAVIS_RUST_VERSION" == "nightly" ]; then cargo test --features nightly; else cargo test; fi
 after_script:
   - ./travis-after-script.sh

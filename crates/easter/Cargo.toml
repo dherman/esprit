@@ -7,16 +7,8 @@ description = "Type definitions for ECMAScript abstract syntax trees."
 documentation = "https://esprit.surge.sh"
 homepage = "https://esprit.surge.sh"
 repository = "https://github.com/dherman/esprit"
-build = "build.rs"
-
-[features]
-default = ["derive-context"]
-nightly = ["derive"]
 
 [dependencies]
 joker = { version = "0.0.5", path = "../joker" }
 tristate = "0.1.1"
-derive = { version = "0.0.1", path = "../derive", optional = true }
-
-[build-dependencies]
-derive-context = { version = "0.0.1", path = "../derive-context", optional = true }
+derive = { version = "0.0.1", path = "../derive" }
