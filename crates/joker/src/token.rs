@@ -267,7 +267,11 @@ pub enum CharCase {
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
+#[cfg_attr(test, derive(Deserialize))]
 pub enum Sign {
+    #[cfg_attr(test, serde(rename = "+"))]
     Plus,
+
+    #[cfg_attr(test, serde(rename = "-"))]
     Minus
 }

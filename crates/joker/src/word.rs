@@ -29,6 +29,7 @@ impl Word {
 
 // Unconditionally reserved words.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[cfg_attr(test, derive(Deserialize))]
 pub enum Reserved {
     // 11.6.2 Reserved Words
     Null,
