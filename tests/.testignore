@@ -7,7 +7,7 @@ statement/labelled/function-declaration
 declaration/function/dupe-param
 
 # Extended identifier chars
-ES6/identifier/**
+ES6/identifier/module_await
 
 # Modules
 ES6/import-declaration/**
