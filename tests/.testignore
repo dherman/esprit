@@ -6,7 +6,7 @@ statement/labelled/function-declaration
 # (for now, we don't track scopes)
 declaration/function/dupe-param
 
-# Extended identifier chars
+# Test runner doesn't yet parse in module mode
 ES6/identifier/module_await
 
 # Modules
