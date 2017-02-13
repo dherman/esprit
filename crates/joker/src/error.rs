@@ -1,3 +1,4 @@
+use std::error;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use word::Reserved;
@@ -20,51 +21,45 @@ pub enum Error {
     ReservedWordWithEscapes(Reserved)
 }
 
+impl Error {
+    fn as_str(&self) -> &'static str {
+        match *self {
+            Error::IncompleteWordEscape(_) => "incomplete word escape",
+            Error::UnterminatedComment => "unterminated block comment",
+            Error::UnterminatedRegExp(_) => "unterminated regexp literal",
+            Error::MissingExponent(_) => "missing exponent",
+            Error::UnterminatedString(_) => "unterminated string",
+            Error::MissingBinaryDigits => "missing binary digits",
+            Error::MissingOctalDigits => "missing octal digits",
+            Error::MissingHexDigits => "missing hex digits",
+            Error::IllegalChar(_) => "illegal character",
+            Error::InvalidDigit(_) => "invalid digit",
+            Error::IllegalUnicode(_) => "illegal code unit",
+            Error::IdAfterNumber(_) => "identifier starts immediately after numeric literal",
+            Error::DigitAfterNumber(_) => "numeric literal starts immediately after previous numeric literal",
+            Error::ReservedWordWithEscapes(_) => "reserved word with escapes",
+        }
+    }
+}
+
 impl Display for Error {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        match self {
-            &Error::IncompleteWordEscape(_) => {
-                fmt.write_str("incomplete word escape")
-            }
-            &Error::UnterminatedComment => {
-                fmt.write_str("unterminated block comment")
-            }
-            &Error::UnterminatedRegExp(_) => {
-                fmt.write_str("unterminated regexp literal")
-            }
-            &Error::MissingExponent(_) => {
-                fmt.write_str("missing exponent")
-            }
-            &Error::UnterminatedString(_) => {
-                fmt.write_str("unterminated string")
-            }
-            &Error::MissingBinaryDigits => {
-                fmt.write_str("missing binary digits")
-            }
-            &Error::MissingOctalDigits => {
-                fmt.write_str("missing octal digits")
-            }
-            &Error::MissingHexDigits => {
-                fmt.write_str("missing hex digits")
-            }
-            &Error::IllegalChar(ref ch) => {
-                fmt.write_fmt(format_args!("illegal character: {:?}", *ch))
-            }
-            &Error::InvalidDigit(ref ch) => {
-                fmt.write_fmt(format_args!("invalid digit: {:?}", *ch))
-            }
-            &Error::IllegalUnicode(ref u) => {
-                fmt.write_fmt(format_args!("illegal code unit: \\u{{{:04x}}}", u))
-            }
-            &Error::IdAfterNumber(_) => {
-                fmt.write_str("identifier starts immediately after numeric literal")
-            }
-            &Error::DigitAfterNumber(_) => {
-                fmt.write_str("numeric literal starts immediately after previous numeric literal")
-            }
-            &Error::ReservedWordWithEscapes(ref word) => {
-                fmt.write_fmt(format_args!("reserved word with escapes: {:?}", word))
-            }
+        match *self {
+            Error::IllegalChar(ref ch)  |
+            Error::InvalidDigit(ref ch) => fmt.write_str(&format!("{}: {:?}", self.as_str(), *ch)),
+            Error::ReservedWordWithEscapes(ref word) => fmt.write_str(&format!("{}: {:?}", self.as_str(), word)),
+            Error::IllegalUnicode(ref u) => fmt.write_str(&format!("{}: \\u{{{:04x}}}", self.as_str(), u)),
+            _ => fmt.write_str(self.as_str()),
         }
+    }
+}
+
+impl error::Error for Error {
+    fn description(&self) -> &str {
+        self.as_str()
+    }
+
+    fn cause(&self) -> Option<&error::Error> {
+        None
     }
 }
