@@ -1,3 +1,4 @@
+use std::error::Error as StdError;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use joker::track::{Span, TrackingRef};
@@ -13,14 +14,20 @@ pub enum Error {
 
 impl Display for Error {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        match self {
-            &Error::InvalidAssignTarget(_) => {
-                fmt.write_str("invalid assignment pattern")
-            }
-            &Error::InvalidPropPatt(_) => {
-                fmt.write_str("invalid object property in assignment pattern")
-            }
+        fmt.write_str(self.description())
+    }
+}
+
+impl StdError for Error {
+    fn description(&self) -> &str {
+        match *self {
+            Error::InvalidAssignTarget(_) => "invalid assignment pattern",
+            Error::InvalidPropPatt(_) => "invalid object property in assignment pattern",
         }
+    }
+
+    fn cause(&self) -> Option<&StdError> {
+        None
     }
 }
 
