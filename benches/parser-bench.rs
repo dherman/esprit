@@ -46,7 +46,7 @@ fn add_bench<F: Fn(&mut Bencher) + Send + 'static>(tests: &mut Vec<TestDescAndFn
     });
 }
 
-fn integration_tests(target: &mut Vec<TestDescAndFn>, ignore: bool) {
+fn integration_tests(target: &mut Vec<TestDescAndFn>, ignore: bool, stack_size: usize) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
 
     let fixtures = {
@@ -79,17 +79,6 @@ fn integration_tests(target: &mut Vec<TestDescAndFn>, ignore: bool) {
         }
         return;
     }
-
-    let stack_size =
-        std::cmp::max(
-            // standard Rust env variable
-            env::var("RUST_MIN_STACK")
-            .ok()
-            .and_then(|s| s.parse().ok())
-            .unwrap_or_default(),
-            // ...but with custom minimal value
-            4 * 1024 * 1024
-        );
 
     let tests =
         files
@@ -155,9 +144,21 @@ fn main() {
     if ignore_integration_tests {
         println!("note: Run with `ESTREE_INTEGRATION_TESTS=1` to run with integration tests (much slower).");
     }
-    thread::Builder::new().name("bench".to_string()).spawn(move || {
+    let stack_size = std::cmp::max(
+        // standard Rust env variable
+        env::var("RUST_MIN_STACK")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or_default(),
+        // ...but with custom minimal value
+        4 * 1024 * 1024
+    );
+    thread::Builder::new()
+    .name("bench".to_string())
+    .stack_size(stack_size)
+    .spawn(move || {
         let mut tests = Vec::new();
-        integration_tests(&mut tests, ignore_integration_tests);
+        integration_tests(&mut tests, ignore_integration_tests, stack_size);
         test_main(&args, tests);
     }).unwrap().join().unwrap();
 }
