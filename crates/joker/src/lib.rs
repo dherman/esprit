@@ -1,3 +1,5 @@
+extern crate ucd;
+
 #[cfg(test)]
 extern crate serde;
 

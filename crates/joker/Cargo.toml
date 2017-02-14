@@ -10,6 +10,9 @@ homepage = "https://esprit.surge.sh"
 repository = "https://github.com/dherman/esprit"
 
 [dependencies]
+ucd = "0.1"
+
+[dev-dependencies]
 serde = "0.9"
 serde_json = "0.9"
 serde_derive = "0.9"

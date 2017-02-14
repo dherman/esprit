@@ -292,7 +292,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     fn read_decimal_digits(&mut self) -> String {
         let mut s = String::new();
-        self.read_into_until(&mut s, &|ch| !ch.is_digit(10));
+        self.read_into_until(&mut s, &|ch| !ch.is_es_dec_digit());
         s
     }
 
@@ -309,7 +309,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             _ => None
         };
         match self.peek() {
-            Some(ch) if !ch.is_digit(10) => return Err(Error::MissingExponent(Some(ch))),
+            Some(ch) if !ch.is_es_dec_digit() => return Err(Error::MissingExponent(Some(ch))),
             None => { return Err(Error::MissingExponent(None)); }
             _ => ()
         }
@@ -318,7 +318,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
 
     fn read_decimal_int(&mut self) -> String {
         let mut s = String::new();
-        self.read_into_until(&mut s, &|ch| !ch.is_digit(10));
+        self.read_into_until(&mut s, &|ch| !ch.is_es_dec_digit());
         s
     }
 
@@ -372,7 +372,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 Ok(span.end(self, NumberSource::Float(None, Some(frac), exp).into_token_data()))
             }
             (Some(ch), _) => {
-                debug_assert!(ch.is_digit(10));
+                debug_assert!(ch.is_es_dec_digit());
                 let span = self.start();
                 let s = self.read_decimal_int();
                 let value = if ch == '0' && s.len() > 1 && s.chars().skip(1).all(|ch| ch.is_es_oct_digit()) {
@@ -380,7 +380,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 } else {
                     let (dot, frac) = if self.matches('.') {
                         (true, Some(match self.peek() {
-                            Some(ch) if ch.is_digit(10) => self.read_decimal_digits(),
+                            Some(ch) if ch.is_es_dec_digit() => self.read_decimal_digits(),
                             _ => String::from("")
                         }))
                     } else {
@@ -399,7 +399,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         }?;
         match self.peek() {
             Some(ch) if ch.is_es_identifier_start() => { return Err(Error::IdAfterNumber(ch)); }
-            Some(ch) if ch.is_digit(10) => { return Err(Error::DigitAfterNumber(ch)); }
+            Some(ch) if ch.is_es_dec_digit() => { return Err(Error::DigitAfterNumber(ch)); }
             _ => {}
         }
         Ok(result)
@@ -464,11 +464,11 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     fn read_string_escape(&mut self, source: &mut String, value: &mut String) -> Result<()> {
         source.push(self.reread('\\'));
         match self.peek() {
-            Some(ch) if ch.is_digit(8) => {
+            Some(ch) if ch.is_es_oct_digit() => {
                 let mut code = 0;
                 for _ in 0..3 {
                     match self.peek() {
-                        Some(ch) if ch.is_digit(8) => {
+                        Some(ch) if ch.is_es_oct_digit() => {
                             let new_code = (code << 3) + ch.to_digit(8).unwrap();
                             if new_code > 255 {
                                 break;
@@ -480,10 +480,6 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                     }
                 }
                 value.push(char::from_u32(code).unwrap_or('?'));
-            }
-            Some(ch) if ch.is_es_single_escape_char() => {
-                source.push(self.reread(ch));
-                value.push(ch.unescape());
             }
             Some('x') => {
                 source.push(self.reread('x'));
@@ -502,7 +498,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             }
             Some(ch) => {
                 source.push(self.reread(ch));
-                value.push(ch);
+                value.push(ch.unescape());
             }
             None => { } // error will be reported from caller
         }
@@ -630,7 +626,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
                 Ok(self.read_punc2(TokenData::SlashAssign))
             }
             (Some('/'), _)                               => Ok(self.read_punc(TokenData::Slash)),
-            (Some('.'), Some(ch)) if ch.is_digit(10)     => self.read_number(),
+            (Some('.'), Some(ch)) if ch.is_es_dec_digit()=> self.read_number(),
             (Some('.'), Some('.'))                       => {
                 Ok(if self.reader.peek(2) == Some('.') {
                     self.read_punc3(TokenData::Ellipsis)
@@ -713,7 +709,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
             (Some('!'), _)                               => Ok(self.read_punc(TokenData::Bang)),
             (Some('?'), _)                               => Ok(self.read_punc(TokenData::Question)),
             (Some('"'), _) | (Some('\''), _)             => self.read_string(),
-            (Some(ch), _) if ch.is_digit(10)             => self.read_number(),
+            (Some(ch), _) if ch.is_es_dec_digit()        => self.read_number(),
             (Some(ch), _) if ch.is_es_identifier_start() => self.read_word(),
             (Some('\\'), _)                              => self.read_word(),
             (Some(ch), _)                                => Err(Error::IllegalChar(ch)),
