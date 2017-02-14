@@ -1,4 +1,3 @@
-use std::error;
 use std::error::Error as StdError;
 use std::fmt;
 
@@ -38,7 +37,7 @@ pub enum Error {
     CompoundParamWithUseStrict(CompoundPatt<Id>)
 }
 
-impl error::Error for Error {
+impl StdError for Error {
     fn description(&self) -> &str {
         match *self {
             Error::UnexpectedToken(_) => "unexpected token",
@@ -66,7 +65,7 @@ impl error::Error for Error {
         }
     }
 
-    fn cause(&self) -> Option<&error::Error> {
+    fn cause(&self) -> Option<&StdError> {
         match *self {
             Error::LexError(ref joker_err) => Some(joker_err),
             Error::InvalidLHS(_, ref cover_err) => Some(cover_err),

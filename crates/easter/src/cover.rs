@@ -1,4 +1,3 @@
-use std::error;
 use std::error::Error as StdError;
 use std::fmt;
 use std::fmt::{Display, Formatter};
@@ -19,7 +18,7 @@ impl Display for Error {
     }
 }
 
-impl error::Error for Error {
+impl StdError for Error {
     fn description(&self) -> &str {
         match *self {
             Error::InvalidAssignTarget(_) => "invalid assignment pattern",
@@ -27,7 +26,7 @@ impl error::Error for Error {
         }
     }
 
-    fn cause(&self) -> Option<&error::Error> {
+    fn cause(&self) -> Option<&StdError> {
         None
     }
 }

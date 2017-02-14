@@ -1,4 +1,4 @@
-use std::error;
+use std::error::Error as StdError;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use word::Reserved;
@@ -21,8 +21,20 @@ pub enum Error {
     ReservedWordWithEscapes(Reserved)
 }
 
-impl Error {
-    fn as_str(&self) -> &'static str {
+impl Display for Error {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        match *self {
+            Error::IllegalChar(ref ch)  |
+            Error::InvalidDigit(ref ch) => fmt.write_fmt(format_args!("{}: {:?}", self.description(), *ch)),
+            Error::ReservedWordWithEscapes(ref word) => fmt.write_fmt(format_args!("{}: {:?}", self.description(), word)),
+            Error::IllegalUnicode(ref u) => fmt.write_fmt(format_args!("{}: \\u{{{:04x}}}", self.description(), u)),
+            _ => fmt.write_str(self.description()),
+        }
+    }
+}
+
+impl StdError for Error {
+    fn description(&self) -> &str {
         match *self {
             Error::IncompleteWordEscape(_) => "incomplete word escape",
             Error::UnterminatedComment => "unterminated block comment",
@@ -40,26 +52,8 @@ impl Error {
             Error::ReservedWordWithEscapes(_) => "reserved word with escapes",
         }
     }
-}
 
-impl Display for Error {
-    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        match *self {
-            Error::IllegalChar(ref ch)  |
-            Error::InvalidDigit(ref ch) => fmt.write_str(&format!("{}: {:?}", self.as_str(), *ch)),
-            Error::ReservedWordWithEscapes(ref word) => fmt.write_str(&format!("{}: {:?}", self.as_str(), word)),
-            Error::IllegalUnicode(ref u) => fmt.write_str(&format!("{}: \\u{{{:04x}}}", self.as_str(), u)),
-            _ => fmt.write_str(self.as_str()),
-        }
-    }
-}
-
-impl error::Error for Error {
-    fn description(&self) -> &str {
-        self.as_str()
-    }
-
-    fn cause(&self) -> Option<&error::Error> {
+    fn cause(&self) -> Option<&StdError> {
         None
     }
 }
