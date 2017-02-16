@@ -52,10 +52,10 @@ impl IntoObj for Object {
             let id = self.into_id()?;
             return Ok(PropKey::Id(None, id.name.into_string()));
         }
-        match self.into_lit()? {
-            Expr::Number(_, lit) => Ok(PropKey::Number(None, lit)),
-            Expr::String(_, lit) => Ok(PropKey::String(None, lit)),
+        Ok(match self.into_lit()? {
+            Expr::Number(_, lit) => PropKey::Number(None, lit),
+            Expr::String(_, lit) => PropKey::String(None, lit),
             _ => { return type_error("identifier, number literal, or string literal", Ty::Object); }
-        }
+        })
     }
 }

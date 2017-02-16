@@ -45,8 +45,8 @@ fn as_ref_test(tests: &mut Vec<TestDescAndFn>) {
     add_test(tests, "reference test".to_string(), false, || {
         let mut ast = script("foobar = 17;").unwrap();
         ast.untrack();
-        match ast.items.first().unwrap() {
-            &StmtListItem::Stmt(Stmt::Expr(_, Expr::Assign(_, Patt::Simple(AssignTarget::Id(ref id)), _), _)) => {
+        match ast.items.first() {
+            Some(&StmtListItem::Stmt(Stmt::Expr(_, Expr::Assign(_, Patt::Simple(AssignTarget::Id(ref id)), _), _))) => {
                 assert_eq!(id.name.as_ref(), "foobar");
             }
             _ => { panic!("unexpected AST structure"); }
@@ -69,7 +69,7 @@ fn unit_tests(target: &mut Vec<TestDescAndFn>) {
     let testignore: Vec<_> =
         include_str!(".testignore")
         .lines()
-        .filter(|s| !s.is_empty() && !s.starts_with("#"))
+        .filter(|s| !s.is_empty() && !s.starts_with('#'))
         .map(|s| glob::Pattern::new(s).unwrap())
         .collect();
 

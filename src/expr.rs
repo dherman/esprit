@@ -16,7 +16,7 @@ pub enum Postfix {
 }
 
 pub enum Deref {
-    Brack(Expr, Token),
+    Brack(Box<Expr>, Span),
     Dot(DotKey)
 }
 
@@ -24,7 +24,7 @@ impl Deref {
     pub fn append_to(self, expr: Expr) -> Expr {
         match self {
             Deref::Brack(deref, end) => {
-                Expr::Brack(span(&expr, &Some(end.location)), Box::new(expr), Box::new(deref))
+                Expr::Brack(span(&expr, &Some(end)), Box::new(expr), deref)
             }
             Deref::Dot(key) => {
                 Expr::Dot(span(&expr, &key), Box::new(expr), key)

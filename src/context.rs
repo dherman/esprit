@@ -21,7 +21,7 @@ impl<I: Iterator<Item=char>> WithContext for Parser<I> {
       where F: FnOnce(&mut Self) -> Result<Stmt>
     {
         let mut label_strings = Vec::new();
-        for id in labels.iter() {
+        for id in &labels {
             let label = Rc::new(id.name.clone());
             self.context.labels.insert(label.clone(), label_type);
             label_strings.push(label);

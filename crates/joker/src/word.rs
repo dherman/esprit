@@ -5,19 +5,13 @@ use result::Result;
 use error::Error;
 
 // Word with potential escape sequences
+#[derive(Default)]
 pub struct Word {
     had_escape: bool,
     pub text: String,
 }
 
 impl Word {
-    pub fn new() -> Self {
-        Word {
-            had_escape: false,
-            text: String::new()
-        }
-    }
-
     pub fn had_escape(&self) -> bool {
         self.had_escape
     }
@@ -173,9 +167,9 @@ impl Name {
 
 impl AsRef<str> for Name {
     fn as_ref(&self) -> &str {
-        match self {
-            &Name::Atom(ref atom) => atom.name(),
-            &Name::String(ref s)  => s.as_ref()
+        match *self {
+            Name::Atom(ref atom) => atom.name(),
+            Name::String(ref s)  => s.as_ref()
         }
     }
 }
@@ -248,8 +242,8 @@ pub struct Map {
     contextual: HashMap<&'static str, Atom>
 }
 
-impl Map {
-    pub fn new() -> Map {
+impl Default for Map {
+    fn default() -> Map {
         Map {
             reserved: wordmap!(Reserved, [
                 // ReservedWord
@@ -293,7 +287,9 @@ impl Map {
             ])
         }
     }
+}
 
+impl Map {
     pub fn tokenize(&self, s: Word) -> Result<TokenData> {
         Ok(match self.reserved.get(&s.text[..]) {
             Some(&word) if !s.had_escape() => TokenData::Reserved(word),

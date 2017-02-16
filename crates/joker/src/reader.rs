@@ -28,7 +28,7 @@ impl<I> Reader<I> where I: Iterator<Item=char> {
                 }
             }
         }
-        self.ahead.get(n).map(|&x| x)
+        self.ahead.get(n).cloned()
     }
 
     pub fn curr_posn(&self) -> Posn { self.curr_posn }

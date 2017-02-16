@@ -125,18 +125,21 @@ impl Stack {
     }
 
     pub fn extend(&mut self, mut left: Expr, op: Infix) {
-        let mut len;
-        while { len = self.frames.len(); len > 0 } && self.frames[len - 1].op.groups_left(&op) {
-            left = self.frames.pop().unwrap().fill(left);
+        while let Some(frame) = self.frames.pop() {
+            if !frame.op.groups_left(&op) {
+                self.frames.push(frame);
+                break;
+            }
+            left = frame.fill(left);
         }
         self.frames.push(Frame { left: left, op: op });
     }
 
-    pub fn finish(mut self, mut right: Expr) -> Expr {
-        while self.frames.len() > 0 {
-            right = self.frames.pop().unwrap().fill(right);
-        }
-        right
+    pub fn finish(self, right: Expr) -> Expr {
+        self.frames
+        .into_iter()
+        .rev()
+        .fold(right, |right, frame| frame.fill(right))
     }
 }
 
@@ -147,7 +150,7 @@ impl Display for Stack {
         }
         let width = self.frames.iter().fold(usize::MIN, |max, f| cmp::max(max, f.width()));
         let border = format!("+{}+", "-".to_string().repeat(width + 2));
-        for frame in self.frames.iter() {
+        for frame in &self.frames {
             fmt.write_str(&border[..])?;
             fmt.write_fmt(format_args!("\n| {}{} |\n", frame, " ".to_string().repeat(width - frame.width())))?;
         }

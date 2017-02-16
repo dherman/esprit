@@ -48,29 +48,32 @@ impl<I: Iterator<Item=char>> State for Parser<I> {
 
     fn matches_token(&mut self, expected: TokenData) -> Result<Option<Token>> {
         let token = self.read()?;
-        if token.value != expected {
+        Ok(if token.value != expected {
             self.lexer.unread_token(token);
-            return Ok(None);
-        }
-        Ok(Some(token))
+            None
+        } else {
+            Some(token)
+        })
     }
 
     fn matches(&mut self, expected: TokenData) -> Result<bool> {
         let token = self.read()?;
-        if token.value != expected {
+        Ok(if token.value != expected {
             self.lexer.unread_token(token);
-            return Ok(false);
-        }
-        Ok(true)
+            false
+        } else {
+            true
+        })
     }
 
     fn matches_op(&mut self, expected: TokenData) -> Result<bool> {
         let token = self.read_op()?;
-        if token.value != expected {
+        Ok(if token.value != expected {
             self.lexer.unread_token(token);
-            return Ok(false);
-        }
-        Ok(true)
+            false
+        } else {
+            true
+        })
     }
 
     fn reread(&mut self, expected: TokenData) -> Token {

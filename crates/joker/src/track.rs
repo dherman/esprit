@@ -71,9 +71,8 @@ impl<T> Untrack for Option<T>
   where T: Untrack
 {
     fn untrack(&mut self) {
-        match *self {
-            Some(ref mut x) => { x.untrack(); }
-            None => { }
+        if let Some(ref mut x) = *self {
+            x.untrack();
         }
     }
 }

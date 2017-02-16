@@ -47,7 +47,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
         Lexer {
             reader: Reader::new(chars),
             lookahead: VecDeque::with_capacity(2),
-            wordmap: WordMap::new(),
+            wordmap: WordMap::default(),
             empty_line: true
         }
     }
@@ -183,9 +183,8 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     {
         loop {
             match self.peek() {
-                Some(ch) if pred(ch) => return Ok(()),
-                Some(_) => { read(self)?; }
-                None => return Ok(())
+                Some(ch) if !pred(ch) => { read(self)?; }
+                _ => return Ok(())
             }
         }
     }
@@ -524,7 +523,7 @@ impl<I> Lexer<I> where I: Iterator<Item=char> {
     }
 
     fn read_word_parts(&mut self) -> Result<Word> {
-        let mut s = Word::new();
+        let mut s = Word::default();
         self.read_until_with(&|ch| ch != '\\' && !ch.is_es_identifier_continue(), &mut |this| {
             match this.read() {
                 '\\' => this.read_word_escape(&mut s),

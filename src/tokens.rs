@@ -33,7 +33,7 @@ impl First for Token {
 
     fn pragma(&self) -> Option<&str> {
         match self.value {
-            TokenData::String(StringLiteral { ref value, .. }) => Some(&value),
+            TokenData::String(StringLiteral { ref value, .. }) => Some(value),
             _ => None
         }
     }
@@ -48,21 +48,21 @@ impl Follows for Token {
     // U follow(ModuleBody)
     // U { '}' }
     // = { '}', 'case', 'default', EOF }
-    // 
+    //
     // follow(CaseClause) =
     //   { '}' }
     // U first(CaseClause)
     // U first(DefaultClause)
     // = { '}', 'case', 'default' }
-    // 
+    //
     // follow(DefaultClause) =
     //   { '}' }
     // U first(CaseClause)
     // = { '}', 'case' }
-    // 
+    //
     // first(CaseClause) = { 'case' }
     // first(DefaultClause) = { 'default' }
-    // 
+    //
     // follow(ScriptBody) = { EOF }
     // follow(ModuleBody) = { EOF }
     fn follow_statement_list(&self) -> bool {
@@ -77,21 +77,16 @@ impl Follows for Token {
 
     fn expression_continuation(&self) -> bool {
         match self.value {
-            // 1. Common non-continuations.
-            TokenData::Semi
-          | TokenData::RBrace
-          | TokenData::EOF => false,
-
-            // 2. Reserved word continuations.
-            TokenData::Reserved(Reserved::In)
-          | TokenData::Reserved(Reserved::Instanceof) => true,
-
-            // 3. Increment/decrement iff no preceding newline.
+            // 1. Increment/decrement iff no preceding newline.
             TokenData::Inc
           | TokenData::Dec => !self.newline,
 
-            // 4. All other non-continuations.
-            TokenData::Reserved(_)
+            // 2. Common non-continuations.
+            TokenData::Semi
+          | TokenData::RBrace
+          | TokenData::EOF
+            // 3. All other non-continuations.
+          | TokenData::Reserved(_)
           | TokenData::LBrace
           | TokenData::RBrack
           | TokenData::RParen

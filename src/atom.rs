@@ -8,8 +8,8 @@ pub trait AtomExt {
 
 impl AtomExt for Name {
     fn is_strict_reserved(&self) -> TriState {
-        match self {
-            &Name::Atom(ref atom) => atom.is_strict_reserved(),
+        match *self {
+            Name::Atom(ref atom) => atom.is_strict_reserved(),
             _ => TriState::No
         }
     }

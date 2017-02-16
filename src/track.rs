@@ -7,7 +7,7 @@ use result::Result;
 use state::State;
 
 pub trait Tracking {
-    fn vec_span<T: TrackingRef>(&self, v: &Vec<T>) -> Option<Span>;
+    fn vec_span<T: TrackingRef>(&self, v: &[T]) -> Option<Span>;
     fn posn(&self) -> Posn;
     fn start(&self) -> SpanTracker;
     fn span<F, T>(&mut self, parse: &mut F) -> Result<T>
@@ -16,13 +16,14 @@ pub trait Tracking {
 }
 
 impl<I> Tracking for Parser<I> where I: Iterator<Item=char> {
-    fn vec_span<T: TrackingRef>(&self, v: &Vec<T>) -> Option<Span> {
-        let len = v.len();
-        if len == 0 {
-            let here = self.posn();
-            return Some(Span { start: here, end: here });
+    fn vec_span<T: TrackingRef>(&self, v: &[T]) -> Option<Span> {
+        match v.len() {
+            0 => {
+                let here = self.posn();
+                Some(Span { start: here, end: here })
+            }
+            len => span(&v[0], &v[len - 1])
         }
-        span(&v[0], &v[len - 1])
     }
 
     fn posn(&self) -> Posn {
@@ -75,20 +76,20 @@ impl SpanTracker {
             T: TrackingMut
     {
         let before = parser.posn();
-        match parser.peek()? {
-            &Token { value: TokenData::Semi, location, .. } => {
+        match *parser.peek()? {
+            Token { value: TokenData::Semi, location, .. } => {
                 parser.reread(TokenData::Semi);
                 let mut result = cons(Semi::Explicit(Some(location.start)));
                 *result.tracking_mut() = Some(Span { start: self.start, end: parser.posn() });
                 Ok(result)
             }
-            &Token { value: TokenData::RBrace, .. }
-          | &Token { value: TokenData::EOF, .. } => {
+            Token { value: TokenData::RBrace, .. }
+          | Token { value: TokenData::EOF, .. } => {
                 let mut result = cons(Semi::Inserted);
                 *result.tracking_mut() = Some(Span { start: self.start, end: before });
                 Ok(result)
             }
-            &Token { newline: found_newline, .. } => {
+            Token { newline: found_newline, .. } => {
                 if newline == Newline::Required && !found_newline {
                     let token = parser.read()?;
                     return Err(Error::FailedASI(token));
