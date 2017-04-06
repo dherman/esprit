@@ -205,14 +205,10 @@ impl NumberSource {
     pub fn value(&self) -> f64 {
         match *self {
             NumberSource::DecimalInt(ref mantissa, None) => {
-                let i: i64 = mantissa.parse().unwrap();
-                i as f64
+                mantissa.parse().unwrap()
             }
             NumberSource::DecimalInt(ref mantissa, Some(Exp { ref sign, ref value, .. })) => {
-                let mantissa: i64 = mantissa.parse().unwrap();
-                let mantissa: f64 = mantissa as f64;
-                let exp: i32 = value.parse().unwrap();
-                mantissa * (10 as f64).powi(if *sign == Some(Sign::Minus) { -exp } else { exp })
+                format!("{}e{}{}", mantissa, format_sign(sign), value).parse().unwrap()
             }
             NumberSource::RadixInt(ref radix, ref src) => {
                 let i = i64::from_str_radix(&src[..], radix.value()).unwrap();
