@@ -211,8 +211,12 @@ impl NumberSource {
                 format!("{}e{}{}", mantissa, format_sign(sign), value).parse().unwrap()
             }
             NumberSource::RadixInt(ref radix, ref src) => {
-                let i = i64::from_str_radix(&src[..], radix.value()).unwrap();
-                i as f64
+                let radix = radix.value();
+                let mult = radix as f64;
+
+                src.chars()
+                .map(|c| c.to_digit(radix).unwrap() as f64)
+                .fold(0f64, |res, digit| res.mul_add(mult, digit))
             }
             NumberSource::Float(ref ip, ref fp, None) => {
                 format!("{}.{}", format_int(ip), format_int(fp)).parse().unwrap()
