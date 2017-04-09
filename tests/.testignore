@@ -38,6 +38,6 @@ ES6/template-literals/**
 
 # Unsupported syntax extensions
 ES2016/**
-es2017/**
+es201[78]/**
 JSX/**
 tolerant-parse/**
