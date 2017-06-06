@@ -1,5 +1,8 @@
+use serde::ser::*;
 use serde_json::Number;
-use joker::token::{StringLiteral, NumberLiteral, NumberSource};
+use joker::token::{ NumberLiteral, NumberSource, RegExpLiteral, StringLiteral };
+
+use util::*;
 
 pub trait IntoStringLiteral {
     fn into_string_literal(self) -> StringLiteral;
@@ -63,5 +66,29 @@ impl IntoNumberLiteral for f64 {
             source: None,
             value: self
         }
+    }
+}
+
+impl<'a> Serialize for Serialization<'a, NumberLiteral> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error> {
+        self.data().value.serialize(serializer)
+    }
+}
+
+impl<'a> Serialize for Serialization<'a, StringLiteral> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error> {
+        self.data().value.serialize(serializer)
+    }
+}
+
+impl<'a> Serialize for Serialization<'a, RegExpLiteral> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error> {
+        let flags : String = self.data().flags.iter().collect();
+        json!({
+            "regex": {
+                "pattern": self.data().pattern,
+                "flags": flags
+            }
+        }).serialize(serializer)
     }
 }

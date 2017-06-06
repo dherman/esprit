@@ -1,5 +1,6 @@
-use easter::obj::{Prop, PropKey, PropVal};
+use easter::obj::{DotKey, Prop, PropKey, PropVal};
 use easter::expr::Expr;
+use serde::ser::*;
 use unjson::ty::{Object, Ty};
 use unjson::ExtractField;
 
@@ -10,6 +11,7 @@ use error::{Error, type_error, array_error};
 use node::ExtractNode;
 use expr::IntoExpr;
 use fun::IntoFun;
+use util::*;
 
 pub trait IntoObj {
     fn into_prop(self) -> Result<Prop>;
@@ -56,6 +58,23 @@ impl IntoObj for Object {
             Expr::Number(_, lit) => Ok(PropKey::Number(None, lit)),
             Expr::String(_, lit) => Ok(PropKey::String(None, lit)),
             _ => { return type_error("identifier, number literal, or string literal", Ty::Object); }
+        }
+    }
+}
+
+impl<'a> Serialize for Serialization<'a, DotKey> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error> {
+        self.data().value.serialize(serializer)
+    }
+}
+
+impl<'a> Serialize for Serialization<'a, PropKey> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error> {
+        use easter::obj::PropKey::*;
+        match *self.data() {
+            Id(_, ref string) => string.serialize(serializer),
+            String(_, ref literal) => Serialization::new(literal).serialize(serializer),
+            Number(_, ref literal) => Serialization::new(literal).serialize(serializer),
         }
     }
 }

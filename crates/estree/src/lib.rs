@@ -1,5 +1,7 @@
+#![recursion_limit="32"]
 extern crate unjson;
 extern crate serde;
+#[macro_use]
 extern crate serde_json;
 extern crate joker;
 extern crate easter;
@@ -17,12 +19,15 @@ mod obj;
 mod decl;
 mod prog;
 mod lit;
+mod util;
 
 use serde::de::Error;
 use serde::de::{Deserialize, Deserializer};
+use serde::ser::{Serialize, Serializer};
 use easter::stmt::Script;
 use unjson::ty::Object;
 pub use prog::IntoScript;
+use util::Serialization;
 
 pub struct ESTreeScript(Script);
 
@@ -33,6 +38,18 @@ impl<'a> Deserialize<'a> for ESTreeScript {
             Ok(script) => Ok(ESTreeScript(script)),
             Err(err)   => Err(D::Error::custom(&format!("{}", err)[..]))
         }
+    }
+}
+
+impl Serialize for ESTreeScript {
+    fn serialize<S: Serializer>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error> {
+        let json = json!({
+            "type": "Program",
+            "sourceType": "script",
+            "loc": null,
+            "body": Serialization::new(&self.0.items),
+        });
+        json.serialize(serializer)
     }
 }
 

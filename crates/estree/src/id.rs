@@ -2,10 +2,12 @@ use easter::id::Id;
 use unjson::ExtractField;
 use unjson::ty::Object;
 use joker::word::Name;
+use serde::ser::*;
 
 use tag::{Tag, TagOf};
 use error::{Error, node_type_error};
 use result::Result;
+use util::*;
 
 pub trait IntoId {
     fn into_id(self) -> Result<Id>;
@@ -21,5 +23,11 @@ impl IntoId for Object {
             location: None,
             name: Name::from(self.extract_string("name").map_err(Error::Json)?)
         })
+    }
+}
+
+impl<'a> Serialize for Serialization<'a, Id> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.data().name.as_ref())
     }
 }

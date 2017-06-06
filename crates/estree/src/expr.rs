@@ -1,8 +1,9 @@
 use serde_json::value::Value;
-use easter::expr::{Expr, ExprListItem};
-use easter::obj::DotKey;
+use serde::ser::*;
+use easter::expr::*;
+use easter::obj::{ DotKey, Prop };
 use easter::id::IdExt;
-use easter::punc::{Unop, Binop, Assop, Logop};
+use easter::punc::*;
 use unjson::ty::{Object, TyOf};
 use unjson::ExtractField;
 use joker::token::RegExpLiteral;
@@ -14,6 +15,7 @@ use error::{Error, string_error, node_type_error, type_error};
 use node::ExtractNode;
 use fun::IntoFun;
 use lit::{IntoStringLiteral, IntoNumberLiteral};
+use util::*;
 
 pub trait IntoExpr {
     fn into_expr(self) -> Result<Expr>;
@@ -167,5 +169,304 @@ impl IntoExpr for Object {
             }
             _ => { return type_error("null, number, boolean, string, or object", json.ty()); }
         })
+    }
+}
+
+impl<'a> Serialize for Serialization<'a, ExprListItem> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error> {
+        use easter::expr::ExprListItem::*;
+        match *self.data() {
+            Expr(ref expr) => Serialization::new(expr).serialize(serializer),
+            Spread(_, ref expr) =>
+                tag(json!({
+                    "type": "SpreadElement",
+                    "argument": Serialization::new(expr)
+                })).serialize(serializer)
+        }
+    }
+}
+
+impl<'a> Serialize for Serialization<'a, Op<UnopTag>> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error> {
+        use easter::punc::UnopTag::*;
+        match self.data().tag {
+            Minus   => "-",
+            Plus    => "+",
+            Not     => "!",
+            BitNot  => "~",
+            Typeof  => "typeof",
+            Void    => "void",
+            Delete  => "delete"
+        }.serialize(serializer)
+    }
+}
+
+impl<'a> Serialize for Serialization<'a, Op<BinopTag>> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error> {
+        use easter::punc::BinopTag::*;
+        match self.data().tag {
+            Eq        => "==",
+            NEq       => "!=",
+            StrictEq  => "===",
+            StrictNEq => "!==",
+            Lt        => "<",
+            LEq       => "<=",
+            Gt        => ">",
+            GEq       => ">=",
+            LShift    => "<<",
+            RShift    => ">>",
+            URShift   => ">>>",
+            Plus      => "+",
+            Minus     => "-",
+            Times     => "*",
+            Div       => "%",
+            Mod       => "%",
+            BitOr     => "|",
+            BitXor    => "^",
+            BitAnd    => "&",
+            In        => "in",
+            Instanceof => "instanceof",
+        }.serialize(serializer)
+    }
+}
+
+
+impl<'a> Serialize for Serialization<'a, Op<AssopTag>> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error> {
+        use easter::punc::AssopTag::*;
+        match self.data().tag {
+            PlusEq     => "+=",
+            MinusEq    => "-=",
+            TimesEq    => "*=",
+            DivEq      => "/=",
+            ModEq      => "%=",
+            LShiftEq   => "<<=",
+            RShiftEq   => ">>=",
+            URShiftEq  => ">>>=",
+            BitOrEq    => "|=",
+            BitXorEq   => "^=",
+            BitAndEq   => "&="
+        }.serialize(serializer)
+    }
+}
+
+impl<'a> Serialize for Serialization<'a, Op<LogopTag>> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error> {
+        use easter::punc::LogopTag::*;
+        match self.data().tag {
+            Or   => "||",
+            And  => "&&",
+        }.serialize(serializer)
+    }
+}
+
+impl<'a> Serialize for Serialization<'a, Prop> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error> {
+        use easter::obj::Prop::*;
+        use easter::obj::PropVal::*;
+
+        match *self.data() {
+            Regular(_, ref key, Init(ref init)) =>
+                tag(json!({
+                    "type": "Property",
+                    "key": Serialization::new(key),
+                    "value": Serialization::new(init),
+                    "kind": "init"
+                })).serialize(serializer),
+            Regular(_, ref key, Get(_, ref getter)) =>
+                tag(json!({
+                    "type": "Property",
+                    "key": Serialization::new(key),
+                    "value": Serialization::new(&getter.items),
+                    "kind": "get"
+                })).serialize(serializer),
+            Regular(_, ref key, Set(_, /*ignored id?*/_, ref setter)) => // FIXME: If I read EStree correctly, `id` is ignored here
+                tag(json!({
+                    "type": "Property",
+                    "key": Serialization::new(key),
+                    "value": Serialization::new(&setter.items),
+                    "kind": "set"
+                })).serialize(serializer),
+            Method(ref method) =>
+                tag(json!({
+                    "type": "Property",
+                    "key": Serialization::new(&method.id),
+                    "value": Serialization::in_context(method, Container::FunctionExpression),
+                    "kind": "init"
+                })).serialize(serializer),
+            Shorthand(ref id) =>
+                tag(json!({
+                    "type": "Property",
+                    "key": Serialization::new(id),
+                    "value": Serialization::new(id),
+                    "kind": "init"
+                })).serialize(serializer),
+        }
+    }
+}
+
+impl<'a> Serialize for Serialization<'a, Expr> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error> {
+        use easter::expr::Expr::*;
+        match *self.data() {
+            This(_) =>
+                tag(json!({
+                    "type": "ThisExpression",
+                })).serialize(serializer),
+            Arr(_, ref items) =>
+                tag(json!({
+                    "type": "ArrayExpression",
+                    "elements": Serialization::new(items)
+                })).serialize(serializer),
+            Obj(_, ref props) =>
+                tag(json!({
+                    "type": "ObjectExpression",
+                    "properties": Serialization::new(props)
+                })).serialize(serializer),
+            Fun(ref fun) =>
+                Serialization::in_context(fun, Container::FunctionExpression)
+                    .serialize(serializer),
+            Unop(_, ref op, ref expr) =>
+                tag(json!({
+                    "type": "UnaryExpression",
+                    "operator": Serialization::new(op),
+                    "prefix": true,
+                    "argument": Serialization::new(expr)
+                })).serialize(serializer),
+            PreInc(_, ref expr) =>
+                tag(json!({
+                    "type": "UpdateExpression",
+                    "operator": "++",
+                    "argument": Serialization::new(expr),
+                    "prefix": true,
+                })).serialize(serializer),
+            PostInc(_, ref expr) =>
+                tag(json!({
+                    "type": "UpdateExpression",
+                    "operator": "++",
+                    "argument": Serialization::new(expr),
+                    "prefix": false,
+                })).serialize(serializer),
+            PreDec(_, ref expr) =>
+                tag(json!({
+                    "type": "UpdateExpression",
+                    "operator": "--",
+                    "argument": Serialization::new(expr),
+                    "prefix": true,
+                })).serialize(serializer),
+            PostDec(_, ref expr) =>
+                tag(json!({
+                    "type": "UpdateExpression",
+                    "operator": "--",
+                    "argument": Serialization::new(expr),
+                    "prefix": false,
+                })).serialize(serializer),
+            Binop(_, ref op, ref left, ref right) =>
+                tag(json!({
+                    "type": "BinaryExpression",
+                    "operator": Serialization::new(op),
+                    "left": Serialization::new(left),
+                    "right": Serialization::new(right),
+                })).serialize(serializer),
+            Assign(_, ref patt, ref expr) =>
+                tag(json!({
+                    "type": "AssignmentExpression",
+                    "operator": "=",
+                    "left": Serialization::new(patt),
+                    "right": Serialization::new(expr),
+                })).serialize(serializer),
+            BinAssign(_, ref op, ref patt, ref expr) =>
+                tag(json!({
+                    "type": "AssignmentExpression",
+                    "operator": Serialization::new(op),
+                    "left": Serialization::new(patt),
+                    "right": Serialization::new(expr),
+                })).serialize(serializer),
+            Logop(_, ref op, ref patt, ref expr) =>
+                tag(json!({
+                    "type": "LogicalExpression",
+                    "operator": Serialization::new(op),
+                    "left": Serialization::new(patt),
+                    "right": Serialization::new(expr),
+                })).serialize(serializer),
+            Dot(_, ref expr, ref key) =>
+                tag(json!({
+                    "type": "MemberExpression",
+                    "object": Serialization::new(expr),
+                    "property": Serialization::new(key),
+                    "computed": false,
+                })).serialize(serializer),
+            Brack(_, ref obj, ref key) =>
+                tag(json!({
+                    "type": "MemberExpression",
+                    "object": Serialization::new(obj),
+                    "property": Serialization::new(key),
+                    "computed": true,
+                })).serialize(serializer),
+            Cond(_, ref test, ref consequent, ref alternate) =>
+                tag(json!({
+                    "type": "ConditionalExpression",
+                    "test": Serialization::new(test),
+                    "consequent": Serialization::new(consequent),
+                    "alternate": Serialization::new(alternate),
+                })).serialize(serializer),
+            Call(_, ref callee, ref args) =>
+                tag(json!({
+                    "type": "CallExpression",
+                    "callee": Serialization::new(callee),
+                    "arguments": Serialization::new(args),
+                })).serialize(serializer),
+            New(_, ref callee, ref args) =>
+                tag(json!({
+                    "type": "NewExpression",
+                    "callee": Serialization::new(callee),
+                    "arguments": Serialization::new(args),
+                })).serialize(serializer),
+            Seq(_, ref exprs) =>
+                tag(json!({
+                    "type": "SequenceExpression",
+                    "expressions": Serialization::new(exprs)
+                })).serialize(serializer),
+            True(_) =>
+                tag(json!({
+                    "type": "Literal",
+                    "value": true
+                })).serialize(serializer),
+            False(_) =>
+                tag(json!({
+                    "type": "Literal",
+                    "value": false
+                })).serialize(serializer),
+            Null(_) =>
+                tag(json!({
+                    "type": "Literal",
+                    "value": null
+                })).serialize(serializer),
+            Number(_, ref lit) =>
+                tag(json!({
+                    "type": "Literal",
+                    "value": Serialization::new(lit)
+                })).serialize(serializer),
+            RegExp(_, ref lit) =>
+                tag(json!({
+                    "type": "Literal",
+                    "value": Serialization::new(lit)
+                })).serialize(serializer),
+            String(_, ref lit) =>
+                tag(json!({
+                    "type": "Literal",
+                    "value": Serialization::new(lit)
+                })).serialize(serializer),
+            Id(ref id) =>
+                tag(json!({
+                    "type": "Identifier",
+                    "name": Serialization::new(id)
+                })).serialize(serializer),
+            NewTarget(_) => {
+                // FIXME: I couldn't figure out what a `NewTarget` is. At least, this
+                // code should be harmless.
+                serializer.serialize_str("Hi, I'm a NewTarget, I have no idea what I am.")
+            }
+        }
     }
 }
