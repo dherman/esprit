@@ -155,9 +155,7 @@ impl IntoExpr for Object {
             Value::Bool(true) => Expr::True(None),
             Value::Bool(false) => Expr::False(None),
             Value::String(value) => Expr::String(None, value.into_string_literal()),
-            Value::I64(val) => Expr::Number(None, val.into_number_literal()),
-            Value::U64(val) => Expr::Number(None, val.into_number_literal()),
-            Value::F64(val) => Expr::Number(None, val.into_number_literal()),
+            Value::Number(val) => Expr::Number(None, val.into_number_literal()),
             Value::Null | Value::Object(_) => {
                 let mut regex = self.extract_object("regex").map_err(Error::Json)?;
                 let pattern = regex.extract_string("pattern").map_err(Error::Json)?;

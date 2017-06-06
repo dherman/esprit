@@ -10,8 +10,8 @@ repository = "https://github.com/dherman/esprit"
 exclude = ["tests/esprima/**/*"]
 
 [dependencies]
-serde = "0.8"
-serde_json = "0.8"
+serde = "1.0"
+serde_json = "1.0"
 tristate = "0.1.1"
 unjson = { version = "0.0.5", path = "crates/unjson" }
 joker = { version = "0.0.5", path = "crates/joker" }

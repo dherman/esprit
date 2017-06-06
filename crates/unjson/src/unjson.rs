@@ -31,12 +31,12 @@ trait ValueEx {
 
 impl ValueEx for Value {
     fn as_number(&self) -> Result<f64> {
-        Ok(match self {
-            &Value::I64(ref v) => *v as f64,
-            &Value::U64(ref v) => *v as f64,
-            &Value::F64(ref v) => *v,
-            _ => { return type_error("number", self.ty()); }
-        })
+        match *self {
+            Value::Number(ref v) if v.is_f64() => Ok(v.as_f64().unwrap()),
+            Value::Number(ref v) if v.is_u64() => Ok(v.as_u64().unwrap() as f64),
+            Value::Number(ref v) if v.is_i64() => Ok(v.as_i64().unwrap() as f64),
+            _ => type_error("number", self.ty())
+        }
     }
 
     fn as_str_opt(&self) -> Result<Option<&str>> {
@@ -73,8 +73,8 @@ impl ValueEx for Value {
 
     fn as_i64_opt(&self) -> Result<Option<i64>> {
         Ok(match self {
-            &Value::Null       => None,
-            &Value::I64(ref v) => Some(*v),
+            &Value::Null          => None,
+            &Value::Number(ref v) if v.is_i64() => Some(v.as_i64().unwrap()),
             _ => { return type_error("i64 or null", self.ty()); }
         })
     }
@@ -82,7 +82,7 @@ impl ValueEx for Value {
     fn as_u64_opt(&self) -> Result<Option<u64>> {
         Ok(match self {
             &Value::Null       => None,
-            &Value::U64(ref v) => Some(*v),
+            &Value::Number(ref v) if v.is_u64() => Some(v.as_u64().unwrap()),
             _ => { return type_error("u64 or null", self.ty()); }
         })
     }
@@ -90,19 +90,19 @@ impl ValueEx for Value {
     fn as_f64_opt(&self) -> Result<Option<f64>> {
         Ok(match self {
             &Value::Null       => None,
-            &Value::F64(ref v) => Some(*v),
+            &Value::Number(ref v) if v.is_f64() => Some(v.as_f64().unwrap()),
             _ => { return type_error("f64 or null", self.ty()); }
         })
     }
 
     fn as_number_opt(&self) -> Result<Option<f64>> {
-        Ok(match self {
-            &Value::Null       => None,
-            &Value::I64(ref v) => Some(*v as f64),
-            &Value::U64(ref v) => Some(*v as f64),
-            &Value::F64(ref v) => Some(*v),
-            _ => { return type_error("number or null", self.ty()); }
-        })
+        match *self {
+            Value::Number(ref v) if v.is_f64() => Ok(Some(v.as_f64().unwrap())),
+            Value::Number(ref v) if v.is_u64() => Ok(Some(v.as_u64().unwrap() as f64)),
+            Value::Number(ref v) if v.is_i64() => Ok(Some(v.as_i64().unwrap() as f64)),
+            Value::Null => Ok(None),
+            _ => type_error("number or null", self.ty())
+        }
     }
 
 }
@@ -189,14 +189,14 @@ impl Unjson for Value {
 
     fn to_i64(&self) -> Result<i64> {
         match *self {
-            Value::I64(i) => Ok(i),
+            Value::Number(ref v) if v.is_i64() => Ok(v.as_i64().unwrap()),
             _ => { return type_error("i64", self.ty()); }
         }
     }
 
     fn to_i64_opt(&self) -> Result<Option<i64>> {
         match *self {
-            Value::I64(i) => Ok(Some(i)),
+            Value::Number(ref v) if v.is_i64() => Ok(Some(v.as_i64().unwrap())),
             Value::Null   => Ok(None),
             _ => { return type_error("i64", self.ty()); }
         }
@@ -204,14 +204,14 @@ impl Unjson for Value {
 
     fn to_u64(&self) -> Result<u64> {
         match *self {
-            Value::U64(u) => Ok(u),
+            Value::Number(ref v) if v.is_u64() => Ok(v.as_u64().unwrap()),
             _ => { return type_error("u64", self.ty()); }
         }
     }
 
     fn to_u64_opt(&self) -> Result<Option<u64>> {
         match *self {
-            Value::U64(u) => Ok(Some(u)),
+            Value::Number(ref v) if v.is_u64() => Ok(Some(v.as_u64().unwrap())),
             Value::Null   => Ok(None),
             _ => { return type_error("u64", self.ty()); }
         }
@@ -219,36 +219,25 @@ impl Unjson for Value {
 
     fn to_f64(&self) -> Result<f64> {
         match *self {
-            Value::F64(f) => Ok(f),
+            Value::Number(ref v) if v.is_f64() => Ok(v.as_f64().unwrap()),
             _ => { return type_error("f64", self.ty()); }
         }
     }
 
     fn to_f64_opt(&self) -> Result<Option<f64>> {
         match *self {
-            Value::F64(f) => Ok(Some(f)),
+            Value::Number(ref v) if v.is_f64() => Ok(Some(v.as_f64().unwrap())),
             Value::Null   => Ok(None),
             _ => { return type_error("f64", self.ty()); }
         }
     }
 
     fn to_number(&self) -> Result<f64> {
-        match *self {
-            Value::I64(i) => Ok(i as f64),
-            Value::U64(u) => Ok(u as f64),
-            Value::F64(f) => Ok(f),
-            _ => { return type_error("number", self.ty()); }
-        }
+        self.as_number()
     }
 
     fn to_number_opt(&self) -> Result<Option<f64>> {
-        match *self {
-            Value::I64(i) => Ok(Some(i as f64)),
-            Value::U64(u) => Ok(Some(u as f64)),
-            Value::F64(f) => Ok(Some(f)),
-            Value::Null   => Ok(None),
-            _ => { return type_error("number", self.ty()); }
-        }
+        self.as_number_opt()
     }
 }
 

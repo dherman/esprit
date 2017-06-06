@@ -26,8 +26,8 @@ pub use prog::IntoScript;
 
 pub struct ESTreeScript(Script);
 
-impl Deserialize for ESTreeScript {
-    fn deserialize<D: Deserializer>(de: &mut D) -> ::std::result::Result<Self, D::Error> {
+impl<'a> Deserialize<'a> for ESTreeScript {
+    fn deserialize<D>(de: D) -> ::std::result::Result<Self, D::Error> where D: Deserializer<'a> {
         let json: Object = Deserialize::deserialize(de)?;
         match json.into_script() {
             Ok(script) => Ok(ESTreeScript(script)),
