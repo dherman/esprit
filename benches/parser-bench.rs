@@ -119,7 +119,7 @@ fn integration_tests(target: &mut Vec<TestDescAndFn>, ignore: bool, stack_size: 
         .collect::<Vec<_>>();
 
     for (name, source, expected_ast) in tests {
-        add_bench(target, name, false, move |mut bench| {
+        add_bench(target, name, false, move |bench| {
             let mut result = None;
             bench.iter(|| {
                 result = Some(script(&source[..]))
