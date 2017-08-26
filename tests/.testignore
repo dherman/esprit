@@ -27,7 +27,8 @@ ES6/object-initialiser/proto-shorthand-assignments
 ES6/super-property/**
 
 # Generators
-ES6/generator/**
+ES6/generator/*yield*
+ES6/generator/*static*
 ES6/yield/**
 
 # Some other ES6 features
