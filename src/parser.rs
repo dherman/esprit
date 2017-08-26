@@ -417,10 +417,11 @@ impl<I: Iterator<Item=char>> Parser<I> {
     {
         self.span(&mut |this| {
             this.reread(TokenData::Reserved(Reserved::Function));
+            let generator = this.matches(TokenData::Star)?;
             let id = get_id(this)?;
             let params = this.formal_parameters()?;
             let body = this.function_body(&params.list)?;
-            Ok(Fun { location: None, id: id, params: params, body: body })
+            Ok(Fun { location: None, id: id, params: params, body: body, generator: generator })
         })
     }
 
@@ -1262,7 +1263,8 @@ impl<I: Iterator<Item=char>> Parser<I> {
                     location: span(key.tracking_ref(), body.tracking_ref()),
                     id: key,
                     params: params,
-                    body: body
+                    body: body,
+                    generator: false
                 })
             }
             TokenData::Comma | TokenData::RBrace => {
@@ -1326,6 +1328,18 @@ impl<I: Iterator<Item=char>> Parser<I> {
                 let key_location = Some(first.location);
                 self.more_prop_init(PropKey::Id(key_location, "set".to_string()))
             }
+            TokenData::Star => {
+                let key = self.property_key()?;
+                let params = self.formal_parameters()?;
+                let body = self.function_body(&params.list)?;
+                Ok(Prop::Method(Fun {
+                    location: span(key.tracking_ref(), body.tracking_ref()),
+                    id: key,
+                    params: params,
+                    body: body,
+                    generator: true
+                }))
+            }
             TokenData::Reserved(_) => {
                 match self.peek()?.value {
                     TokenData::Comma | TokenData::RBrace => {
@@ -1338,7 +1352,6 @@ impl<I: Iterator<Item=char>> Parser<I> {
                     }
                 }
             }
-            // ES6: TokenData::Star
             _ => {
                 self.lexer.unread_token(first);
                 let key = self.property_key()?;

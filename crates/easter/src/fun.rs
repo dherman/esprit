@@ -16,5 +16,6 @@ pub struct Fun<Id> {
     pub location: Option<Span>,
     pub id: Id,
     pub params: Params,
-    pub body: Script
+    pub body: Script,
+    pub generator: bool
 }
