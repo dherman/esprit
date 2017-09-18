@@ -11,7 +11,8 @@ ES6/identifier/module_await
 
 # Modules
 ES6/import-declaration/**
-ES6/export-declaration/**
+ES6/export-declaration/export-default-class
+ES6/export-declaration/export-default-named-class
 
 # Array / object / default patterns
 **/*array-pattern*

@@ -1,10 +1,10 @@
 use joker::track::*;
-use joker::token::{Token, TokenData};
+use joker::token::{StringLiteral, Token, TokenData};
 use joker::word::{Atom, Name, Reserved};
 use joker::lexer::Lexer;
 use easter::stmt::{Stmt, Block, StmtListItem, ForHead, ForInHead, ForOfHead, Case, Catch, Script, Dir, ModItem, Module};
 use easter::expr::{Expr, ExprListItem};
-use easter::decl::{Decl, Dtor, ConstDtor, DtorExt};
+use easter::decl::{Decl, Dtor, ConstDtor, DtorExt, Export, ExportSpecifier};
 use easter::patt::{Patt, RestPatt, CompoundPatt};
 use easter::fun::{Fun, Params};
 use easter::obj::{PropKey, PropVal, Prop, DotKey};
@@ -20,7 +20,7 @@ use atom::AtomExt;
 use track::Newline;
 use result::Result;
 use error::{Error, Check};
-use track::{SpanTracker, Tracking};
+use track::{Tracking};
 use state::State;
 use expr::{Deref, Suffix, Arguments, Prefix, Postfix};
 use stack::{Stack, Infix};
@@ -302,15 +302,117 @@ impl<I: Iterator<Item=char>> Parser<I> {
                 TokenData::EOF => break,
                 // ES6: import declaration
                 TokenData::Reserved(Reserved::Import) => unimplemented!(),
-                // ES6: export declaration
-                TokenData::Reserved(Reserved::Export) => unimplemented!(),
-                _ => { }
+                TokenData::Reserved(Reserved::Export) => {
+                    items.push(self.export()?);
+                },
+                _ => {
+                    items.push(ModItem::StmtListItem(self.stmt_list_item(true)?));
+                }
             }
-
-            items.push(ModItem::StmtListItem(self.stmt_list_item(true)?));
         }
 
         Ok(items)
+    }
+
+    fn export(&mut self) -> Result<ModItem> {
+        self.span(&mut |this| {
+            this.expect(TokenData::Reserved(Reserved::Export))?;
+            let export = match this.peek()?.value {
+                TokenData::LBrace => this.export_list()?,
+                TokenData::Star => this.export_all()?,
+                TokenData::Reserved(Reserved::Default) => this.export_default()?,
+                TokenData::Reserved(Reserved::Var) => this.var_export()?,
+                TokenData::Identifier(Name::Atom(Atom::Let)) => Export::Decl(this.let_declaration()?),
+                TokenData::Reserved(Reserved::Const) => Export::Decl(this.const_declaration()?),
+                TokenData::Reserved(Reserved::Function) => Export::Decl(this.function_declaration()?),
+                _ => unimplemented!()
+            };
+
+            Ok(ModItem::Export(export))
+        })
+    }
+
+    fn export_default(&mut self) -> Result<Export> {
+        let span = self.start();
+        self.expect(TokenData::Reserved(Reserved::Default))?;
+        let expr = self.expression()?;
+        span.end_with_auto_semi(self, Newline::Required, |semi| {
+            Export::Default(None, expr, semi)
+        })
+    }
+
+    fn export_list(&mut self) -> Result<Export> {
+        let span = self.start();
+        self.expect(TokenData::LBrace)?;
+        let mut list = Vec::new();
+        while !self.matches(TokenData::RBrace)? {
+            list.push(self.export_specifier()?);
+            if self.peek()?.value != TokenData::RBrace {
+                self.expect(TokenData::Comma)?;
+            }
+        }
+        let from = if self.matches(TokenData::Identifier(Name::Atom(Atom::From)))? {
+            Some(self.string_literal()?)
+        } else {
+            None
+        };
+        span.end_with_auto_semi(self, Newline::Required, |semi| {
+            Export::List(None, list, from, semi)
+        })
+    }
+
+    fn export_specifier(&mut self) -> Result<ExportSpecifier> {
+        self.span(&mut |this| {
+            let local = this.export_id()?;
+            let exported = match this.id_opt(false)? {
+                Some(id) => {
+                    if &id.name.into_string()[..] != "as" {
+                        return this.unexpected();
+                    }
+                    this.export_id()?
+                }
+                None => local.clone()
+            };
+
+            Ok(ExportSpecifier {
+                location: None,
+                exported: exported,
+                local: local
+            })
+        })
+    }
+
+    fn export_id(&mut self) -> Result<Id> {
+        let token = self.read()?;
+        if let TokenData::Reserved(reserved) = token.value {
+            Ok(Id {
+                location: Some(token.location),
+                name: Name::String(reserved.into_string())
+            })
+        } else {
+            self.lexer.unread_token(token);
+            self.id(true)
+        }
+    }
+
+    fn export_all(&mut self) -> Result<Export> {
+        let span = self.start();
+        self.expect(TokenData::Star)?;
+        self.expect(TokenData::Identifier(Name::Atom(Atom::From)))?;
+        let from = self.string_literal()?;
+        span.end_with_auto_semi(self, Newline::Required, |semi| {
+            Export::All(None, from, semi)
+        })
+    }
+
+    fn string_literal(&mut self) -> Result<StringLiteral> {
+        let token = self.read()?;
+        if let TokenData::String(literal) = token.value {
+            Ok(literal)
+        } else {
+            self.lexer.unread_token(token);
+            self.unexpected()
+        }
     }
 
     fn statement_list(&mut self) -> Result<Vec<StmtListItem>> {
@@ -485,7 +587,8 @@ impl<I: Iterator<Item=char>> Parser<I> {
                         if !allow_decl {
                             return self.unexpected();
                         }
-                        return self.let_declaration(token.location.start).map(StmtListItem::Decl);
+                        self.lexer.unread_token(token);
+                        return self.let_declaration().map(StmtListItem::Decl);
                     },
                     _ => {
                         self.lexer.unread_token(token);
@@ -540,6 +643,13 @@ impl<I: Iterator<Item=char>> Parser<I> {
         })
     }
 
+    fn var_export(&mut self) -> Result<Export> {
+        let span = self.start();
+        self.reread(TokenData::Reserved(Reserved::Var));
+        let dtors = self.comma_separated(Self::declarator)?;
+        span.end_with_auto_semi(self, Newline::Required, |semi| Export::Var(None, dtors, semi))
+    }
+
     fn var_statement(&mut self) -> Result<Stmt> {
         let span = self.start();
         self.reread(TokenData::Reserved(Reserved::Var));
@@ -547,8 +657,9 @@ impl<I: Iterator<Item=char>> Parser<I> {
         span.end_with_auto_semi(self, Newline::Required, |semi| Stmt::Var(None, dtors, semi))
     }
 
-    fn let_declaration(&mut self, start: Posn) -> Result<Decl> {
-        let span = SpanTracker::new(start);
+    fn let_declaration(&mut self) -> Result<Decl> {
+        let span = self.start();
+        self.reread(TokenData::Identifier(Name::Atom(Atom::Let)));
         let dtors = self.comma_separated(Self::declarator)?;
         span.end_with_auto_semi(self, Newline::Required, |semi| Decl::Let(None, dtors, semi))
     }

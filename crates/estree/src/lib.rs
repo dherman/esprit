@@ -22,7 +22,7 @@ use serde::de::Error;
 use serde::de::{Deserialize, Deserializer};
 use easter::stmt::Script;
 use unjson::ty::Object;
-pub use prog::IntoScript;
+pub use prog::{IntoModule, IntoScript};
 
 pub struct ESTreeScript(Script);
 
