@@ -47,6 +47,22 @@ pub type Script = Body<StmtListItem>;
 
 pub type Module = Body<ModItem>;
 
+impl ModItem {
+    pub fn is_directive(&self) -> bool {
+        match *self {
+            ModItem::StmtListItem(ref item) => item.is_directive(),
+            _ => false
+        }
+    }
+
+    pub fn to_directive(&self) -> Option<Dir> {
+        match *self {
+            ModItem::StmtListItem(ref item) => item.to_directive(),
+            _ => None
+        }
+    }
+}
+
 impl Stmt {
     pub fn is_directive(&self) -> bool {
         match *self {

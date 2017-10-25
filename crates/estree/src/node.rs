@@ -2,10 +2,10 @@ use unjson::ty::Object;
 use unjson::{ExtractField, Unjson};
 use easter::id::Id;
 use easter::expr::{Expr, ExprListItem};
-use easter::stmt::{Stmt, Block, StmtListItem, Case, Catch, Script};
+use easter::stmt::{Stmt, Block, ModItem, StmtListItem, Case, Catch, Module, Script};
 use easter::patt::{Patt, RestPatt, AssignTarget};
 use easter::obj::Prop;
-use easter::decl::Dtor;
+use easter::decl::{Dtor, ExportSpecifier};
 use easter::cover::{IntoAssignTarget, IntoAssignPatt};
 use easter::fun::Params;
 
@@ -13,7 +13,7 @@ use tag::{Tag, TagOf};
 use error::Error;
 use result::{Result, Map};
 use id::IntoId;
-use stmt::IntoStmt;
+use stmt::{IntoModItem, IntoStmt};
 use expr::IntoExpr;
 use patt::IntoPatt;
 use obj::IntoObj;
@@ -40,6 +40,9 @@ pub trait ExtractNode {
     fn extract_case_list(&mut self, &'static str) -> Result<Vec<Case>>;
     fn extract_catch_opt(&mut self, &'static str) -> Result<Option<Catch>>;
     fn extract_script(&mut self, &'static str) -> Result<Script>;
+    fn extract_module(&mut self, &'static str) -> Result<Module>;
+    fn extract_mod_list(&mut self, &'static str) -> Result<Vec<ModItem>>;
+    fn extract_exports_list(&mut self, &'static str) -> Result<Vec<ExportSpecifier>>;
 }
 
 fn split_prefix<T, F>(v: &mut Vec<T>, mut p: F) -> Vec<T>
@@ -197,4 +200,29 @@ impl ExtractNode for Object {
         })
     }
 
+    fn extract_module(&mut self, name: &'static str) -> Result<Module> {
+        let mut list = self.extract_mod_list(name)?;
+        let items = split_prefix(&mut list, |s| s.is_directive());
+        let prolog = list.iter()
+                         .filter_map(|s| s.to_directive())
+                         .collect();
+
+        Ok(Module {
+            location: None,
+            dirs: prolog,
+            items: items
+        })
+    }
+
+    fn extract_mod_list(&mut self, name: &'static str) -> Result<Vec<ModItem>> {
+        let list = self.extract_array(name).map_err(Error::Json)?;
+        let objects = list.map(|value| value.into_object().map_err(Error::Json))?;
+        objects.map(|object| object.into_mod_item())
+    }
+
+    fn extract_exports_list(&mut self, name: &'static str) -> Result<Vec<ExportSpecifier>> {
+        let list = self.extract_array(name).map_err(Error::Json)?;
+        let objects = list.map(|value| value.into_object().map_err(Error::Json))?;
+        objects.map(|object| object.into_export_specifier())
+    }
 }

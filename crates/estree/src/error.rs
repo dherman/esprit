@@ -9,6 +9,7 @@ use unjson::ty::Ty;
 use result::Result;
 use tag::Tag;
 
+#[derive(Debug)]
 pub enum Error {
     Json(unjson::error::Error),
     InvalidTypeTag(String),

@@ -15,9 +15,18 @@ pub enum Import {
 
 #[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut, Untrack)]
 pub enum Export {
-    // ES6: more export forms
+    Default(Option<Span>, Expr, Semi),
+    All(Option<Span>, StringLiteral, Semi),
     Var(Option<Span>, Vec<Dtor>, Semi),
+    List(Option<Span>, Vec<ExportSpecifier>, Option<StringLiteral>, Semi),
     Decl(Decl)
+}
+
+#[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut, Untrack)]
+pub struct ExportSpecifier {
+    pub location: Option<Span>,
+    pub exported: Id,
+    pub local: Id
 }
 
 #[derive(Debug, PartialEq, Clone, TrackingRef, TrackingMut, Untrack)]

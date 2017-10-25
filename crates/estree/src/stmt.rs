@@ -1,5 +1,6 @@
-use easter::stmt::{Stmt, Block, ForHead, ForInHead, ForOfHead, StmtListItem, Case, Catch};
-use easter::decl::Decl;
+use easter::stmt::{Stmt, Block, ForHead, ForInHead, ForOfHead, ModItem, StmtListItem, Case, Catch};
+use easter::decl::{Decl, Export, ExportSpecifier};
+use easter::expr::Expr;
 use easter::punc::Semi;
 use easter::patt::Patt;
 use easter::cover::IntoAssignPatt;
@@ -13,6 +14,7 @@ use fun::IntoFun;
 use error::{Error, string_error, array_error, node_type_error};
 use result::Result;
 use node::ExtractNode;
+use lit::IntoStringLiteral;
 
 trait IntoForHead {
     fn into_for_head(self) -> Result<ForHead>;
@@ -251,7 +253,6 @@ impl IntoStmt for Object {
     fn into_stmt_list_item(self) -> Result<StmtListItem> {
         into_stmt_list_item(self, true)
     }
-
     fn into_case(mut self) -> Result<Case> {
         let test = self.extract_expr_opt("test")?;
         let body = self.extract_stmt_list("consequent")?;
@@ -272,5 +273,89 @@ impl IntoStmt for Object {
             }),
             tag => node_type_error("block statement", tag)
         }
+    }
+}
+
+pub trait IntoModItem {
+    fn into_mod_item(self) -> Result<ModItem>;
+    fn into_export_all(self) -> Result<Export>;
+    fn into_export_named(self) -> Result<Export>;
+    fn into_export_default(self) -> Result<Export>;
+    fn into_export_specifier(self) -> Result<ExportSpecifier>;
+}
+
+impl IntoModItem for Object {
+    fn into_mod_item(self) -> Result<ModItem> {
+        Ok(match self.tag()? {
+            Tag::ExportDefaultDeclaration => ModItem::Export(self.into_export_default()?),
+            Tag::ExportAllDeclaration => ModItem::Export(self.into_export_all()?),
+            Tag::ExportNamedDeclaration => ModItem::Export(self.into_export_named()?),
+            _ => ModItem::StmtListItem(self.into_stmt_list_item()?)
+        })
+    }
+
+    fn into_export_default(mut self) -> Result<Export> {
+        let mut declaration = self.extract_object("declaration").map_err(Error::Json)?;
+        let expr = match declaration.tag()? {
+            Tag::FunctionDeclaration => {
+                let id = declaration.extract_id_opt("id")?;
+                Expr::Fun(declaration.into_fun(id)?)
+            }
+            _ => declaration.into_expr()?
+        };
+        Ok(Export::Default(None, expr, Semi::Explicit(None)))
+    }
+
+    fn into_export_all(mut self) -> Result<Export> {
+        let mut source = self.extract_object("source").map_err(Error::Json)?;
+        let value = source.extract_string("value").map_err(Error::Json)?;
+        Ok(Export::All(None, value.into_string_literal(), Semi::Explicit(None)))
+    }
+
+    fn into_export_named(mut self) -> Result<Export> {
+        let declaration = self.extract_object_opt("declaration").map_err(Error::Json)?;
+
+        match declaration {
+            None => {
+                let specifiers = self.extract_exports_list("specifiers")?;
+                let from = match self.extract_object_opt("source").map_err(Error::Json)? {
+                    Some(object) => {
+                        match object.into_lit()? {
+                            Expr::String(_, literal) => Some(literal),
+                            _ => unimplemented!()
+                        }
+                    },
+                    None => None
+                };
+                return Ok(Export::List(None, specifiers, from, Semi::Explicit(None)));
+            },
+            Some(mut declaration) => {
+                match declaration.tag()? {
+                    Tag::FunctionDeclaration => {
+                        let id = declaration.extract_id("id")?;
+                        Ok(Export::Decl(Decl::Fun(declaration.into_fun(id)?)))
+                    },
+                    Tag::VariableDeclaration => {
+                        let dtors = declaration.extract_dtor_list("declarations")?;
+                        let kind = declaration.extract_string("kind").map_err(Error::Json)?;
+                        match &kind[..] {
+                            "var" => Ok(Export::Var(None, dtors, Semi::Explicit(None))),
+                            "let" => Ok(Export::Decl(Decl::Let(None, dtors, Semi::Explicit(None)))),
+                            "const" => Ok(Export::Decl(Decl::Const(None, dtors.into_const()?, Semi::Explicit(None)))),
+                            _ => { return string_error("var or let or const", kind); }
+                        }
+                    },
+                    _ => unimplemented!()
+                }
+            }
+        }
+    }
+
+    fn into_export_specifier(mut self) -> Result<ExportSpecifier> {
+        Ok(ExportSpecifier {
+            location: None,
+            exported: self.extract_id("exported")?,
+            local: self.extract_id("local")?
+        })
     }
 }

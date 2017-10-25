@@ -17,8 +17,8 @@ extern crate unjson;
 use easter::expr::Expr;
 use easter::patt::{AssignTarget, Patt};
 use easter::stmt::{Stmt, StmtListItem};
-use esprit::script;
-use estree::IntoScript;
+use esprit::{program, script, Program};
+use estree::{IntoModule, IntoScript};
 use glob::glob;
 use joker::track::Untrack;
 use serde_json::value::Value;
@@ -98,30 +98,35 @@ fn unit_tests(target: &mut Vec<TestDescAndFn>) {
         add_test(target, source_path.strip_prefix(&root).unwrap().to_str().unwrap().to_string(), ignore, move || {
             let v: Value = serde_json::de::from_reader(File::open(tree_path).unwrap()).unwrap();
             let mut obj = v.into_object().unwrap();
-            let expected = match obj.extract_array("errors") {
-                Ok(errors) => {
-                    Err(errors[0].as_object().unwrap()["message"].clone())
-                }
-                Err(unjson::error::Error::MissingField(_)) => {
-                    Ok(obj.into_script().map_err(|err| {
-                        format!("failed to deserialize script: {}", err)
-                    }).unwrap())
-                }
-                Err(err) => panic!(err)
-            };
             let mut source = String::new();
             File::open(source_path).unwrap().read_to_string(&mut source).unwrap();
-            match (script(&source[..]), expected) {
-                (Ok(mut actual_ast), expected) => {
-                    actual_ast.untrack();
-                    assert!(Ok(&actual_ast) == expected.as_ref(), "unit test got wrong result\n\
+
+            match program(&source[..]) {
+                Ok(Program::Module(mut module)) => {
+                    module.untrack();
+                    let expected = obj.into_module().expect("failed to deserialize module");
+                    assert!(module == expected, "unit test got wrong result\n\
                     expected: {:#?}\n\
-                    actual AST: {:#?}", expected, actual_ast);
+                    actual AST: {:#?}", expected, module);
                 }
-                (Err(actual_err), Ok(_)) => {
-                    panic!("unit test failed to parse:\n{:#?}", actual_err);
+                Ok(Program::Ambiguous(_, mut script)) => {
+                    script.untrack();
+                    let expected = obj.into_script().expect("failed to deserialize script");
+                    assert!(script == expected, "unit test got wrong result\n\
+                    expected: {:#?}\n\
+                    actual AST: {:#?}", expected, script);
                 }
-                (Err(_), Err(_)) => {}
+                Err(error) => {
+                    match obj.extract_array("errors") {
+                        Ok(_) => {},
+                        Err(unjson::error::Error::MissingField(_)) => {
+                            panic!("unit test failed to parse:\n{:#?}", error);
+                        },
+                        Err(error) => {
+                            panic!("failed to deserialize errors:\n{:#?}", error);
+                        }
+                    }
+                }
             }
         });
     }
