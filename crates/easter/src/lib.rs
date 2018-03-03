@@ -1,5 +1,4 @@
 extern crate joker;
-extern crate tristate;
 
 #[macro_use]
 extern crate derive;
