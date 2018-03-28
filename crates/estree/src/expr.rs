@@ -10,7 +10,7 @@ use joker::token::RegExpLiteral;
 use tag::{Tag, TagOf};
 use id::IntoId;
 use result::Result;
-use error::{Error, string_error, node_type_error, type_error};
+use error::{string_error, node_type_error, type_error};
 use node::ExtractNode;
 use fun::IntoFun;
 use lit::{IntoStringLiteral, IntoNumberLiteral};
@@ -28,7 +28,7 @@ impl IntoExpr for Object {
             Tag::Identifier => { return Ok(self.into_id()?.into_expr()); }
             Tag::Literal => IntoExpr::into_lit(self)?,
             Tag::BinaryExpression => {
-                let str = self.extract_string("operator").map_err(Error::Json)?;
+                let str = self.extract_string("operator")?;
                 let op: Binop = match str.parse() {
                     Ok(op) => op,
                     Err(_) => { return string_error("binary operator", str); }
@@ -38,7 +38,7 @@ impl IntoExpr for Object {
                 Expr::Binop(None, op, Box::new(left), Box::new(right))
             }
             Tag::AssignmentExpression => {
-                let str = self.extract_string("operator").map_err(Error::Json)?;
+                let str = self.extract_string("operator")?;
                 let right = Box::new(self.extract_expr("right")?);
                 match &str[..] {
                     "=" => Expr::Assign(None, self.extract_assign_patt("left")?, right),
@@ -52,7 +52,7 @@ impl IntoExpr for Object {
                 }
             }
             Tag::LogicalExpression => {
-                let str = self.extract_string("operator").map_err(Error::Json)?;
+                let str = self.extract_string("operator")?;
                 let op: Logop = match str.parse() {
                     Ok(op) => op,
                     Err(_) => { return string_error("logical operator", str); }
@@ -62,7 +62,7 @@ impl IntoExpr for Object {
                 Expr::Logop(None, op, Box::new(left), Box::new(right))
             }
             Tag::UnaryExpression => {
-                let str = self.extract_string("operator").map_err(Error::Json)?;
+                let str = self.extract_string("operator")?;
                 let op: Unop = match str.parse() {
                     Ok(op) => op,
                     Err(_) => { return string_error("unary operator", str); }
@@ -71,9 +71,9 @@ impl IntoExpr for Object {
                 Expr::Unop(None, op, Box::new(arg))
             }
             Tag::UpdateExpression => {
-                let op = self.extract_string("operator").map_err(Error::Json)?;
+                let op = self.extract_string("operator")?;
                 let arg = Box::new(self.extract_assign_target("argument")?);
-                let prefix = self.extract_bool("prefix").map_err(Error::Json)?;
+                let prefix = self.extract_bool("prefix")?;
                 match (&op[..], prefix) {
                     ("++", true)  => Expr::PreInc(None, arg),
                     ("++", false) => Expr::PostInc(None, arg),
@@ -84,11 +84,11 @@ impl IntoExpr for Object {
             }
             Tag::MemberExpression => {
                 let obj = Box::new(self.extract_expr("object")?);
-                if self.extract_bool("computed").map_err(Error::Json)? {
+                if self.extract_bool("computed")? {
                     let prop = Box::new(self.extract_expr("property")?);
                     Expr::Brack(None, obj, prop)
                 } else {
-                    let id = self.extract_object("property").map_err(Error::Json)?.into_id()?;
+                    let id = self.extract_object("property")?.into_id()?;
                     let key = DotKey { location: None, value: id.name.into_string() };
                     Expr::Dot(None, obj, key)
                 }
@@ -149,7 +149,7 @@ impl IntoExpr for Object {
     }
 
     fn into_lit(mut self) -> Result<Expr> {
-        let json = self.extract_field("value").map_err(Error::Json)?;
+        let json = self.extract_field("value")?;
         Ok(match json {
             Value::Null if !self.contains_key("regex") => Expr::Null(None),
             Value::Bool(true) => Expr::True(None),
@@ -159,9 +159,9 @@ impl IntoExpr for Object {
             Value::U64(val) => Expr::Number(None, val.into_number_literal()),
             Value::F64(val) => Expr::Number(None, val.into_number_literal()),
             Value::Null | Value::Object(_) => {
-                let mut regex = self.extract_object("regex").map_err(Error::Json)?;
-                let pattern = regex.extract_string("pattern").map_err(Error::Json)?;
-                let flags = regex.extract_string("flags").map_err(Error::Json)?;
+                let mut regex = self.extract_object("regex")?;
+                let pattern = regex.extract_string("pattern")?;
+                let flags = regex.extract_string("flags")?;
                 Expr::RegExp(None, RegExpLiteral {
                     pattern: pattern,
                     flags: flags.chars().collect()

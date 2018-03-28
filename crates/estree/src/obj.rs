@@ -6,7 +6,7 @@ use unjson::ExtractField;
 use tag::{Tag, TagOf};
 use id::IntoId;
 use result::Result;
-use error::{Error, type_error, array_error};
+use error::{type_error, array_error};
 use node::ExtractNode;
 use expr::IntoExpr;
 use fun::IntoFun;
@@ -18,21 +18,21 @@ pub trait IntoObj {
 
 impl IntoObj for Object {
     fn into_prop(mut self) -> Result<Prop> {
-        let key = self.extract_object("key").map_err(Error::Json)?;
-        let mut val = self.extract_object("value").map_err(Error::Json)?;
-        let kind = self.extract_string("kind").map_err(Error::Json)?;
+        let key = self.extract_object("key")?;
+        let mut val = self.extract_object("value")?;
+        let kind = self.extract_string("kind")?;
         let val = match &kind[..] {
             "init" => {
-                if self.extract_bool("method").map_err(Error::Json)? {
+                if self.extract_bool("method")? {
                     let fun = val.into_fun(key.into_prop_key()?)?;
                     return Ok(Prop::Method(fun))
-                } else if self.extract_bool("shorthand").map_err(Error::Json)? {
+                } else if self.extract_bool("shorthand")? {
                     return Ok(Prop::Shorthand(key.into_id()?));
                 } else {
                     PropVal::Init(val.into_expr()?)
                 }
             },
-            "get" => PropVal::Get(None, val.extract_object("body").map_err(Error::Json)?.extract_script("body")?),
+            "get" => PropVal::Get(None, val.extract_object("body")?.extract_script("body")?),
             "set" => {
                 let fun = val.into_fun(())?;
                 let params = fun.params.list;

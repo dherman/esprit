@@ -23,7 +23,7 @@ impl IntoForHead for Object {
         Ok(match self.tag()? {
             Tag::VariableDeclaration => {
                 let dtors = self.extract_dtor_list("declarations")?;
-                let kind = self.extract_string("kind").map_err(Error::Json)?;
+                let kind = self.extract_string("kind")?;
                 match &kind[..] {
                     "var" => ForHead::Var(None, dtors),
                     "let" => ForHead::Let(None, dtors),
@@ -44,12 +44,12 @@ impl IntoForInHead for Object {
     fn into_for_in_head(mut self) -> Result<ForInHead> {
         Ok(match self.tag()? {
             Tag::VariableDeclaration => {
-                let mut dtors = self.extract_array("declarations").map_err(Error::Json)?;
-                let kind = self.extract_string("kind").map_err(Error::Json)?;
+                let mut dtors = self.extract_array("declarations")?;
+                let kind = self.extract_string("kind")?;
                 if dtors.len() != 1 {
                     return array_error(1, dtors.len());
                 }
-                let mut obj = dtors.remove(0).into_object().map_err(Error::Json)?;
+                let mut obj = dtors.remove(0).into_object()?;
                 let lhs = obj.extract_patt("id")?;
                 let init = obj.extract_expr_opt("init")?;
                 match (&kind[..], lhs, init) {
@@ -84,12 +84,12 @@ impl IntoForOfHead for Object {
     fn into_for_of_head(mut self) -> Result<ForOfHead> {
         Ok(match self.tag()? {
             Tag::VariableDeclaration => {
-                let mut dtors = self.extract_array("declarations").map_err(Error::Json)?;
-                let kind = self.extract_string("kind").map_err(Error::Json)?;
+                let mut dtors = self.extract_array("declarations")?;
+                let kind = self.extract_string("kind")?;
                 if dtors.len() != 1 {
                     return array_error(1, dtors.len());
                 }
-                let mut obj = dtors.remove(0).into_object().map_err(Error::Json)?;
+                let mut obj = dtors.remove(0).into_object()?;
                 let lhs = obj.extract_patt("id")?;
                 match &kind[..] {
                     "var" => ForOfHead::Var(None, lhs),
@@ -129,7 +129,7 @@ fn into_stmt_list_item(mut this: Object, allow_decl: bool) -> Result<StmtListIte
         }
         Tag::VariableDeclaration => {
             let dtors = this.extract_dtor_list("declarations")?;
-            let kind = this.extract_string("kind").map_err(Error::Json)?;
+            let kind = this.extract_string("kind")?;
             match &kind[..] {
                 "var" => Stmt::Var(None, dtors, Semi::Explicit(None)),
                 "let" => {
@@ -169,7 +169,7 @@ fn into_stmt_list_item(mut this: Object, allow_decl: bool) -> Result<StmtListIte
             Stmt::While(None, test, body)
         }
         Tag::ForStatement => {
-            let init = match this.extract_object_opt("init").map_err(Error::Json)? {
+            let init = match this.extract_object_opt("init")? {
                 None      => None,
                 Some(obj) => Some(Box::new(obj.into_for_head()?))
             };
@@ -179,13 +179,13 @@ fn into_stmt_list_item(mut this: Object, allow_decl: bool) -> Result<StmtListIte
             Stmt::For(None, init, test, update, body)
         }
         Tag::ForInStatement => {
-            let left = this.extract_object("left").map_err(Error::Json)?.into_for_in_head()?;
+            let left = this.extract_object("left")?.into_for_in_head()?;
             let right = this.extract_expr("right")?;
             let body = this.extract_stmt("body")?;
             Stmt::ForIn(None, Box::new(left), right, Box::new(body))
         }
         Tag::ForOfStatement => {
-            let left = this.extract_object("left").map_err(Error::Json)?.into_for_of_head()?;
+            let left = this.extract_object("left")?.into_for_of_head()?;
             let right = this.extract_expr("right")?;
             let body = this.extract_stmt("body")?;
             Stmt::ForOf(None, Box::new(left), right, Box::new(body))
@@ -230,7 +230,7 @@ fn into_stmt_list_item(mut this: Object, allow_decl: bool) -> Result<StmtListIte
         Tag::TryStatement => {
             let body = this.extract_block("block")?;
             let catch = this.extract_catch_opt("handler")?.map(Box::new);
-            let finally = match this.extract_object_opt("finalizer").map_err(Error::Json)? {
+            let finally = match this.extract_object_opt("finalizer")? {
                 Some(finalizer)     => Some(finalizer.into_block()?),
                 None                => None
             };

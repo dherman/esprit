@@ -4,7 +4,7 @@ use unjson::ty::Object;
 use joker::word::Name;
 
 use tag::{Tag, TagOf};
-use error::{Error, node_type_error};
+use error::{node_type_error};
 use result::Result;
 
 pub trait IntoId {
@@ -19,7 +19,7 @@ impl IntoId for Object {
         }
         Ok(Id {
             location: None,
-            name: Name::from(self.extract_string("name").map_err(Error::Json)?)
+            name: Name::from(self.extract_string("name")?)
         })
     }
 }
