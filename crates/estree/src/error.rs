@@ -1,5 +1,6 @@
 use std::fmt;
 use std::fmt::{Display, Formatter};
+use std::convert::From;
 
 use easter::id::Id;
 use easter::expr::Expr;
@@ -48,24 +49,30 @@ impl Display for Error {
     }
 }
 
+impl From<unjson::error::Error> for Error {
+    fn from(error: unjson::error::Error) -> Error {
+        Error::Json(error)
+    }
+}
+
 pub fn type_error<T>(expected: &'static str, actual: Ty) -> Result<T> {
-    unjson::error::type_error(expected, actual).map_err(Error::Json)
+    unjson::error::type_error(expected, actual)?
 }
 
 pub fn field_error<T>(name: &'static str) -> Result<T> {
-    unjson::error::field_error(name).map_err(Error::Json)
+    unjson::error::field_error(name)?
 }
 
 pub fn array_error<T>(expected: usize, actual: usize) -> Result<T> {
-    unjson::error::array_error(expected, actual).map_err(Error::Json)
+    unjson::error::array_error(expected, actual)?
 }
 
 pub fn index_error<T>(len: usize, index: usize) -> Result<T> {
-    unjson::error::index_error(len, index).map_err(Error::Json)
+    unjson::error::index_error(len, index)?
 }
 
 pub fn string_error<T>(expected: &'static str, actual: String) -> Result<T> {
-    unjson::error::string_error(expected, actual).map_err(Error::Json)
+    unjson::error::string_error(expected, actual)?
 }
 
 pub fn tag_error<T>(actual: String) -> Result<T> {
