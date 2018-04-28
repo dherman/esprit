@@ -1,7 +1,7 @@
 use std::fmt;
 use std::fmt::{Display, Formatter};
+use serde_json::map::Map;
 use serde_json::value::Value;
-use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Ty {
@@ -14,7 +14,7 @@ pub enum Ty {
 }
 
 pub type Array = Vec<Value>;
-pub type Object = BTreeMap<String, Value>;
+pub type Object = Map<String, Value>;
 
 pub trait TyOf {
     fn ty(&self) -> Ty;
@@ -26,9 +26,7 @@ impl TyOf for Value {
             Value::Null      => Ty::Null,
             Value::String(_) => Ty::String,
             Value::Object(_) => Ty::Object,
-            Value::I64(_)    => Ty::Number,
-            Value::U64(_)    => Ty::Number,
-            Value::F64(_)    => Ty::Number,
+            Value::Number(_) => Ty::Number,
             Value::Array(_)  => Ty::Array,
             Value::Bool(_)   => Ty::Boolean
         }

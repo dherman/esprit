@@ -1,10 +1,12 @@
-use easter::decl::{Dtor, ConstDtor, DtorExt};
+use easter::decl::{Decl, Dtor, ConstDtor, DtorExt};
 use easter::patt::Patt;
 use unjson::ty::Object;
+use serde::ser::*;
 
 use result::Result;
 use error::Error;
 use node::ExtractNode;
+use util::*;
 
 pub trait IntoDecl {
     fn into_dtor(self) -> Result<Dtor>;
@@ -37,5 +39,61 @@ impl IntoConst for Vec<Dtor> {
                 }
             })
         }).collect()
+    }
+}
+
+impl<'a> Serialize for Serialization<'a, Decl> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error> {
+        use easter::decl::Decl::*;
+        match *self.data() {
+            Fun(ref f) =>
+                Serialization::in_context(f, Container::FunctionDeclaration)
+                    .serialize(serializer),
+            Let(_, ref dtors, _) =>
+                tag(json!({
+                    "type": "VariableDeclaration",
+                    "declarations": Serialization::new(dtors),
+                    "kind": "let"
+                })).serialize(serializer),
+            Const(_, ref cdtors, _) =>
+                tag(json!({
+                    "type": "VariableDeclaration",
+                    "declarations": Serialization::new(cdtors),
+                    "kind": "const"
+                })).serialize(serializer),
+        }
+    }
+}
+
+impl<'a> Serialize for Serialization<'a, Dtor> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error> {
+        use easter::decl::Dtor::*;
+        match *self.data() {
+            Simple(_, ref id, ref expr) =>
+                tag(json!({
+                    "type": "VariableDeclarator",
+                    "id": {
+                        "type": "Identifier",
+                        "name": Serialization::new(id),
+                    },
+                    "init": Serialization::new(expr)
+                })).serialize(serializer),
+            Compound(_, ref pattern, ref expr) =>
+                tag(json!({
+                    "type": "VariableDeclarator",
+                    "id": Serialization::new(pattern),
+                    "init": Serialization::new(expr)
+                })).serialize(serializer),
+        }
+    }
+}
+
+impl<'a> Serialize for Serialization<'a, ConstDtor> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error> {
+        tag(json!({
+            "type": "VariableDeclarator",
+            "id": Serialization::new(&self.data().patt),
+            "init": Serialization::new(&self.data().value),
+        })).serialize(serializer)
     }
 }

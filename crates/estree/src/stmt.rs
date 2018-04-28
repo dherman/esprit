@@ -3,6 +3,7 @@ use easter::decl::Decl;
 use easter::punc::Semi;
 use easter::patt::Patt;
 use easter::cover::IntoAssignPatt;
+use serde::ser::*;
 use unjson::ty::Object;
 use unjson::{Unjson, ExtractField};
 
@@ -13,6 +14,7 @@ use fun::IntoFun;
 use error::{Error, string_error, array_error, node_type_error};
 use result::Result;
 use node::ExtractNode;
+use util::*;
 
 trait IntoForHead {
     fn into_for_head(self) -> Result<ForHead>;
@@ -272,5 +274,258 @@ impl IntoStmt for Object {
             }),
             tag => node_type_error("block statement", tag)
         }
+    }
+}
+
+
+impl<'a> Serialize for Serialization<'a, Stmt> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error> {
+        use easter::stmt::Stmt::*;
+        match *self.data() {
+            Expr(_, ref expr, _) => {
+                tag(json!({
+                    "type": "ExpressionStatement",
+                    "expression": Serialization::new(expr)
+                })).serialize(serializer)
+            },
+            Block(ref block) =>
+                Serialization::new(&block.items)
+                    .serialize(serializer),
+            Empty(_) =>
+                tag(json!({
+                    "type": "EmptyStatement"
+                })).serialize(serializer),
+            Debugger(_, _) =>
+                tag(json!({
+                    "type": "DebuggerStatement"
+                })).serialize(serializer),
+            With(_, ref expr, ref stmt) =>
+                tag(json!({
+                    "type": "WithStatement",
+                    "object": Serialization::new(expr),
+                    "body": Serialization::new(stmt),
+                })).serialize(serializer),
+            Return(_, ref expr, _) =>
+                tag(json!({
+                    "type": "ReturnStatement",
+                    "argument": Serialization::new(expr),
+                })).serialize(serializer),
+            Label(_, ref id, ref stmt) =>
+                tag(json!({
+                    "type": "LabeledStatement",
+                    "label": Serialization::new(id),
+                    "body": Serialization::new(stmt)
+                })).serialize(serializer),
+            Break(_, ref id, _) =>
+                tag(json!({
+                    "type": "BreakStatement",
+                    "label": Serialization::new(id),
+                })).serialize(serializer),
+            Cont(_, ref id, _) =>
+                tag(json!({
+                    "type": "ContinueStatement",
+                    "label": Serialization::new(id),
+                })).serialize(serializer),
+            If(_, ref expr, ref stmt, ref else_branch) =>
+                tag(json!({
+                    "type": "IfStatement",
+                    "test": Serialization::new(expr),
+                    "consequent": Serialization::new(stmt),
+                    "alternate": Serialization::new(else_branch)
+                })).serialize(serializer),
+            Switch(_, ref expr, ref cases) =>
+                tag(json!({
+                    "type": "SwitchStatement",
+                    "discriminant": Serialization::new(expr),
+                    "cases": Serialization::new(cases)
+                })).serialize(serializer),
+            Throw(_, ref expr, _) =>
+                tag(json!({
+                    "type": "ThrowStatement",
+                    "argument": Serialization::new(expr),
+                })).serialize(serializer),
+            Try(_, ref block, ref catch, ref finalizer) =>
+                tag(json!({
+                    "type": "TryStatement",
+                    "block": Serialization::new(block),
+                    "handler": Serialization::new(catch),
+                    "finalizer": Serialization::new(finalizer)
+                })).serialize(serializer),
+            While(_, ref test, ref body) =>
+                tag(json!({
+                    "type": "WhileStatement",
+                    "test": Serialization::new(test),
+                    "body": Serialization::new(body)
+                })).serialize(serializer),
+            DoWhile(_, ref body, ref test, _) =>
+                tag(json!({
+                    "type": "DoWhileStatement",
+                    "test": Serialization::new(test),
+                    "body": Serialization::new(body)
+                })).serialize(serializer),
+            For(_, ref init, ref test, ref update, ref body) =>
+                tag(json!({
+                    "type": "ForStatement",
+                    "init": Serialization::new(init),
+                    "test": Serialization::new(test),
+                    "update": Serialization::new(update),
+                    "body": Serialization::new(body)
+                })).serialize(serializer),
+            ForIn(_, ref head, ref expr, ref body) =>
+                tag(json!({
+                    "type": "ForInStatement",
+                    "left": Serialization::new(head),
+                    "right": Serialization::new(expr),
+                    "body": Serialization::new(body)
+                })).serialize(serializer),
+            ForOf(_, ref head, ref expr, ref body) => // Non-standard, still accepted by Esprima
+                tag(json!({
+                    "type": "ForOfStatement",
+                    "left": Serialization::new(head),
+                    "right": Serialization::new(expr),
+                    "body": Serialization::new(body)
+                })).serialize(serializer),
+            Var(_, ref dtors, _) =>
+                tag(json!({
+                    "type": "VariableDeclaration",
+                    "declarations": Serialization::new(dtors),
+                    "kind": "var" // Other declarations are defined as part of Decl
+                })).serialize(serializer),
+        }
+    }
+}
+
+impl<'a> Serialize for Serialization<'a, Case> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error> {
+        tag(json!({
+            "type": "SwitchCase",
+            "test": Serialization::new(&self.data().test),
+            "consequent": Serialization::new(&self.data().body)
+        })).serialize(serializer)
+    }
+}
+
+
+
+impl<'a> Serialize for Serialization<'a, StmtListItem> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error> {
+        use easter::stmt::StmtListItem::*;
+        match *self.data() {
+            Decl(ref d) => Serialization::new(d).serialize(serializer),
+            Stmt(ref s) => Serialization::new(s).serialize(serializer)
+        }
+    }
+}
+
+impl<'a> Serialize for Serialization<'a, Block> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error> {
+        tag(json!({
+            "type": "BlockStatement",
+            "body": Serialization::new(&self.data().items)
+        })).serialize(serializer)
+    }
+}
+
+impl<'a> Serialize for Serialization<'a, ForHead> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error> {
+        use easter::stmt::ForHead::*;
+        match *self.data() {
+            Var(_, ref dtors) =>
+                tag(json!({
+                    "type": "VariableDeclaration", // FIXME: We should be able to factor this out
+                    "declarations": Serialization::new(dtors),
+                    "kind": "var"
+                })).serialize(serializer),
+            Let(_, ref dtors) =>
+                tag(json!({
+                    "type": "VariableDeclaration", // FIXME: We should be able to factor this out
+                    "declarations": Serialization::new(dtors),
+                    "kind": "let"
+                })).serialize(serializer),
+            Const(_, ref dtors) =>
+                tag(json!({
+                    "type": "VariableDeclaration", // FIXME: We should be able to factor this out
+                    "declarations": Serialization::new(dtors),
+                    "kind": "const"
+                })).serialize(serializer),
+            Expr(_, ref expr) =>
+                Serialization::new(expr).serialize(serializer)
+        }
+    }
+}
+
+impl<'a> Serialize for Serialization<'a, ForOfHead> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error> {
+        use easter::stmt::ForOfHead::*;
+        match *self.data() {
+            Var(_, ref dtors) =>
+                tag(json!({
+                    "type": "VariableDeclaration", // FIXME: We should be able to factor this out
+                    "declarations": Serialization::new(dtors),
+                    "kind": "var"
+                })).serialize(serializer),
+            Let(_, ref dtors) =>
+                tag(json!({
+                    "type": "VariableDeclaration", // FIXME: We should be able to factor this out
+                    "declarations": Serialization::new(dtors),
+                    "kind": "let"
+                })).serialize(serializer),
+            Const(_, ref dtors) =>
+                tag(json!({
+                    "type": "VariableDeclaration", // FIXME: We should be able to factor this out
+                    "declarations": Serialization::new(dtors),
+                    "kind": "const"
+                })).serialize(serializer),
+            Patt(ref patt) =>
+                Serialization::new(patt).serialize(serializer)
+        }
+    }
+}
+
+impl<'a> Serialize for Serialization<'a, ForInHead> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error> {
+        use easter::stmt::ForInHead::*;
+        match *self.data() {
+            Var(_, ref dtors) =>
+                tag(json!({
+                    "type": "VariableDeclaration", // FIXME: We should be able to factor this out
+                    "declarations": Serialization::new(dtors),
+                    "kind": "var"
+                })).serialize(serializer),
+            VarInit(_, ref id, ref expr) =>
+                tag(json!({
+                    "type": "VariableDeclaration",
+                    "declarations": [{
+                        "type": "VariableDeclarator",
+                        "id": Serialization::new(id),
+                        "init": Serialization::new(expr),
+                        "loc": null,
+                    }]
+                })).serialize(serializer),
+            Let(_, ref dtors) =>
+                tag(json!({
+                    "type": "VariableDeclaration", // FIXME: We should be able to factor this out
+                    "declarations": Serialization::new(dtors),
+                    "kind": "let"
+                })).serialize(serializer),
+            Const(_, ref dtors) =>
+                tag(json!({
+                    "type": "VariableDeclaration", // FIXME: We should be able to factor this out
+                    "declarations": Serialization::new(dtors),
+                    "kind": "const"
+                })).serialize(serializer),
+            Patt(ref patt) =>
+                Serialization::new(patt).serialize(serializer)
+        }
+    }
+}
+
+impl<'a> Serialize for Serialization<'a, Catch> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error> {
+        json!({
+            "type": "CatchClause",
+            "param": Serialization::new(&self.data().param),
+            "body": Serialization::new(&self.data().body)
+        }).serialize(serializer)
     }
 }
