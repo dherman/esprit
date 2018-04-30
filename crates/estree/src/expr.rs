@@ -101,7 +101,7 @@ impl IntoExpr for Object {
             Tag::NewExpression => {
                 let callee = Box::new(self.extract_expr("callee")?);
                 let args = self.extract_expr_list("arguments")?;
-                Expr::New(None, callee, Some(args))
+                Expr::New(None, callee, args)
             }
             Tag::ArrayExpression => {
                 let elts = self.extract_expr_opt_list("elements")?;

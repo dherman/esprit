@@ -1391,7 +1391,7 @@ impl<I: Iterator<Item=char>> Parser<I> {
                 self.arguments()?.append_to_new(new, base)
             } else {
                 let location = span(&Some(new.location), &base);
-                Expr::New(location, Box::new(base), None)
+                Expr::New(location, Box::new(base), vec![])
             };
         }
         self.more_suffixes(base)

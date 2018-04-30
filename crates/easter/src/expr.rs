@@ -15,7 +15,7 @@ pub enum ExprListItem {
     Spread(Option<Span>, Expr)
 }
 
-#[derive(Clone, TrackingRef, TrackingMut, Untrack)]
+#[derive(Clone, TrackingRef, TrackingMut, Untrack, PartialEq)]
 pub enum Expr {
     This(Option<Span>),
     Id(Id),
@@ -34,7 +34,7 @@ pub enum Expr {
     BinAssign(Option<Span>, Assop, AssignTarget, Box<Expr>),
     Cond(Option<Span>, Box<Expr>, Box<Expr>, Box<Expr>),
     Call(Option<Span>, Box<Expr>, Vec<ExprListItem>),
-    New(Option<Span>, Box<Expr>, Option<Vec<ExprListItem>>),
+    New(Option<Span>, Box<Expr>, Vec<ExprListItem>),
     Dot(Option<Span>, Box<Expr>, DotKey),
     Brack(Option<Span>, Box<Expr>, Box<Expr>),
     NewTarget(Option<Span>),
@@ -44,56 +44,6 @@ pub enum Expr {
     Number(Option<Span>, NumberLiteral),
     RegExp(Option<Span>, RegExpLiteral),
     String(Option<Span>, StringLiteral)
-}
-
-impl PartialEq for Expr {
-    fn eq(&self, other: &Self) -> bool {
-        if *self.tracking_ref() != *other.tracking_ref() {
-            return false;
-        }
-        match (self, other) {
-            (&Expr::This(_),                      &Expr::This(_))                      => true,
-            (&Expr::Id(ref id_l),                 &Expr::Id(ref id_r))                 => id_l == id_r,
-            (&Expr::Arr(_, ref elts_l),           &Expr::Arr(_, ref elts_r))           => elts_l == elts_r,
-            (&Expr::Obj(_, ref props_l),          &Expr::Obj(_, ref props_r))          => props_l == props_r,
-            (&Expr::Fun(ref fun_l),               &Expr::Fun(ref fun_r))               => fun_l == fun_r,
-            (&Expr::Seq(_, ref exprs_l),          &Expr::Seq(_, ref exprs_r))          => exprs_l == exprs_r,
-            (&Expr::Unop(_, ref op_l, ref arg_l), &Expr::Unop(_, ref op_r, ref arg_r)) => (op_l, arg_l) == (op_r, arg_r),
-            (&Expr::Binop(_, ref op_l, ref arg1_l, ref arg2_l),
-             &Expr::Binop(_, ref op_r, ref arg1_r, ref arg2_r))                        => (op_l, arg1_l, arg2_l) == (op_r, arg1_r, arg2_r),
-            (&Expr::Logop(_, ref op_l, ref arg1_l, ref arg2_l),
-             &Expr::Logop(_, ref op_r, ref arg1_r, ref arg2_r))                        => (op_l, arg1_l, arg2_l) == (op_r, arg1_r, arg2_r),
-            (&Expr::PreInc(_, ref arg_l),         &Expr::PreInc(_, ref arg_r))
-          | (&Expr::PostInc(_, ref arg_l),        &Expr::PostInc(_, ref arg_r))
-          | (&Expr::PreDec(_, ref arg_l),         &Expr::PreDec(_, ref arg_r))
-          | (&Expr::PostDec(_, ref arg_l),        &Expr::PostDec(_, ref arg_r))        => arg_l == arg_r,
-            (&Expr::Assign(_, ref patt_l, ref arg_l),
-             &Expr::Assign(_, ref patt_r, ref arg_r))                                  => (patt_l, arg_l) == (patt_r, arg_r),
-            (&Expr::BinAssign(_, ref op_l, ref patt_l, ref arg_l),
-             &Expr::BinAssign(_, ref op_r, ref patt_r, ref arg_r))                     => (op_l, patt_l, arg_l) == (op_r, patt_r, arg_r),
-            (&Expr::Cond(_, ref test_l, ref cons_l, ref alt_l),
-             &Expr::Cond(_, ref test_r, ref cons_r, ref alt_r))                        => (test_l, cons_l, alt_l) == (test_r, cons_r, alt_r),
-            (&Expr::Call(_, ref callee_l, ref args_l),
-             &Expr::Call(_, ref callee_r, ref args_r))                                 => (callee_l, args_l) == (callee_r, args_r),
-            (&Expr::New(_, ref callee_l, None),   &Expr::New(_, ref callee_r, None))   => callee_l == callee_r,
-            (&Expr::New(_, ref callee_l, None),   &Expr::New(_, ref callee_r, Some(ref args)))
-          | (&Expr::New(_, ref callee_l, Some(ref args)),
-             &Expr::New(_, ref callee_r, None))                                        => (callee_l == callee_r) && args.is_empty(),
-            (&Expr::New(_, ref callee_l, Some(ref args_l)),
-             &Expr::New(_, ref callee_r, Some(ref args_r)))                            => (callee_l, args_l) == (callee_r, args_r),
-            (&Expr::Dot(_, ref obj_l, ref key_l), &Expr::Dot(_, ref obj_r, ref key_r)) => (obj_l, key_l) == (obj_r, key_r),
-            (&Expr::Brack(_, ref obj_l, ref prop_l),
-             &Expr::Brack(_, ref obj_r, ref prop_r))                                   => (obj_l, prop_l) == (obj_r, prop_r),
-            (&Expr::NewTarget(_),          &Expr::NewTarget(_))                        => true,
-            (&Expr::True(_),               &Expr::True(_))                             => true,
-            (&Expr::False(_),              &Expr::False(_))                            => true,
-            (&Expr::Null(_),               &Expr::Null(_))                             => true,
-            (&Expr::Number(_, ref lit_l),  &Expr::Number(_, ref lit_r))                => lit_l == lit_r,
-            (&Expr::RegExp(_, ref lit_l),  &Expr::RegExp(_, ref lit_r))                => lit_l == lit_r,
-            (&Expr::String(_, ref lit_l),  &Expr::String(_, ref lit_r))                => lit_l == lit_r,
-            _ => false
-        }
-    }
 }
 
 impl Debug for Expr {
@@ -116,11 +66,7 @@ impl Debug for Expr {
             &Expr::BinAssign(_, ref op, ref left, ref right) => fmt.debug_tuple("BinAssign").field(op).field(left).field(right).finish(),
             &Expr::Cond(_, ref test, ref cons, ref alt)      => fmt.debug_tuple("Cond").field(test).field(cons).field(alt).finish(),
             &Expr::Call(_, ref callee, ref args)             => fmt.debug_tuple("Call").field(callee).field(args).finish(),
-            &Expr::New(_, ref ctor, None) => {
-                let args: Vec<Expr> = vec![];
-                fmt.debug_tuple("New").field(ctor).field(&args).finish()
-            }
-            &Expr::New(_, ref ctor, Some(ref args))          => fmt.debug_tuple("New").field(ctor).field(args).finish(),
+            &Expr::New(_, ref ctor, ref args)                => fmt.debug_tuple("New").field(ctor).field(args).finish(),
             &Expr::Dot(_, ref expr, ref key)                 => fmt.debug_tuple("Dot").field(expr).field(key).finish(),
             &Expr::Brack(_, ref expr, ref prop)              => fmt.debug_tuple("Brack").field(expr).field(prop).finish(),
             &Expr::NewTarget(_)                              => fmt.write_str("NewTarget"),

@@ -49,7 +49,7 @@ impl Arguments {
     }
 
     pub fn append_to_new(self, new: Token, expr: Expr) -> Expr {
-        Expr::New(span(&Some(new.location), &Some(self.end.location)), Box::new(expr), Some(self.args))
+        Expr::New(span(&Some(new.location), &Some(self.end.location)), Box::new(expr), self.args)
     }
 }
 
