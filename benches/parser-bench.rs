@@ -121,6 +121,7 @@ fn integration_tests(target: &mut Vec<TestDescAndFn>, ignore: bool, stack_size: 
     for (name, source, expected_ast) in tests {
         add_bench(target, name, false, move |bench| {
             let mut result = None;
+            bench.bytes = source.len() as _;
             bench.iter(|| {
                 result = Some(script(&source[..]))
             });
