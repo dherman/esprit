@@ -119,9 +119,9 @@ Operator       | Precedence
 `"!=="`        | 7
 `"&"`          | 6
 `"^"`          | 5
-`"|"`          | 4
+`"\|"`          | 4
 `"&&"`         | 3
-`"||"`         | 2
+`"\|\|"`         | 2
 
 
 # Avoiding Extra Lookahead
